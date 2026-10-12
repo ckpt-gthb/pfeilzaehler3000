@@ -52,7 +52,7 @@ class PfeilView extends WatchUi.View {
         var statusColor = Graphics.COLOR_LT_GRAY;
         if (pod != null) {
             if (pod.status == :scanning) {
-                statusText = (pod.searchingSeconds() > 20) ? "Pod in range?" : "Looking for pod...";
+                statusText = (pod.searchingSeconds() > 20) ? (pod.podLabel() + " in range?") : ("Looking for " + pod.podLabel() + "...");
             } else if (pod.status == :connecting) {
                 statusText = "Connecting...";
             } else if (pod.status == :lost) {
@@ -62,10 +62,10 @@ class PfeilView extends WatchUi.View {
                 statusText = "Pod firmware 1.5 needed";
                 statusColor = Graphics.COLOR_RED;
             } else if (pod.status == :connected) {
-                statusText = (pod.batteryMv > 0) ? ("Pod " + (pod.batteryMv / 1000.0).format("%.2f") + " V") : "Pod connected";
+                statusText = (pod.batteryMv > 0) ? (pod.podLabel() + "  " + (pod.batteryMv / 1000.0).format("%.2f") + " V") : (pod.podLabel() + " connected");
                 statusColor = Graphics.COLOR_GREEN;
                 if (pod.batteryMv > 0 && pod.batteryMv < 3500) {
-                    statusText = "Pod battery low " + (pod.batteryMv / 1000.0).format("%.2f") + " V";
+                    statusText = pod.podLabel() + " low " + (pod.batteryMv / 1000.0).format("%.2f") + " V";
                     statusColor = Graphics.COLOR_RED;
                 } else if (pod.batteryMv > 0 && pod.batteryMv < 3650) {
                     statusColor = Graphics.COLOR_ORANGE;

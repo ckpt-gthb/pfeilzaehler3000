@@ -1,6 +1,6 @@
 /*
-  PfeilZaehler3000 – DEBUG BUILD (firmware v1.5 + diagnostics)
-  - same functions and Bluetooth interface as the normal firmware v1.5 (phone page and watch work)
+  PfeilZaehler3000 – DEBUG BUILD (firmware v1.6 + diagnostics)
+  - same functions and Bluetooth interface as the normal firmware v1.6 (phone page and watch work)
   - prints every startup step, I2C scans and a status line every 2 s to the Serial Monitor (115200)
   - never goes to sleep (drains the battery in a few days): for diagnosis only, then flash the normal one
   - blue LED blinks briefly every 2 s while nothing is connected
@@ -89,7 +89,7 @@ struct CtrlOp {                              // control command waiting for the 
 
 #define MAX_CONNECTIONS   3        // phone page + Garmin watch, plus one spare for a stale link
 
-#define FW_VERSION        95   // debug build of v1.5
+#define FW_VERSION        96   // debug build of v1.6
                                // v1.3: reports wake-ups and awake time to the app (battery diagnosis)
                                // v1.2: pod really goes idle after 3 min, battery re-measured on every sync
 
@@ -707,11 +707,20 @@ static void onDisconnect(uint16_t h, uint8_t reason) {
   if (connCount == 0) digitalWrite(LED_BLUE, HIGH);
 }
 
+uint16_t podId = 0;
+char     podName[24] = "PfeilZaehler3000";
+
 static void bleBegin() {
   bool ok = Bluefruit.begin(MAX_CONNECTIONS, 0);
   DBG("  Bluefruit.begin -> %s\n", ok ? "OK" : "FAILED");
+  // Own name per pod from the last 4 hex digits of its Bluetooth address (fixed in the chip),
+  // e.g. "PfeilZaehler3000-A3F2", so several pods at one range can be told apart.
+  uint8_t mac[6];
+  Bluefruit.getAddr(mac);
+  podId = ((uint16_t)mac[1] << 8) | mac[0];
+  snprintf(podName, sizeof(podName), "PfeilZaehler3000-%04X", podId);
   Bluefruit.setTxPower(0);
-  Bluefruit.setName("PfeilZaehler3000");
+  Bluefruit.setName(podName);
   Bluefruit.autoConnLed(false);
   Bluefruit.Periph.setConnectCallback(onConnect);
   Bluefruit.Periph.setDisconnectCallback(onDisconnect);
@@ -748,14 +757,17 @@ static void bleBegin() {
   Bluefruit.Advertising.addFlags(BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE);
   Bluefruit.Advertising.addTxPower();
   Bluefruit.Advertising.addService(svc);
+  // the pod ID also goes into the advertising itself (manufacturer data, company ID 0xFFFF =
+  // "none / testing"), so the watch can recognise its own pod without the scan response
+  uint8_t md[4] = {0xFF, 0xFF, (uint8_t)(podId >> 8), (uint8_t)(podId & 0xFF)};
+  Bluefruit.Advertising.addManufacturerData(md, sizeof(md));
   Bluefruit.ScanResponse.addName();
   Bluefruit.Advertising.restartOnDisconnect(true);
   Bluefruit.Advertising.setInterval(160, 1600);   // 100 ms fast, then 1 s slow (0.625 ms units)
   Bluefruit.Advertising.setFastTimeout(30);
   bool adv = Bluefruit.Advertising.start(0);
-  uint8_t mac[6]; Bluefruit.getAddr(mac);
-  DBG("  Advertising.start -> %s, name PfeilZaehler3000, MAC %02X:%02X:%02X:%02X:%02X:%02X\n",
-      adv ? "OK" : "FAILED", mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
+  DBG("  Advertising.start -> %s, name %s, MAC %02X:%02X:%02X:%02X:%02X:%02X\n",
+      adv ? "OK" : "FAILED", podName, mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
 }
 
 static bool notifyRetry(const uint8_t *b, uint16_t len) {
@@ -968,7 +980,7 @@ void setup() {
   Serial.begin(115200);
   while (!Serial && millis() < 5000) delay(10);      // give the Serial Monitor time to attach
   uint32_t rr = NRF_POWER->RESETREAS; NRF_POWER->RESETREAS = 0xFFFFFFFF;
-  DBG("\n=== PfeilZaehler3000 DEBUG (v1.5) === reset reason 0x%08lX\n", (unsigned long)rr);
+  DBG("\n=== PfeilZaehler3000 DEBUG (v1.6) === reset reason 0x%08lX\n", (unsigned long)rr);
 
   DBG("[1] Bluetooth\n");
   bleBegin();

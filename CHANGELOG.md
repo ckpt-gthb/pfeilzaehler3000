@@ -1,5 +1,17 @@
 # Changelog
 
+## Release 1.8 – 12 October 2026
+
+- Allow for multiple archers using the pod at the same range at the same time
+- Pod firmware 1.6: every pod has its own Bluetooth name `PfeilZaehler3000-XXXX` (from its
+  Bluetooth address) and sends the ID in its advertising; the name is printed on the Serial
+  Monitor.
+- Debug firmware rebuilt on firmware 1.6.
+- Phone page 1.8: remembers the chosen pod and only reconnects to that one; shows the pod's name.
+- Watch app 1.2: remembers the first pod it connects to and ignores other pods; hold UP to use a
+  different pod; shows the pod ID.
+- Documentation: shared web address and own copies, finding your pod, Garmin Archery activity.
+
 ## Release 1.7 – 11 October 2026
 
 - Pod firmware 1.5: today/week/month counters in the pod (local time), deleting and restoring

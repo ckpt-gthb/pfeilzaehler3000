@@ -1,6 +1,10 @@
-# Bluetooth interface (pod firmware 1.5)
+# Bluetooth interface (pod firmware 1.6)
 
-The pod is a Bluetooth Low Energy peripheral named `PfeilZaehler3000`. It accepts up to
+The pod is a Bluetooth Low Energy peripheral named `PfeilZaehler3000-XXXX`, where `XXXX` is the
+pod ID: the two lowest bytes of its Bluetooth address in hex (firmware 1.5 and older: just
+`PfeilZaehler3000`). The name is in the scan response. The advertising packet contains the
+service UUID and manufacturer data `FF FF <ID high byte> <ID low byte>` (company ID 0xFFFF), so the
+ID can be read without a scan response. It accepts up to
 3 connections at the same time and keeps advertising while a connection slot is free. No pairing
 or bonding is required. All numbers are little-endian.
 
@@ -30,7 +34,7 @@ The phone page and the watch write it on every connection.
 | 8 | u16 | battery voltage (mV) |
 | 10 | u8 | memory used (%) |
 | 11 | u8 | flags: bit0 clock set since start, bit1 awake |
-| 12 | u8 | firmware version (15 = 1.5, 95 = debug build) |
+| 12 | u8 | firmware version (16 = 1.6, 96 = debug build of 1.6) |
 | 13 | u16 | wake-ups since start |
 | 15 | u8 | share of time awake since start (%) |
 | 16 | u32 | seconds since start |

@@ -3,6 +3,7 @@
 //   BACK   saves a running activity first; pressed again it leaves the app
 //   DOWN   start a new end now
 //   UP     delete the last arrow (asks first)
+//   hold UP  use a different pod (asks first; the watch remembers the pod it connected to)
 // Only the physical UP / DOWN buttons are used, so swiping the touchscreen does nothing.
 
 import Toybox.Lang;
@@ -31,6 +32,11 @@ class PfeilDelegate extends WatchUi.BehaviorDelegate {
             return true;
         }
         return false;           // START / BACK: handled below
+    }
+
+    function onMenu() {
+        WatchUi.pushView(new WatchUi.Confirmation("Use a different pod?"), new ForgetPodDelegate(), WatchUi.SLIDE_IMMEDIATE);
+        return true;
     }
 
     function onSelect() {
@@ -63,6 +69,23 @@ class UndoDelegate extends WatchUi.ConfirmationDelegate {
             var pod = getPod();
             if (pod != null) {
                 pod.undoLast();
+            }
+        }
+        return true;
+    }
+}
+
+class ForgetPodDelegate extends WatchUi.ConfirmationDelegate {
+
+    function initialize() {
+        ConfirmationDelegate.initialize();
+    }
+
+    function onResponse(response) {
+        if (response == WatchUi.CONFIRM_YES) {
+            var pod = getPod();
+            if (pod != null) {
+                pod.forgetPod();
             }
         }
         return true;

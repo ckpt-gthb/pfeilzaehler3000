@@ -1,10 +1,10 @@
 # PfeilZaehler3000 watch app – Garmin Epix Gen 2
 
-Watch app version 1.1 (11 Oct 2026). Needs pod firmware v1.5 or newer.
+Watch app version 1.2 (12 Oct 2026). Needs pod firmware v1.5 or newer; v1.6 for pairing with your own pod.
 
 The watch connects straight to the pod over Bluetooth, no phone needed while shooting.
 
-**Screen:** pod battery at the top (orange when getting low, red when it needs charging), end number
+**Screen:** pod ID and battery at the top, e.g. "Pod A3F2 3.95 V" (orange when getting low, red when it needs charging), end number
 and time since the last arrow, arrows in the current end (big, green at 6, orange above 6), then
 arrows this session, today, this week and this month.
 **Each arrow:** a short vibration, a double vibration when the end has 6 arrows. A pause of more than
@@ -15,6 +15,14 @@ arrows this session, today, this week and this month.
   every end is a lap with its arrow count. **BACK** saves a running activity; press again to leave.
 * **DOWN:** start a new end now (e.g. after a miss you don't want to shoot again).
 * **UP:** delete the last arrow (asks first), e.g. after a bump that was counted.
+* **Hold UP:** use a different pod (asks first).
+
+## Your own pod
+
+The watch remembers the first pod it connects to and from then on only connects to that one, even
+when other archers' pods are nearby. Open the app for the first time with only your own pod nearby
+(its name, `PfeilZaehler3000-XXXX`, is shown on the Serial Monitor when the pod starts). To change
+to another pod, hold UP, confirm, and keep only the new pod nearby.
 
 ## Shared with the phone page
 
@@ -56,8 +64,10 @@ The simulator (`Monkey C: Run`) only checks the screen layout; it can't reach th
 
 ## Good to know
 
-* Garmin has no archery sport, so the activity is saved as a generic activity named
-  "Bogenschiessen". Arrows and ends appear in its summary in Garmin Connect, plus an arrow chart and one lap per end.
-* If the watch stays at "Looking for pod…" or shows "Pod in range?", check that the pod has
+* Garmin watches have their own Archery activity, but Connect IQ apps cannot record with it (the
+  Connect IQ API has no archery sport type). The activity is therefore saved as a generic activity
+  named "Bogenschiessen", with arrows and ends in its summary, an arrow chart and one lap per end.
+  The activity type can be changed afterwards in Garmin Connect.
+* If the watch stays at "Looking for pod…" or shows "Pod … in range?", check that the pod has
   firmware v1.5 and is within a few metres. "Pod firmware 1.5 needed" means the pod still has an
   older firmware.

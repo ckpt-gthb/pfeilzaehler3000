@@ -83,7 +83,8 @@ struct CtrlOp {                              // control command waiting for the 
 
 #define MAX_CONNECTIONS   3        // phone page + Garmin watch, plus one spare for a stale link
 
-#define FW_VERSION        15   // v1.5: shared today/week/month counters, delete arrows, end marks, 3 links
+#define FW_VERSION        16   // v1.6: own name per pod ("PfeilZaehler3000-A3F2"), pod ID in the advertising
+                               // v1.5: shared today/week/month counters, delete arrows, end marks, 3 links
                                // v1.4: phone page and Garmin watch can be connected at the same time
                                // v1.3: reports wake-ups and awake time to the app (battery diagnosis)
                                // v1.2: pod really goes idle after 3 min, battery re-measured on every sync
@@ -685,10 +686,19 @@ static void onDisconnect(uint16_t h, uint8_t reason) {
   if (connCount == 0) digitalWrite(LED_BLUE, HIGH);
 }
 
+uint16_t podId = 0;
+char     podName[24] = "PfeilZaehler3000";
+
 static void bleBegin() {
   Bluefruit.begin(MAX_CONNECTIONS, 0);
+  // Own name per pod from the last 4 hex digits of its Bluetooth address (fixed in the chip),
+  // e.g. "PfeilZaehler3000-A3F2", so several pods at one range can be told apart.
+  uint8_t mac[6];
+  Bluefruit.getAddr(mac);
+  podId = ((uint16_t)mac[1] << 8) | mac[0];
+  snprintf(podName, sizeof(podName), "PfeilZaehler3000-%04X", podId);
   Bluefruit.setTxPower(0);
-  Bluefruit.setName("PfeilZaehler3000");
+  Bluefruit.setName(podName);
   Bluefruit.autoConnLed(false);
   Bluefruit.Periph.setConnectCallback(onConnect);
   Bluefruit.Periph.setDisconnectCallback(onDisconnect);
@@ -725,6 +735,10 @@ static void bleBegin() {
   Bluefruit.Advertising.addFlags(BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE);
   Bluefruit.Advertising.addTxPower();
   Bluefruit.Advertising.addService(svc);
+  // the pod ID also goes into the advertising itself (manufacturer data, company ID 0xFFFF =
+  // "none / testing"), so the watch can recognise its own pod without the scan response
+  uint8_t md[4] = {0xFF, 0xFF, (uint8_t)(podId >> 8), (uint8_t)(podId & 0xFF)};
+  Bluefruit.Advertising.addManufacturerData(md, sizeof(md));
   Bluefruit.ScanResponse.addName();
   Bluefruit.Advertising.restartOnDisconnect(true);
   Bluefruit.Advertising.setInterval(160, 1600);   // 100 ms fast, then 1 s slow (0.625 ms units)
@@ -805,7 +819,7 @@ static void enterActive() {
   isActive = true;
   activeSinceMs = millis();
 #if CALIBRATION_LOG
-  Serial.println("-> active");
+  Serial.printf("-> active (%s)\n", podName);
 #endif
   still = false;
   detect = WAITING;
@@ -819,7 +833,7 @@ static void enterIdle() {
   if (isActive) awakeMsTotal += millis() - activeSinceMs;
   isActive = false;
 #if CALIBRATION_LOG
-  Serial.println("-> idle");
+  Serial.printf("-> idle (%s)\n", podName);
 #endif
   delay(100);
   lsmReadAccel(idleRef);
@@ -949,9 +963,10 @@ void setup() {
   adxlOk = adxlBegin();
   if (lsmOk && adxlOk) {
     led(LED_GREEN, 300);                       // hello: both sensors found
+    Serial.printf("%s ready\n", podName);
     enterActive();
   } else {
-    Serial.printf("Sensor missing: LSM6DS3=%d ADXL375=%d\n", lsmOk, adxlOk);
+    Serial.printf("%s: sensor missing: LSM6DS3=%d ADXL375=%d\n", podName, lsmOk, adxlOk);
   }
 }
 

@@ -77,7 +77,7 @@ label input{width:90px;padding:6px 8px;border:1px solid var(--line);border-radiu
 <body>
 <main>
   <h1>PfeilZaehler3000</h1>
-  <div class="sub">Arrows counted automatically · version 1.7 · 11 Oct 2026</div>
+  <div class="sub">Arrows counted automatically · version 1.8 · 12 Oct 2026</div>
 
   <div class="status" id="status">Not connected.</div>
   <button class="btn big" id="connect">Connect pod &amp; sync</button>
@@ -327,7 +327,7 @@ function showInfo() {
     const up = h >= 48 ? (h / 24).toFixed(1) + ' days' : h >= 1 ? h.toFixed(1) + ' h' : Math.round(info.uptime / 60) + ' min';
     diag = `<br><span class="small">${info.active ? 'Awake' : 'Idle'} now · since start ${up}: awake ${info.awakePct}% of the time, woke up ${info.wakes}×</span>`;
   }
-  setStatus(`<b>Connected.</b> Pod total ${info.total} · battery ${v} (${at}) · memory ${info.storage}% used${diag}`);
+  setStatus(`<b>Connected to ${dev && dev.name ? dev.name : 'pod'}.</b> Records ${info.total} · battery ${v} (${at}) · memory ${info.storage}% used${diag}`);
 }
 
 let userDisconnect = false, retryTimer = null, retryUntil = 0;
@@ -365,6 +365,7 @@ async function attach(device) {
   userDisconnect = false;
   setStatus('Connecting…');
   const server = await dev.gatt.connect();
+  db.podId = dev.id; db.podName = dev.name || ''; save();     // the pod this phone uses from now on
   const svc = await server.getPrimaryService(SVC);
   for (const [k, u] of [['time', UUID_TIME], ['info', UUID_INFO], ['ctrl', UUID_CTRL], ['data', UUID_DATA]]) chars[k] = await svc.getCharacteristic(u);
   try { chars.stats = await svc.getCharacteristic(UUID_STATS); } catch (e) { chars.stats = null; }   // pod firmware 1.5+
@@ -496,7 +497,8 @@ document.addEventListener('visibilitychange', async () => {
   if (!navigator.bluetooth || !navigator.bluetooth.getDevices) return;
   try {
     const list = await navigator.bluetooth.getDevices();
-    const d = list.find(x => x.name === 'PfeilZaehler3000') || list[0]; if (!d) return;
+    // the pod chosen last time; other pods nearby are ignored
+    const d = list.find(x => x.id === db.podId) || list.find(x => (x.name || '').startsWith('PfeilZaehler3000')); if (!d) return;
     setStatus('Looking for your pod…');
     if (d.watchAdvertisements) {
       const ac = new AbortController();

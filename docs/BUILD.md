@@ -1,14 +1,14 @@
 # PfeilZaehler3000 – Build and User Guide
 
 Automatic arrow counter for recurve, barebow and compound bows.
-Release 1.7 · 11 October 2026
+Release 1.8 · 12 October 2026
 
 | Part | Version |
 |---|---|
-| Pod firmware | 1.5 (`firmware/PfeilZaehler3000`) |
-| Debug firmware | 1.5-debug (`firmware/PfeilZaehler3000Debug`) |
-| Phone page | 1.7 (`app/index.html`) |
-| Garmin watch app | 1.1 (`garmin/PfeilZaehler3000Watch`) |
+| Pod firmware | 1.6 (`firmware/PfeilZaehler3000`) |
+| Debug firmware | 1.6-debug (`firmware/PfeilZaehler3000Debug`) |
+| Phone page | 1.8 (`app/index.html`) |
+| Garmin watch app | 1.2 (`garmin/PfeilZaehler3000Watch`) |
 | Housing | v3 (`housing/`) |
 
 ![The assembled pod](images/pod-closed.png)
@@ -26,11 +26,12 @@ the same line are not counted. It does not record scores or arrow positions.
 | | |
 |---|---|
 | Size | 65 × 35 × 27 mm |
-| Weight | about 35–45 g including the bolt |
+| Weight | about 65 g including the bolt (measured; base printed with 100 % infill, steel bolt about 14 g) |
 | Mount | 5/16"-24 UNF bolt into a stabilizer bushing |
 | Battery | LiPo 3.7 V, 300–320 mAh, charged over USB-C |
 | Memory | about 2,800 records between two syncs |
 | Connection | Bluetooth Low Energy, up to 3 devices at the same time |
+| Bluetooth name | PfeilZaehler3000-XXXX (XXXX = last 4 characters of the pod's Bluetooth address) |
 | Approx. cost | € 55–70 for all parts (2026 prices) |
 
 World Archery rules do not allow electronic devices on the bow in competition. Remove the pod for
@@ -79,7 +80,7 @@ Check before building:
   it from turning once the bolt is tight.
 
 The pod works in any orientation. Its alignment only matters for looks and clearance. The extra
-35–45 g changes the balance of the bow, so other weights may need adjusting.
+65 g changes the balance of the bow, so other weights may need adjusting.
 
 ## 4. Parts and tools
 
@@ -194,7 +195,9 @@ No tape or glue is used inside the pod.
    sharply with a screwdriver handle. The monitor shows `jolt peak=… aim=… ring=… -> SHOT` or
    `-> ignored`. A light tap on the table is usually ignored, which is correct.
 5. Leave the board untouched for 3 minutes. The monitor shows `-> idle`, and `-> active` when it
-   is moved again.
+   is moved again. Both lines include the pod's name, e.g. `-> idle (PfeilZaehler3000-A3F2)`.
+6. **Write the 4 characters of the name on the pod** (marker or label), e.g. *A3F2*. They come from
+   the chip and never change. They tell this pod apart from other pods at the same range.
 
 ### 8.4 Assembly
 
@@ -223,13 +226,21 @@ under the battery.
 
 ## 9. Phone page
 
-The phone page is a single file, `app/index.html`. Web Bluetooth only works on pages loaded over
-https, so the file has to be hosted once, for example:
+The phone page is a single file, `app/index.html`, that runs entirely in the phone's browser. It
+only contains the program: each phone connects to its own pod over Bluetooth and stores its history
+in its own browser. Nothing is sent to the web server or to anyone else, so many people can use the
+same web address without seeing each other's data.
 
-- **GitHub Pages:** in this repository the page is available at
-  `https://<user>.github.io/<repository>/app/` after Pages is switched on (Settings → Pages →
-  Deploy from branch → `main`, folder `/ (root)`).
-- **Netlify Drop:** drag the `app` folder onto app.netlify.com/drop.
+Web Bluetooth only works on pages loaded over https, so the page is opened from a web address:
+
+- **Published page:** the address in the README of this repository can be used by everyone.
+- **Own copy:** fork the repository on GitHub and switch on Pages for the fork (Settings → Pages →
+  Deploy from branch → `main`, folder `/ (root)`). The page is then at
+  `https://<user>.github.io/<repository>/app/`. Alternatively drag the `app` folder onto
+  app.netlify.com/drop.
+
+The history belongs to the exact web address. To move to another address, make a **Backup** on the
+old page and **Restore** it on the new one.
 
 Supported browsers: Chrome or Edge on Android, Windows, macOS, Linux and ChromeOS; on iPhone and iPad
 the **Bluefy** browser (Safari and the other iOS browsers have no Web Bluetooth). Add the page to the
@@ -242,14 +253,19 @@ All data is stored in the browser (local storage of that web address). Use **Bac
 
 **Connection**
 
-- **Connect pod & sync** – first connection: choose *PfeilZaehler3000* in the list. The page sets
-  the pod's clock and time zone and downloads all new arrows.
+- **Connect pod & sync** – first connection: choose your pod (*PfeilZaehler3000-XXXX*) in the list.
+  The page remembers it from then on, sets the pod's clock and time zone and downloads all new
+  arrows. The status line shows the name of the connected pod.
 - **Update now** – while connected: downloads new arrows and reads the battery voltage again.
 - **Reconnect & update** – when the connection was lost.
-- **Choose pod** – pick a different pod.
+- **Choose pod** – pick a different pod (the page then remembers that one).
 - **Disconnect** – ends the connection.
 - While connected, the page updates by itself after every arrow. When the page is opened again, it
-  reconnects automatically.
+  reconnects automatically, only to the remembered pod.
+
+**Finding your pod:** every pod has its own name, e.g. *PfeilZaehler3000-A3F2* (see 8.3). Connect
+for the first time with only your own pod nearby. If several pods are listed, choose one and look
+for the blue LED: it lights on the pod that is connected.
 
 **Status line:** the pod's record counter, battery voltage with the time it was measured, pod
 memory used, and whether the pod is awake or idle, how long it has been running, the share of
@@ -304,8 +320,9 @@ Low Energy support may work after adding them in `manifest.xml`; this has not be
 
 ### Screen
 
-- Top: pod battery voltage (orange when getting low, red when it needs charging), or the
-  connection state: *Looking for pod…*, *Pod in range?*, *Connecting…*, *Reconnecting…*.
+- Top: the pod's ID and battery voltage, e.g. *Pod A3F2 3.95 V* (orange when getting low, red
+  when it needs charging), or the connection state: *Looking for Pod A3F2…*, *Pod A3F2 in range?*,
+  *Connecting…*, *Reconnecting…*.
 - End number and time since the last arrow.
 - Arrows in the current end, large (green at 6, orange above 6).
 - Arrows this session, today, this week and this month. Today, week and month come from the pod
@@ -320,6 +337,7 @@ Low Energy support may work after adding them in `manifest.xml`; this has not be
 | BACK | Saves a running activity; pressed again, leaves the app |
 | DOWN | Start a new end now (also shown on the phone page) |
 | UP | Delete the last arrow, after a confirmation (also deleted on the phone page) |
+| hold UP | Use a different pod, after a confirmation (connects to the next pod found) |
 
 Swiping the touchscreen has no function, to prevent accidental changes.
 
@@ -327,9 +345,13 @@ Swiping the touchscreen has no function, to prevent accidental changes.
 - **Ends:** a pause of more than 100 s or DOWN starts a new end (fixed values on the watch).
 - **Recording:** a recorded activity contains duration, heart rate and calories like any other
   activity, plus the number of arrows and ends in the summary, a chart of the arrow count and one
-  lap per end with its number of arrows. Garmin has no archery sport type, so it is saved as a
-  generic activity.
+  lap per end with its number of arrows. Garmin's own Archery activity cannot be used by Connect IQ
+  apps, so the recording is saved as a generic activity; its type can be changed afterwards in
+  Garmin Connect.
 - **Reconnecting:** if the pod is out of range, the watch reconnects by itself when it is back.
+- **Own pod:** the watch remembers the first pod it connects to and from then on only connects to
+  that one, even when other pods are nearby. Open the app for the first time with only your own pod
+  nearby. Hold UP to change to a different pod.
 
 ### Build and install
 
@@ -409,15 +431,18 @@ The values are at the top of the firmware file:
 | "No Web Bluetooth" on the phone page | Open it over https in Chrome or Edge, or in Bluefy on iPhone. |
 | Arrows listed without a date | The pod restarted with an empty battery and had no clock. Connect the phone page after charging. |
 | Watch shows "Pod firmware 1.5 needed" | Flash the current pod firmware. |
-| Watch stays at "Pod in range?" | Check the distance to the pod and that the pod is charged. |
+| Watch stays at "Pod … in range?" | Check the distance to the pod and that the pod is charged. |
+| Phone or watch connected to another archer's pod | Phone: **Choose pod** and pick your own name. Watch: hold UP, confirm, and keep only your own pod nearby. |
+| Which name is my pod? | Connect and look for the blue LED, or read the name on the Serial Monitor (section 8.3). |
 
 ## 14. Debug firmware
 
-`firmware/PfeilZaehler3000Debug` has the same functions and Bluetooth interface as firmware 1.5,
+`firmware/PfeilZaehler3000Debug` has the same functions and Bluetooth interface as firmware 1.6,
 so the phone page and the watch work with it. In addition it:
 
 - waits up to 5 s for the Serial Monitor and prints the reset reason,
-- prints every start-up step, the state of both I2C buses and the I2C addresses found,
+- prints every start-up step including the pod's name and Bluetooth address, the state of both I2C
+  buses and the I2C addresses found,
 - prints a status line every 2 s: sensors, awake/idle, Bluetooth connections and advertising,
   records, arrows today/week/month, battery voltage and the current accelerometer values,
 - blinks the blue LED briefly every 2 s while nothing is connected,
@@ -429,10 +454,10 @@ Use it for diagnosis only, then upload the normal firmware again.
 
 | Path | Content |
 |---|---|
-| `firmware/PfeilZaehler3000/` | Pod firmware 1.5 (Arduino) |
+| `firmware/PfeilZaehler3000/` | Pod firmware 1.6 (Arduino) |
 | `firmware/PfeilZaehler3000Debug/` | Debug firmware |
-| `app/index.html` | Phone page 1.7 |
-| `garmin/PfeilZaehler3000Watch/` | Garmin watch app 1.1 (Connect IQ project) |
+| `app/index.html` | Phone page 1.8 |
+| `garmin/PfeilZaehler3000Watch/` | Garmin watch app 1.2 (Connect IQ project) |
 | `housing/` | STL and 3MF files, OpenSCAD source `pod.scad`, insert test |
 | `docs/` | This guide, Bluetooth protocol, images |
 

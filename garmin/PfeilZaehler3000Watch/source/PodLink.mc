@@ -9,6 +9,10 @@
 // The pod notifies STATS after every arrow, deletion or end mark (from the watch or the phone),
 // so today / week / month are the same on the watch and on the phone page.
 //
+// Several pods at one range: every pod (firmware 1.6+) is named "PfeilZaehler3000-XXXX" and sends
+// the same 16-bit ID as manufacturer data in its advertising. The watch remembers the first pod it
+// connects to and from then on only connects to that one (hold UP to choose another).
+//
 // Connect IQ allows one outstanding BLE request at a time, so the setup runs as a chain:
 //   connect -> enable STATS notifications -> write TIME -> read STATS -> live (queued CTRL writes).
 // If the pod goes out of range, the watch stays paired and reconnects by itself; after
@@ -24,6 +28,7 @@ import Toybox.Activity;
 import Toybox.ActivityRecording;
 import Toybox.FitContributor;
 import Toybox.Timer;
+import Toybox.Application.Storage;
 
 const POD_NAME    = "PfeilZaehler3000";
 const END_GAP_S   = 100;     // longer pause than this = new end (walk to the target)
@@ -48,6 +53,8 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     var busy = false;
     var queue = [];              // CTRL commands waiting to be sent
     var timer = null;
+    var myPod = null;            // ID of this watch's pod (null = take the first one found)
+    var candId = -1;             // ID of the pod being connected
 
     // ---- from the pod (shared with the phone page) ----
     var podArrows = -1;          // pod's lifetime arrows, without deleted ones
@@ -79,6 +86,37 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
         timeUuid  = BluetoothLowEnergy.stringToUuid("a7c10001-5b1e-4c5a-9d1e-3b7a0c0f0ee0");
         ctrlUuid  = BluetoothLowEnergy.stringToUuid("a7c10003-5b1e-4c5a-9d1e-3b7a0c0f0ee0");
         statsUuid = BluetoothLowEnergy.stringToUuid("a7c10005-5b1e-4c5a-9d1e-3b7a0c0f0ee0");
+        var v = Storage.getValue("podId");
+        myPod = (v instanceof Number) ? v as Number : null;
+    }
+
+    // hold UP: forget the remembered pod and take the next one found
+    function forgetPod() {
+        Storage.deleteValue("podId");
+        myPod = null;
+        var d = device;
+        device = null;                           // a disconnect now is wanted, not a loss
+        if (d != null) {
+            BluetoothLowEnergy.unpairDevice(d);
+        }
+        statsCh = null;
+        timeCh = null;
+        ctrlCh = null;
+        busy = false;
+        setupStep = 0;
+        podArrows = -1;
+        today = -1;
+        week = -1;
+        month = -1;
+        batteryMv = 0;
+        startScan();
+    }
+
+    function podLabel() {
+        if (myPod != null) {
+            return "Pod " + (myPod as Number).format("%04X");
+        }
+        return "Pod";
     }
 
     function start() {
@@ -146,12 +184,14 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
             return;
         }
         for (var r = results.next(); r != null; r = results.next()) {
-            if (isPod(r)) {
+            var sr = r as BluetoothLowEnergy.ScanResult;
+            if (isPod(sr)) {
                 BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_OFF);
                 status = :connecting;
                 lostSince = Time.now().value();
+                candId = podIdOf(sr);
                 try {
-                    device = BluetoothLowEnergy.pairDevice(r as BluetoothLowEnergy.ScanResult);
+                    device = BluetoothLowEnergy.pairDevice(sr);
                     if (device == null) {
                         startScan();
                     }
@@ -164,19 +204,47 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
         }
     }
 
-    function isPod(r) {
-        var name = r.getDeviceName();
-        if (name != null && name.equals(POD_NAME)) {
-            return true;
+    // pod ID from the advertising (manufacturer data) or from the name, -1 if unknown
+    function podIdOf(r) {
+        var md = r.getManufacturerSpecificData(0xFFFF);
+        if (md != null && md.size() >= 2) {
+            return ((md[md.size() - 2] as Number) << 8) | (md[md.size() - 1] as Number);
         }
-        var want = svcUuid.toString();
-        var it = r.getServiceUuids();
-        for (var u = it.next(); u != null; u = it.next()) {
-            if (u.toString().equals(want)) {
-                return true;
+        var name = r.getDeviceName();
+        if (name != null && name.length() == POD_NAME.length() + 5 && name.find(POD_NAME + "-") == 0) {
+            var hex = name.substring(POD_NAME.length() + 1, name.length());
+            if (hex != null) {
+                var n = hex.toNumberWithBase(16);
+                if (n != null) {
+                    return n;
+                }
             }
         }
-        return false;
+        return -1;
+    }
+
+    function isPod(r) {
+        var ours = false;
+        var name = r.getDeviceName();
+        if (name != null && name.find(POD_NAME) == 0) {
+            ours = true;
+        } else {
+            var want = svcUuid.toString();
+            var it = r.getServiceUuids();
+            for (var u = it.next(); u != null; u = it.next()) {
+                if (u.toString().equals(want)) {
+                    ours = true;
+                    break;
+                }
+            }
+        }
+        if (!ours) {
+            return false;
+        }
+        if (myPod == null) {
+            return true;                         // no pod remembered yet: take this one
+        }
+        return podIdOf(r) == myPod;              // only this watch's pod
     }
 
     function onConnectedStateChanged(dev, state) {
@@ -201,6 +269,10 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
                 status = :error;
             }
         } else {
+            if (device == null) {                // let go on purpose (new search running)
+                WatchUi.requestUpdate();
+                return;
+            }
             // out of range or pod restarted: stay paired, the watch reconnects by itself
             statsCh = null;
             timeCh = null;
@@ -246,6 +318,10 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
             handleStats(value);
         }
         setupStep = 4;
+        if (myPod == null && candId >= 0) {     // first pod: remember it
+            myPod = candId;
+            Storage.setValue("podId", candId);
+        }
         status = :connected;
         busy = false;
         sendNext();
