@@ -2,14 +2,21 @@
 
 Automatic arrow counter for recurve, barebow and compound bows.
 
-A small sensor pod screws into a 5/16"-24 UNF stabilizer bushing of the riser (e.g. the front
-bushing of a Kinetic Sovren) and detects every shot from the vibration of the bow. For every arrow it
-also measures the shot phases (raise, draw, hold), how much the bow moved while aiming, the bow
+A small sensor pod screws into a 5/16"-24 UNF stabilizer bushing of the riser (e.g. the lowest
+bushing on the back of a Kinetic Sovren riser) and detects every shot from the vibration of the
+bow. For every arrow it also measures the shot phases (raise, draw, hold), how much the bow moved while aiming, the bow
 angle and cant at the release and the follow-through. A web page on the phone reads the pod over
 Bluetooth and shows arrows per end, session, day, week and month, and the details of every arrow.
 An optional Garmin watch app shows the current end and vibrates on every arrow.
 
-![PfeilZaehler3000 pod](docs/images/pod-closed.png)
+<p>
+  <img src="docs/images/pod-closed.png" height="320" alt="PfeilZaehler3000 pod, model of the closed housing">
+  <img src="docs/images/pod-on-riser.jpg" height="320" alt="Kinetic Sovren 25 inch riser seen from the archer's side, with the pod in the lowest bushing">
+  <img src="docs/images/pod-mounted.jpg" height="320" alt="Close-up of the mounted pod with the PfeilZaehler 3000 lid">
+</p>
+
+*The pod · mounted on a Kinetic Sovren 25" riser, on the archer's side in the lowest bushing below
+the grip · close-up of the lid with the hole for the hex key*
 
 ## Features
 
@@ -23,8 +30,11 @@ An optional Garmin watch app shows the current end and vibrates on every arrow.
 - Garmin watch app (Epix Gen 2): time of day, current end, session, today/week/month, time to
   sunset, vibration per arrow, new end and undo buttons, settings menu, Garmin activities with one
   lap per end.
-- Today/week/month counters and the settings (arrows per end, end pause) are kept in the pod, so
-  phone and watch show the same numbers.
+- Three mounting points: back of the riser (archer's side), front (target side) or a side bushing.
+  A 10-second calibration on the phone finds the mounting point and sets the cant zero.
+- Today/week/month counters and the settings (arrows per end, end pause, mounting point) are kept
+  in the pod, so phone and watch show the same numbers.
+- Phone page and watch app in English, German and Polish, chosen automatically or in the settings.
 - Power saving after 3 minutes without movement; Bluetooth stays available.
 
 ## Building one
@@ -41,7 +51,7 @@ filament. Approx. € 55–70 in parts.
 **Open the phone page: https://ckpt-gthb.github.io/pfeilzaehler3000/app/**
 
 **Try it without a pod:** https://ckpt-gthb.github.io/pfeilzaehler3000/app/?demo shows the page with
-example data and a simulated pod. Nothing is saved.
+example data. Nothing is saved.
 
 The page only contains the program. It runs in the phone's browser: each phone connects to its
 own pod over Bluetooth and keeps its history locally. Nothing is sent to this repository or to
@@ -56,12 +66,12 @@ Use Chrome or Edge (Android, desktop) or the Bluefy browser on iPhone.
 <p>
   <img src="docs/images/app-end-detail.png" width="260" alt="Phone page: the arrows of one end with split times, one arrow's details opened">
   <img src="docs/images/app-delete.png" width="260" alt="Phone page: one arrow deleted, with the restore symbol">
-  <img src="docs/images/app-settings.png" width="260" alt="Phone page: settings with distance and cant zero">
+  <img src="docs/images/app-settings.png" width="260" alt="Phone page: settings with language, mounting point and calibration">
 </p>
 
 *Status, current end and totals · arrows per week · sessions with averages · the arrows of one end
 with split times and one arrow's details · a deleted arrow (restore with the arrow symbol) ·
-settings (example data from the demo page)*
+settings*
 
 To host your own copy, fork this repository and switch on GitHub Pages for the fork
 (Settings → Pages → Deploy from branch `main`, folder `/ (root)`); the page is then at
@@ -93,16 +103,16 @@ time to sunset, pod). Build and install: [garmin/README.md](garmin/README.md).
 
 *Recording with time to sunset · end complete · session as the big number with an extra arrow ·
 today as the big number while the pod is out of range · settings (hold UP) · changing to a different
-pod (simulator, example values)*
+pod*
 
 ## Repository
 
 | Path | Content |
 |---|---|
-| `firmware/PfeilZaehler3000/` | Pod firmware 1.7 (Arduino, Seeed nRF52 core) |
+| `firmware/PfeilZaehler3000/` | Pod firmware 2.0 (Arduino, Seeed nRF52 core) |
 | `firmware/PfeilZaehler3000Debug/` | Same firmware with diagnostic output, never sleeps |
-| `app/index.html` | Phone page 1.9 |
-| `garmin/PfeilZaehler3000Watch/` | Garmin Connect IQ watch app 1.3 |
+| `app/index.html` | Phone page 2.0 |
+| `garmin/PfeilZaehler3000Watch/` | Garmin Connect IQ watch app 2.0 |
 | `housing/` | STL / 3MF print files and the OpenSCAD source `pod.scad` |
 | `docs/` | Build guide, Bluetooth protocol, images |
 

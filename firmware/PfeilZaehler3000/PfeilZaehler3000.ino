@@ -14,12 +14,19 @@
     3. the riser keeps ringing (vibration above RING_G) for the next ~150 ms
   Other archers' shots never reach this sensor, so a shared target is not a problem.
 
-  Shot details (v1.7): the last 30 s of bow angle and rotation are kept in RAM. At every shot the
+  Shot details: the last 30 s of bow angle and rotation are kept in RAM. At every shot the
   pod looks back and finds the raise (bow lowered -> aiming angle), draw and set, and the final
   hold; it also measures the aim movement in the last second, the bow angle and cant at release
   and the follow-through (how the bow moves in the first 0.5 s after release).
-  Assumed mounting: bolt in a front bushing, so the sensor's Z axis points along the arrow,
-  lid towards the target.
+  Mounting point (a setting, flags bits 2-3):
+    back  – bushing on the back of the riser (archer's side), lid towards the archer
+    front – bushing on the front of the riser (target side), lid towards the target
+    side  – a bushing on the side of the riser (e.g. V-bar): arrows and phase times only
+  On the back and the front the bolt (sensor Z axis) points roughly along the arrow (a bushing
+  tilted by a few degrees is fine: the calibration measures the tilt), so bow angle, cant
+  and follow-through can be measured. The calibration on the phone page (bow upright with the
+  arrow level, then pointed at the ground) finds the mounting point and sets the zero of the cant
+  and of the bow angle.
 
   No libraries to install – everything used ships with the Seeed nRF52 core.
 */
@@ -62,11 +69,17 @@ struct __attribute__((packed)) Settings {    // shared by phone page and watch, 
   uint8_t  magic;            // SETTINGS_MAGIC
   uint8_t  arrowsPerEnd;     // 1–24, default 6
   uint16_t endPauseS;        // pause that starts a new end, 20–900 s, default 100
-  uint8_t  flags;            // bit0: cant zero set ("set level")
-  uint8_t  rsv;
+  uint8_t  flags;            // bit0: cant zero set by the calibration, bit1: cant zero from the first shot,
+                             // bits 2-3: mounting point, MOUNT_BACK / MOUNT_FRONT / MOUNT_SIDE
+  uint8_t  calStatus;        // calibration: 0 not done, 1 step 1 done (bow upright), 2 done, 3 failed (tilt too small)
   int16_t  cantRef10;        // roll angle of the pod when the bow is level, 0.1 degrees
+  int16_t  pitchRef10;       // Z angle of the pod with the arrow level (tilt of the bushing), 0.1 degrees
 };
 #define SETTINGS_MAGIC 0x5E
+#define MOUNT_BACK  0                        // back of the riser, archer's side (default)
+#define MOUNT_FRONT 1                        // front of the riser, target side
+#define MOUNT_SIDE  2                        // side bushing: no bow angle, cant, follow-through
+#define DETAIL_NA   (-128)                   // angle detail not measured (side mount)
 
 struct __attribute__((packed)) MetaV1 {      // v1.0–1.4 layout, read once and converted
   uint32_t magic;
@@ -90,8 +103,8 @@ struct __attribute__((packed)) DayCnt {      // arrows per local day, for today 
 };
 
 struct __attribute__((packed)) HistSample {  // motion history, 50 Hz (see shot detection)
-  int16_t pitch10;   // angle of the pod's Z axis (= arrow) above horizontal, 0.1 degrees
-  uint8_t rate2;     // smoothed rotation, 0.5 deg/s (max 127 deg/s)
+  int8_t  gx, gy, gz;  // direction of gravity in the pod (unit vector x 127): orientation of the bow
+  uint8_t rate2;       // smoothed rotation, 0.5 deg/s (max 127 deg/s)
 };
 
 struct CtrlOp {                              // control command waiting for the main loop
@@ -125,8 +138,9 @@ struct CtrlOp {                              // control command waiting for the 
 
 #define MAX_CONNECTIONS   3        // phone page + Garmin watch, plus one spare for a stale link
 
-#define FW_VERSION        17   // v1.7: shot details (raise, draw, hold, aim movement, angle, cant,
-                               //       follow-through), settings stored in the pod, no wake-up counter
+#define FW_VERSION        20   // v2.0: shot details (raise, draw, hold, aim movement, angle, cant,
+                               //       follow-through), mounting point and calibration, settings stored
+                               //       in the pod, no wake-up counter
                                // v1.6: own name per pod ("PfeilZaehler3000-A3F2"), pod ID in the advertising
                                // v1.5: shared today/week/month counters, delete arrows, end marks, 3 links
                                // v1.4: phone page and Garmin watch can be connected at the same time
@@ -316,7 +330,7 @@ uint32_t localCount = 0;
 uint32_t detailFrom = 0;      // local index of the first record with details (older firmware had none)
 uint32_t detailCount = 0;     // details stored in DETAIL_FILE
 bool clockRestored = false;
-Settings settings = {SETTINGS_MAGIC, 6, 100, 0, 0, 0};
+Settings settings = {SETTINGS_MAGIC, 6, 100, 0, 0, 0, 0};
 
 static void saveSettings() {
   InternalFS.remove(SET_FILE);
@@ -627,12 +641,15 @@ static void shotFeedback(bool stored) {
 //                          [0x04, u32 from, u16 count, u8 del] = mark arrows deleted (1) / restore (0)
 //                          [0x05, 0] = delete the newest arrow   [0x06, 0] = day counters to zero
 //                          [0x07, u32 time] = new end mark
-//                          [0x09, 0] = the bow is level now: zero point for the cant
+//                          [0x09, 0] = calibration step 1: the bow is upright and level now (cant zero)
+//                          [0x0A, 0] = calibration step 2: the bow points at the ground now
+//                                      (sets the mounting point from the direction of the tilt)
 //   0004 DATA  notify      [u32 firstIndex][ShotRec][ShotRec]   end marker: [0xFFFFFFFF][u32 total]
 //                          (records with flag bit6 are end marks, bit7 = deleted)
 //   0005 STATS read/notify 20 bytes: arrows u32, today u16, week u16, month u16, battery mV u16,
 //                          last end mark u32, last arrow u32   (see updateStats)
-//   0006 SETTINGS read/write/notify  8 bytes (struct Settings); write [u8 arrows per end][u16 end pause s]
+//   0006 SETTINGS read/write/notify  10 bytes (struct Settings);
+//                          write [u8 arrows per end][u16 end pause s][u8 mounting point 0 back, 1 front, 2 side (optional)]
 //   0007 DETAIL notify     [u32 firstIndex][ShotDetail][ShotDetail], sent with every DATA packet
 //                          of a dump (to devices that switched on its notifications)
 static const uint8_t uuidBytes[16] = {0xE0, 0x0E, 0x0F, 0x0C, 0x7A, 0x3B, 0x1E, 0x9D,
@@ -660,6 +677,7 @@ volatile bool     tzChanged = false;
 volatile bool     settingsPending = false;  // new settings from phone / watch, saved in loop()
 volatile uint8_t  newArrows = 6;
 volatile uint16_t newPause = 100;
+volatile int8_t   newMount = -1;            // -1 = unchanged
 
 volatile bool     dumpPending  = false;
 volatile uint32_t dumpFrom     = 0;
@@ -722,6 +740,7 @@ static void onSettingsWrite(uint16_t, BLECharacteristic *, uint8_t *data, uint16
   memcpy(&p, data + 1, 2);
   newArrows = data[0] < 1 ? 1 : (data[0] > 24 ? 24 : data[0]);
   newPause = p < 20 ? 20 : (p > 900 ? 900 : p);
+  newMount = (len >= 4 && data[3] <= MOUNT_SIDE) ? data[3] : -1;   // 3 bytes: mounting point unchanged
   settingsPending = true;                      // flash write in loop()
 }
 
@@ -749,7 +768,7 @@ static void onCtrlWrite(uint16_t conn, BLECharacteristic *, uint8_t *data, uint1
   memcpy(&v, data + 1, 4);
   if (data[0] == 0x01) { dumpFrom = v; dumpConn = conn; dumpPending = true; }
   if (data[0] == 0x02) { clearExpect = v; clearPending = true; }
-  if ((data[0] >= 0x04 && data[0] <= 0x07) || data[0] == 0x09) {   // queue for loop(): no flash work in a callback
+  if ((data[0] >= 0x04 && data[0] <= 0x07) || data[0] == 0x09 || data[0] == 0x0A) {   // queue for loop(): no flash work in a callback
     uint8_t next = (opHead + 1) % 8;
     if (next == opTail) return;                // queue full, drop
     for (int i = 0; i < 8; i++) opQueue[opHead].b[i] = i < len ? data[i] : 0;
@@ -758,7 +777,8 @@ static void onCtrlWrite(uint16_t conn, BLECharacteristic *, uint8_t *data, uint1
   }
 }
 
-static void setLevel();                       // in the shot detection part
+static void setLevel();                       // calibration, in the shot detection part
+static void setTilt();
 
 static void processOps() {
   bool changed = false;
@@ -783,8 +803,11 @@ static void processOps() {
         addEndMark(v > 1600000000UL ? v : nowEpoch());
         saveMeta();
         break;
-      case 0x09:                               // [0x09, 0] the bow is level now
+      case 0x09:                               // [0x09, 0] calibration 1: bow upright and level
         setLevel();
+        break;
+      case 0x0A:                               // [0x0A, 0] calibration 2: bow pointed at the ground
+        setTilt();
         break;
     }
     changed = true;
@@ -999,6 +1022,14 @@ static uint8_t enc100(uint32_t ms) {           // duration -> units of 100 ms, 1
   return v < 1 ? 1 : (v > 255 ? 255 : (uint8_t)v);
 }
 
+// angle between the bow's orientation in a history sample and at the release (degrees)
+static float awayDeg(const HistSample &h, const float gr[3]) {
+  float n = sqrtf((float)h.gx * h.gx + (float)h.gy * h.gy + (float)h.gz * h.gz);
+  if (n < 1) return 0;
+  float dot = (h.gx * gr[0] + h.gy * gr[1] + h.gz * gr[2]) / n;
+  return acosf(dot > 1 ? 1 : (dot < -1 ? -1 : dot)) * 57.29578f;
+}
+
 static int8_t clamp8(float v) {
   long r = lroundf(v);
   return r > 127 ? 127 : (r < -127 ? -127 : (int8_t)r);
@@ -1048,21 +1079,69 @@ static void enterIdle() {
   updateInfo(true);
 }
 
-// "set level" from the phone: the pod's roll right now becomes cant 0
-static void setLevel() {
-  float s[3] = {0, 0, 0}, a[3];
+static uint8_t mountOf() { return (settings.flags >> 2) & 3; }
+static const char *mountName(uint8_t m) {
+  return m == MOUNT_FRONT ? "front of the riser" : (m == MOUNT_SIDE ? "side of the riser" : "back of the riser");
+}
+
+// Calibration from the phone page, two steps:
+//  1. bow upright, arrow level, as when aiming: this roll angle is cant 0, this Z angle is
+//     bow angle 0 (it contains the tilt of the bushing), gravity is remembered
+//  2. arrow pointed at the ground: the bow tilted forward. If the Z axis went down with the arrow,
+//     Z points to the target (front of the riser); if it went up, Z points to the archer (back);
+//     if the bow tilted but Z hardly changed its angle, the pod sits in a side bushing.
+float    calPitch = 0;                         // Z angle in step 1
+float    calGrav[3] = {0, 0, 1};               // gravity direction in step 1
+uint32_t calAtMs = 0;                          // time of step 1 (step 2 must follow within 2 minutes)
+
+static bool readGravity(float s[3]) {          // average of 8 readings, the bow held still
+  float a[3];
   int n = 0;
+  s[0] = s[1] = s[2] = 0;
   for (int i = 0; i < 8; i++) {
     if (lsmReadAccel(a)) { for (int k = 0; k < 3; k++) s[k] += a[k]; n++; }
     delay(20);
   }
-  if (!n) return;
+  return n > 0;
+}
+
+static void setLevel() {
+  float s[3];
+  if (!readGravity(s)) return;
   settings.cantRef10 = (int16_t)lroundf(rollOf(s) * 10.0f);
-  settings.flags = (settings.flags | 1) & ~2;  // bit0 set by hand, bit1 (from the first shot) off
+  settings.flags = (settings.flags | 1) & ~2;  // bit0 calibrated, bit1 (from the first shot) off
+  settings.calStatus = 1;
+  calPitch = pitchOf(s);
+  settings.pitchRef10 = (int16_t)lroundf(calPitch * 10.0f);   // arrow level now: bow angle 0
+  float n = sqrtf(s[0] * s[0] + s[1] * s[1] + s[2] * s[2]);
+  for (int k = 0; k < 3; k++) calGrav[k] = n > 0.2f ? s[k] / n : 0;
+  calAtMs = millis();
   saveSettings();
   publishSettings(true);
 #if CALIBRATION_LOG
-  Serial.printf("cant zero set (roll %.1f deg)\n", settings.cantRef10 / 10.0f);
+  Serial.printf("calibration 1: cant zero set (roll %.1f deg, Z angle %.1f deg)\n", settings.cantRef10 / 10.0f, calPitch);
+#endif
+}
+
+static void setTilt() {
+  float s[3];
+  if (!readGravity(s)) return;
+  float d = pitchOf(s) - calPitch;             // change of the Z angle
+  float n = sqrtf(s[0] * s[0] + s[1] * s[1] + s[2] * s[2]);
+  float dot = n > 0.2f ? (s[0] * calGrav[0] + s[1] * calGrav[1] + s[2] * calGrav[2]) / n : 1;
+  float tilt = acosf(dot > 1 ? 1 : (dot < -1 ? -1 : dot)) * 57.29578f;   // how far the bow tilted
+  if (settings.calStatus == 0 || millis() - calAtMs > 120000UL || tilt < 25.0f) {
+    settings.calStatus = 3;                    // step 1 missing, too late, or the bow hardly moved
+  } else {
+    uint8_t m = fabsf(d) < 0.6f * tilt ? MOUNT_SIDE : (d < 0 ? MOUNT_FRONT : MOUNT_BACK);
+    settings.flags = (settings.flags & ~0x0C) | (m << 2);
+    settings.calStatus = 2;
+  }
+  saveSettings();
+  publishSettings(true);
+#if CALIBRATION_LOG
+  Serial.printf("calibration 2: tilted %.1f deg, Z angle changed by %.1f deg -> %s\n", tilt, d,
+                settings.calStatus == 2 ? mountName(mountOf()) : "failed");
 #endif
 }
 
@@ -1106,7 +1185,11 @@ static void updateStillness(uint32_t ms) {
   static uint8_t half = 0;
   if (!followActive && (++half & 1)) {         // 50 Hz history
     HistSample &h = hist[histHead];
-    h.pitch10 = (int16_t)lroundf(pitchOf(gLp) * 10.0f);
+    float gn = sqrtf(gLp[0] * gLp[0] + gLp[1] * gLp[1] + gLp[2] * gLp[2]);
+    if (gn < 0.2f) gn = 1;
+    h.gx = (int8_t)lroundf(gLp[0] / gn * 127.0f);
+    h.gy = (int8_t)lroundf(gLp[1] / gn * 127.0f);
+    h.gz = (int8_t)lroundf(gLp[2] / gn * 127.0f);
     float r2 = rateSm * 2.0f;
     h.rate2 = r2 > 255 ? 255 : (uint8_t)r2;
     histHead = (histHead + 1) % HIST_N;
@@ -1130,52 +1213,70 @@ static void analyseShot() {
   float n = sqrtf(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]);
   if (n < 0.2f) n = 1;
   for (int k = 0; k < 3; k++) axU[k] = g[k] / n;          // up
-  float px = -axU[1], py = axU[0];                          // Z x U = horizontal, to the right
-  float pn = sqrtf(px * px + py * py);
-  if (pn < 0.05f) { px = 1; py = 0; pn = 1; }               // bow pointing straight up or down
-  axP[0] = px / pn; axP[1] = py / pn; axP[2] = 0;
-  float pitch = pitchOf(g);
-  d.pitch2 = clamp8(pitch * 2.0f);
-  float roll = rollOf(g);
-  if (!(settings.flags & 3)) {                  // no zero point yet: the first shot counts as level
-    settings.cantRef10 = (int16_t)lroundf(roll * 10.0f);
-    settings.flags |= 2;
-    settingsChanged = true;                     // flash write later: not during the jolt
+  bool side = mountOf() == MOUNT_SIDE;
+  if (side) {                                   // arrow direction unknown: no angles
+    d.pitch2 = d.cant2 = DETAIL_NA;
+  } else {
+    // arrow direction = +Z on the front of the riser (lid towards the target), -Z on the back
+    float zs = mountOf() == MOUNT_FRONT ? 1.0f : -1.0f;
+    float px = -zs * axU[1], py = zs * axU[0];              // arrow x up = horizontal, to the right
+    float pn = sqrtf(px * px + py * py);
+    if (pn < 0.05f) { px = 1; py = 0; pn = 1; }             // bow pointing straight up or down
+    axP[0] = px / pn; axP[1] = py / pn; axP[2] = 0;
+    float ref = (settings.flags & 1) ? settings.pitchRef10 / 10.0f : 0;   // bushing tilt from the calibration
+    float pitch = zs * (pitchOf(g) - ref);
+    d.pitch2 = clamp8(pitch * 2.0f);
+    float roll = rollOf(g);
+    if (!(settings.flags & 3)) {                // not calibrated: the first shot counts as level
+      settings.cantRef10 = (int16_t)lroundf(roll * 10.0f);
+      settings.flags |= 2;
+      settingsChanged = true;                   // flash write later: not during the jolt
+    }
+    float cant = settings.cantRef10 / 10.0f - roll;
+    while (cant >= 180) cant -= 360;
+    while (cant < -180) cant += 360;
+    cant *= zs;                                 // seen from the archer: + = top limb to the right
+    d.cant2 = clamp8(cant * 2.0f);
   }
-  float cant = settings.cantRef10 / 10.0f - roll;
-  while (cant >= 180) cant -= 360;
-  while (cant < -180) cant += 360;
-  d.cant2 = clamp8(cant * 2.0f);
 
   // aim movement in the last second (from 30 ms before the jolt): rotation summed to an angle
-  // around the two aiming axes, slow drift (and gyro offset) removed by a straight-line fit
+  // around the two aiming axes (side mount: all three axes), slow drift and gyro offset removed
+  // by a straight-line fit
   const int W = 100;
   if (gyrCount >= W + 3) {
-    float sv = 0, sh = 0, sx = 0, sxx = 0, sxv = 0, sxh = 0, svv = 0, shh = 0;
-    float av = 0, ah = 0;
-    for (int i = 0; i < W; i++) {
-      int k = W + 2 - i;                        // oldest first
-      float *w = gyrHist[(gyrHead + GYR_N - 1 - k) % GYR_N];
-      av += (w[0] * axP[0] + w[1] * axP[1] + w[2] * axP[2]) * 0.01f;
-      ah += (w[0] * axU[0] + w[1] * axU[1] + w[2] * axU[2]) * 0.01f;
-      float x = i;
-      sx += x; sxx += x * x; sv += av; sh += ah; sxv += x * av; sxh += x * ah; svv += av * av; shh += ah * ah;
+    float ax[3][3] = {{axP[0], axP[1], axP[2]}, {axU[0], axU[1], axU[2]}, {0, 0, 0}};
+    if (side) {
+      for (int a = 0; a < 3; a++) for (int b = 0; b < 3; b++) ax[a][b] = a == b ? 1.0f : 0.0f;
     }
-    float den = W * sxx - sx * sx;
-    float bv = (W * sxv - sx * sv) / den, bh = (W * sxh - sx * sh) / den;
-    float cv = (sv - bv * sx) / W, ch = (sh - bh * sx) / W;
-    // residual sum of squares of a straight-line fit
-    float rv = svv - 2 * cv * sv - 2 * bv * sxv + W * cv * cv + 2 * cv * bv * sx + bv * bv * sxx;
-    float rh = shh - 2 * ch * sh - 2 * bh * sxh + W * ch * ch + 2 * ch * bh * sx + bh * bh * sxx;
-    float rms = sqrtf((rv > 0 ? rv : 0) / W + (rh > 0 ? rh : 0) / W);
-    float u = rms * 100.0f;
+    float sx = 0, sxx = 0, ssum = 0;
+    for (int i = 0; i < W; i++) { sx += i; sxx += (float)i * i; }
+    for (int a = 0; a < 3; a++) {
+      float ang = 0, sv = 0, sxv = 0, svv = 0;
+      for (int i = 0; i < W; i++) {
+        int k = W + 2 - i;                      // oldest first
+        float *w = gyrHist[(gyrHead + GYR_N - 1 - k) % GYR_N];
+        ang += (w[0] * ax[a][0] + w[1] * ax[a][1] + w[2] * ax[a][2]) * 0.01f;
+        sv += ang; sxv += i * ang; svv += ang * ang;
+      }
+      float den = W * sxx - sx * sx;
+      float b = (W * sxv - sx * sv) / den, c = (sv - b * sx) / W;
+      // residual sum of squares of the straight-line fit
+      float r = svv - 2 * c * sv - 2 * b * sxv + W * c * c + 2 * c * b * sx + b * b * sxx;
+      ssum += r > 0 ? r : 0;
+    }
+    float u = sqrtf(ssum / W) * 100.0f;
     d.wander = u < 1 ? 1 : (u > 255 ? 255 : (uint8_t)lroundf(u));
   }
 
   // phases, from the newest history sample backwards (k = samples of 20 ms back)
   const uint16_t K0 = 2;                        // ~40 ms before the jolt = release position
   if (histCount <= K0 + 5) return;
-  float pr = histAt(K0).pitch10 / 10.0f;
+  // orientation at the release; every other moment is compared with it (any mounting point)
+  const HistSample &h0 = histAt(K0);
+  float gr[3] = {(float)h0.gx, (float)h0.gy, (float)h0.gz};
+  float grn = sqrtf(gr[0] * gr[0] + gr[1] * gr[1] + gr[2] * gr[2]);
+  if (grn < 1) return;
+  for (int i = 0; i < 3; i++) gr[i] /= grn;
 
   // hold: the bow almost still until the release
   uint16_t kHold = K0;
@@ -1183,14 +1284,14 @@ static void analyseShot() {
   bool holding = histAt(K0).rate2 < HOLD_DPS * 2;
   if (holding) d.hold100 = enc100((uint32_t)(kHold + 1) * HIST_MS);
 
-  // lowered: the last time the bow angle was far from the release angle
+  // lowered: the last time the bow was tilted far from its position at the release
   uint16_t kAway = K0;
-  while (kAway < histCount && fabsf(histAt(kAway).pitch10 / 10.0f - pr) <= AWAY_DEG) kAway++;
+  while (kAway < histCount && awayDeg(histAt(kAway), gr) <= AWAY_DEG) kAway++;
   if (kAway >= histCount) return;               // the bow was not lowered (or too long ago)
 
   // raised: the first time after that the angle came within LEVEL_DEG of the release angle
   uint16_t kLevel = kAway - 1;
-  while (kLevel > K0 && fabsf(histAt(kLevel).pitch10 / 10.0f - pr) >= LEVEL_DEG) kLevel--;
+  while (kLevel > K0 && awayDeg(histAt(kLevel), gr) >= LEVEL_DEG) kLevel--;
   if (holding && kHold > kLevel) {              // still from the moment it was raised: no separate draw
     kHold = kLevel;
     d.hold100 = enc100((uint32_t)(kHold + 1) * HIST_MS);
@@ -1198,10 +1299,10 @@ static void analyseShot() {
 
   // start of the raise: going further back, the lowest point, or where the bow was resting
   uint16_t kStart = kAway, k = kAway, rest = 0;
-  float dmax = fabsf(histAt(kAway).pitch10 / 10.0f - pr);
+  float dmax = awayDeg(histAt(kAway), gr);
   while (k + 1 < histCount && k < kAway + 750) {          // up to 15 s further back
     k++;
-    float dk = fabsf(histAt(k).pitch10 / 10.0f - pr);
+    float dk = awayDeg(histAt(k), gr);
     if (dk < dmax - 1.0f) break;                // the bow was higher before: lowest point passed
     if (dk > dmax) { dmax = dk; kStart = k; }
     if (histAt(k).rate2 < REST_DPS * 2) {
@@ -1222,8 +1323,9 @@ static void recordShot() {
   uint32_t aim = aimAtSpike / 100;
   r.aim100 = aim > 255 ? 255 : (uint8_t)aim;
   r.flags = (timeExact ? 1 : 0) | (clockRestored ? 2 : 0);
-  pendingDetail.dropDeg = clamp8(-followP);     // + = bow tips forward / down
-  pendingDetail.sideDeg = clamp8(-followU);     // + = to the right
+  bool side = mountOf() == MOUNT_SIDE;
+  pendingDetail.dropDeg = side ? DETAIL_NA : clamp8(-followP);   // + = bow tips forward / down
+  pendingDetail.sideDeg = side ? DETAIL_NA : clamp8(-followU);   // + = to the right
   bool ok = appendShot(r, pendingDetail);
   if (settingsChanged) {
     settingsChanged = false;
@@ -1356,6 +1458,7 @@ void loop() {
     settingsPending = false;
     settings.arrowsPerEnd = newArrows;
     settings.endPauseS = newPause;
+    if (newMount >= 0) settings.flags = (settings.flags & ~0x0C) | (newMount << 2);
     saveSettings();
     publishSettings(true);                     // the other devices follow
   }

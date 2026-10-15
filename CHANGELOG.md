@@ -1,26 +1,39 @@
 # Changelog
 
-## Release 1.9 – 15 October 2026
+## Release 2.0 – 16 October 2026
 
-- Pod firmware 1.7: shot details for every arrow – raise, draw & set and hold times, aim movement in
-  the last second, bow angle and cant at the release, follow-through. Stored in a second file next
-  to the records (about 1,400 arrows with details between syncs) and sent with every sync.
-- Pod firmware 1.7: arrows per end and the end pause are stored in the pod and shared by the phone
-  page and the watch (last change counts); "set cant to 0" command.
-- Pod firmware 1.7: wake-up counter and awake-time statistics removed.
-- Debug firmware rebuilt on firmware 1.7; prints the shot details and a 12 s motion trace per shot.
-- Phone page 1.9: arrow details, averages per end and session, first time then split times in the
-  arrow list, red delete symbols, status symbols for connection, battery, pod memory and last sync,
-  shooting distance and cant zero in the settings, settings shared with the watch, CSV with the
-  details; removed the connection hint and the awake/idle diagnostics; day chart labels no longer
-  overlap. Demo mode: `app/?demo` shows example data and a simulated pod.
-- Watch app 1.3: settings menu on hold UP (arrows per end, new end after, big number, time to
-  sunset, use a different pod); time of day; optional time to sunset; choice of the big number
-  (end, session or today); the touchscreen no longer starts a recording; arrows deleted on the
-  phone are taken off the session and the end, restored arrows come back without a vibration.
-  Demo mode for simulator screenshots (`DEMO` in `PodLink.mc`).
-- Update order: pod firmware first. Phone page 1.9 and watch app 1.3 also work with older pod
-  firmware, without details and shared settings.
+All three parts are updated: pod firmware, phone page and watch app are all version 2.0.
+
+**Pod firmware 2.0**
+- Shot details for every arrow: raise, draw & set and hold times, aim movement in the last second,
+  bow angle and cant at the release, follow-through. Stored next to the records (about 1,400 arrows
+  with details between syncs) and sent with every sync.
+- Mounting point: back of the riser (archer's side), front (target side) or side bushing. Bow
+  angle, cant and follow-through are measured on the back and the front; on a side bushing the pod
+  measures arrows, phase times and aim movement.
+- Two-step calibration (bow upright with the arrow level, then pointed at the ground): sets the
+  zero of the cant and of the bow angle (so a tilted bushing does not matter) and finds the
+  mounting point by itself.
+- Arrows per end, end pause and mounting point are stored in the pod and shared by the phone page
+  and the watch; the last change counts.
+- Wake-up counter and awake-time statistics removed.
+- Debug firmware: prints the shot details and a 12 s motion trace after every arrow.
+
+**Phone page 2.0**
+- English, German and Polish (automatic or chosen in the settings).
+- Arrow details, averages per end and session, split times in the arrow list, red delete symbols.
+- Status symbols for connection, battery, pod memory and last sync.
+- Settings: language, shooting distance, mounting point, calibration.
+- CSV with the shot details; `app/?demo` shows the page with example data, without a pod.
+
+**Watch app 2.0**
+- English, German and Polish (as the watch, or chosen in the settings).
+- Settings menu on hold UP: arrows per end, new end after, big number (end, session or today),
+  time to sunset, mounting point, language, use a different pod.
+- Time of day and optional time to sunset on the screen.
+- The touchscreen no longer starts a recording.
+- Arrows deleted on the phone are taken off the session and the end; restored arrows come back
+  without a vibration.
 
 ## Release 1.8 – 12 October 2026
 

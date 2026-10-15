@@ -1,7 +1,6 @@
 # PfeilZaehler3000 watch app – Garmin Epix Gen 2
 
-Watch app version 1.3 (15 Oct 2026). Needs pod firmware v1.5 or newer; v1.6 for pairing with your own pod,
-v1.7 for settings shared with the phone page.
+Watch app version 2.0 (16 Oct 2026), for pod firmware 2.0. English, German and Polish.
 
 The watch connects straight to the pod over Bluetooth, no phone needed while shooting.
 
@@ -30,11 +29,13 @@ the "new end after" setting (100 s by default) starts a new end.
 | New end after | 30 s – 5 min (default 100 s) | in the pod, shared with the phone page |
 | Big number | this end, session, today | on the watch |
 | Time to sunset | on / off | on the watch |
+| Mounting point | back of riser, front of riser, side bushing | in the pod, shared with the phone page |
+| Language | Automatic (as the watch), English, Deutsch, Polski | on the watch |
 | Use a different pod | asks first | on the watch |
 
 "Arrows per end" and "new end after" are the same values as on the phone page: a change on either
-one reaches the other through the pod, and the last change counts. With pod firmware older than 1.7
-they stay on the watch.
+one reaches the other through the pod, and the last change counts. The same goes for the mounting
+point, which the calibration on the phone page also finds by itself (see the build guide).
 
 The sunset time comes from the watch's weather position (synced by Garmin Connect), otherwise from
 the last GPS position. The app asks for the location permission for this.
@@ -83,33 +84,14 @@ the pod is back. There's no need to restart the app.
 
 Never publish the developer key, and keep `.prg` files out of the repository.
 
-The simulator (Run → Run Without Debugging) only checks the screen layout; it can't reach the real pod.
-
-## Screenshots in the simulator
-
-`source/PodLink.mc` has a demo mode with example values, so every screen can be shown without a pod.
-Set `const DEMO = 1;` (near the top of the file), start the simulator, take the screenshot
-(File → Save Screenshot in the simulator), change the number, run again:
-
-| DEMO | Screen |
-|---|---|
-| 1 | Recording, end 8 with 4 of 6 arrows, time to sunset |
-| 2 | End complete (6 of 6, green), not recording |
-| 3 | Big number = session, an extra arrow (7/6, orange), pod battery getting low, recording |
-| 4 | Big number = today, 3 arrows per end, pod out of range ("Reconnecting...") |
-
-The buttons work in the demo too: hold UP for the settings menu (and its lists), UP for "Delete
-last arrow?", DOWN for a new end, START to switch recording on and off. Nothing is sent anywhere.
-
-**Set `DEMO = 0` again before building for the watch.** With a demo number the app never connects
-to the pod.
-
 ## Good to know
 
 * Garmin watches have their own Archery activity, but Connect IQ apps cannot record with it (the
   Connect IQ API has no archery sport type). The activity is therefore saved as a generic activity
   named "Bogenschiessen", with arrows and ends in its summary, an arrow chart and one lap per end.
   The activity type can be changed afterwards in Garmin Connect.
-* If the watch stays at "Looking for pod…" or shows "Pod … in range?", check that the pod has
-  firmware v1.5 and is within a few metres. "Pod firmware 1.5 needed" means the pod still has an
-  older firmware.
+* If the watch stays at "Looking for pod…" or shows "Pod … in range?", check that the pod is
+  charged and within a few metres. "Update pod firmware" means the pod has an old firmware: flash
+  firmware 2.0.
+* German and Polish texts use the watch's own fonts. The language follows the watch unless it is
+  chosen in the settings.

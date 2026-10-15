@@ -1,18 +1,19 @@
 // Bluetooth link to the PfeilZaehler3000 pod and all counting logic.
 //
-// Pod GATT service  a7c10000-5b1e-4c5a-9d1e-3b7a0c0f0ee0   (pod firmware v1.5 or newer)
+// Pod GATT service  a7c10000-5b1e-4c5a-9d1e-3b7a0c0f0ee0   (pod firmware 2.0)
 //   a7c10001  TIME   write  u32 unix seconds + i32 local time offset (pod counts "today" in local time)
 //   a7c10003  CTRL   write  [0x05,0,0,0,0] delete newest arrow   [0x07, u32 time] new end mark
 //   a7c10005  STATS  read/notify 20 bytes: arrows u32 @0 (lifetime, without deleted), today u16 @4,
 //                    week u16 @6, month u16 @8, battery mV u16 @10, last end mark u32 @12,
 //                    last arrow u32 @16
-//   a7c10006  SETTINGS read/write/notify (pod firmware v1.7+): 8 bytes, arrows per end u8 @1,
-//                    new end after u16 seconds @2; write [arrows][u16 seconds]
+//   a7c10006  SETTINGS read/write/notify (pod firmware 2.0): 8 bytes, arrows per end u8 @1,
+//                    new end after u16 seconds @2, flags u8 @4 (bits 2-3 mounting point),
+//                    calibration u8 @5; write [arrows][u16 seconds][u8 mounting point]
 // The pod notifies STATS after every arrow, deletion or end mark (from the watch or the phone),
 // so today / week / month are the same on the watch and on the phone page. SETTINGS are shared
 // the same way: a change on the watch or the phone reaches the other one, the last change counts.
 //
-// Several pods at one range: every pod (firmware 1.6+) is named "PfeilZaehler3000-XXXX" and sends
+// Several pods at one range: every pod is named "PfeilZaehler3000-XXXX" and sends
 // the same 16-bit ID as manufacturer data in its advertising. The watch remembers the first pod it
 // connects to and from then on only connects to that one (hold UP to choose another).
 //
@@ -36,8 +37,8 @@ import Toybox.Application.Storage;
 
 const POD_NAME    = "PfeilZaehler3000";
 
-// DEMO for simulator screenshots: 0 = normal app (always use 0 for the real watch),
-// 1–4 = example screens without a pod (see garmin/README.md, "Screenshots in the simulator")
+// DEMO: 0 = normal app (always use 0 for the real watch),
+// 1–4 = example screens without a pod, for screenshots
 const DEMO = 0;
 const RECONNECT_S = 30;      // after this long without the pod: search again
 
@@ -73,11 +74,13 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     var podEndMark = 0;
     var podLastArrow = 0;        // newest "last arrow" time seen: a smaller one means a restored arrow
 
-    // ---- settings (stored in the pod, firmware 1.7+; kept on the watch too) ----
+    // ---- settings (stored in the pod; kept on the watch too) ----
     var arrowsEnd = 6;           // arrows per end
     var endGapS = 100;           // longer pause than this = new end (walk to the target)
+    var mount = 0;               // mounting point: 0 back of the riser, 1 front, 2 side bushing
     var bigNum = 0;              // big number on the screen: 0 end, 1 session, 2 today (watch only)
     var showSunset = false;      // time to sunset at the bottom (watch only)
+    var langPref = 0;            // 0 automatic, 1 English, 2 German, 3 Polish (watch only)
 
     // ---- this session on the watch ----
     var sessionCount = 0;
@@ -109,6 +112,8 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
         endGapS = numPref("endGapS", 100, 20, 900);
         bigNum = numPref("bigNum", 0, 0, 2);
         showSunset = Storage.getValue("sunset") == true;
+        langPref = numPref("lang", 0, 0, 3);
+        mount = numPref("mount", 0, 0, 2);
     }
 
     function numPref(key, def, lo, hi) {
@@ -143,17 +148,31 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
         WatchUi.requestUpdate();
     }
 
+    function setMount(m) {
+        mount = m;
+        Storage.setValue("mount", m);
+        sendSettings();
+        WatchUi.requestUpdate();
+    }
+
+    function setLangPref(n) {
+        langPref = n;
+        Storage.setValue("lang", n);
+        WatchUi.requestUpdate();
+    }
+
     function setShowSunset(on) {
         showSunset = on;
         Storage.setValue("sunset", on);
         WatchUi.requestUpdate();
     }
 
-    // to the pod (firmware 1.7+); the phone page takes it over from there
+    // to the pod; the phone page takes it over from there
     function sendSettings() {
-        var b = new [3]b;
+        var b = new [4]b;
         b[0] = arrowsEnd;
         b.encodeNumber(endGapS, Lang.NUMBER_FORMAT_UINT16, { :offset => 1, :endianness => Lang.ENDIAN_LITTLE });
+        b[3] = mount;
         for (var i = queue.size() - 1; i >= 0; i--) {   // only the newest settings matter
             if ((queue[i] as Array)[0] == :set) {
                 queue.remove(queue[i]);
@@ -175,6 +194,13 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
             endGapS = g;
             Storage.setValue("arrowsEnd", a);
             Storage.setValue("endGapS", g);
+        }
+        if (v.size() >= 5) {
+            var m = ((v[4] as Number) >> 2) & 3;
+            if (m <= 2) {
+                mount = m;                       // set on the phone or found by its calibration
+                Storage.setValue("mount", m);
+            }
         }
     }
 
@@ -355,12 +381,12 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
             busy = false;
             var svc = dev.getService(svcUuid);
             if (svc == null) {
-                status = :error;           // pod firmware older than 1.5
+                status = :error;           // pod without the PfeilZaehler3000 service: old firmware
                 WatchUi.requestUpdate();
                 return;
             }
             statsCh = svc.getCharacteristic(statsUuid);
-            setCh = svc.getCharacteristic(setUuid);      // null with pod firmware older than 1.7
+            setCh = svc.getCharacteristic(setUuid);      // null with an old pod firmware
             timeCh = svc.getCharacteristic(timeUuid);
             ctrlCh = svc.getCharacteristic(ctrlUuid);
             var cccd = (statsCh != null) ? statsCh.getDescriptor(BluetoothLowEnergy.cccdUuid()) : null;
@@ -390,7 +416,7 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     }
 
     function onDescriptorWrite(descriptor, st) {
-        // step 1b: SETTINGS notifications too (pod firmware 1.7+)
+        // step 1b: SETTINGS notifications too
         if (setupStep == 1 && setCh != null) {
             var cccd = setCh.getDescriptor(BluetoothLowEnergy.cccdUuid());
             if (cccd != null) {
@@ -736,7 +762,7 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
         return Time.now().value() - recStartSec;
     }
 
-    // ================= demo screens (simulator) =================
+    // ================= example screens (DEMO) =================
     // 1: recording, end 4 of 6, time to sunset        2: end complete 6/6, not recording
     // 3: big number = session, extra arrow 7/6, pod battery getting low, recording
     // 4: big number = today, pod out of range (reconnecting), 3 arrows per end

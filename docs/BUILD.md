@@ -1,14 +1,14 @@
 # PfeilZaehler3000 – Build and User Guide
 
 Automatic arrow counter for recurve, barebow and compound bows.
-Release 1.9 · 15 October 2026
+Release 2.0 · 16 October 2026
 
 | Part | Version |
 |---|---|
-| Pod firmware | 1.7 (`firmware/PfeilZaehler3000`) |
-| Debug firmware | 1.7-debug (`firmware/PfeilZaehler3000Debug`) |
-| Phone page | 1.9 (`app/index.html`) |
-| Garmin watch app | 1.3 (`garmin/PfeilZaehler3000Watch`) |
+| Pod firmware | 2.0 (`firmware/PfeilZaehler3000`) |
+| Debug firmware | 2.0-debug (`firmware/PfeilZaehler3000Debug`) |
+| Phone page | 2.0 (`app/index.html`), English, German, Polish |
+| Garmin watch app | 2.0 (`garmin/PfeilZaehler3000Watch`), English, German, Polish |
 | Housing | v3 (`housing/`) |
 
 ![The assembled pod](images/pod-closed.png)
@@ -74,8 +74,8 @@ every release it looks back and works out the phases of the shot:
 | Follow-through | How far the bow tips forward/down and sideways in the first 0.5 s after the release |
 
 The thresholds are first estimates and can be adjusted (section 11). Raise and draw are only found
-when the bow was lowered before the shot. The details need the pod in a bushing that points towards
-the target (see section 3).
+when the bow was lowered before the shot. Bow angle, cant and follow-through need the pod on the
+back or the front of the riser, and the mounting point set (section 3).
 
 **Ends and sessions.** The phone page groups arrows into ends and sessions by the pauses between
 them: by default a pause longer than 100 s starts a new end, and a pause longer than 45 minutes
@@ -86,8 +86,11 @@ end and the end pause are stored in the pod, so the phone page and the watch use
 
 The pod is fastened with a **5/16"-24 UNF** bolt, the standard thread of stabilizer and weight
 bushings on target bows. It fits any riser with a free bushing of this thread, for example the
-front stabilizer bushing of the **Kinetic Sovren** barebow riser, and equally the stabilizer,
-V-bar or weight bushings of other recurve, barebow and compound risers.
+lowest bushing on the back of the **Kinetic Sovren** barebow riser (the side facing the archer,
+below the grip), and equally the stabilizer, V-bar or weight bushings of other recurve, barebow
+and compound risers.
+
+![The pod on a Kinetic Sovren 25" riser: archer's side, lowest bushing below the grip; lid with the hole for the hex key](images/pod-mounted-pair.jpg)
 
 Check before building:
 
@@ -100,11 +103,21 @@ Check before building:
 - **Flat seat.** The pod sits on the flat face around the bushing. Its underside has ribs that keep
   it from turning once the bolt is tight.
 
-For counting arrows, the pod works in any bushing and any orientation. For the shot details
-(angle, cant, aim movement, follow-through) the bolt must point towards the target, as in the
-front stabilizer bushing; how far the pod is turned around the bolt does not matter, because the
-cant zero is set on the phone page. The extra 65 g changes the balance of the bow, so other
-weights may need adjusting.
+**Mounting point.** The pod knows three mounting points. Set it on the phone page or the watch,
+or let the calibration find it (section 9, *Calibration*):
+
+| Mounting point | Example | Measured |
+|---|---|---|
+| Back of the riser (archer's side) | Lowest bushing on the back of a Kinetic Sovren, as in the picture | Everything: arrows, phase times, aim movement, bow angle, cant, follow-through |
+| Front of the riser (target side) | Long-rod (front stabilizer) bushing | Everything, as on the back |
+| Side bushing | V-bar or a weight bushing on the side of the riser | Arrows, phase times and aim movement; no bow angle, cant or follow-through |
+
+On the back and the front the bolt points towards the target or the archer, roughly along the
+arrow, which the angle measurements need. The bushing does not have to be exactly level: on the
+Sovren in the picture it sits on the curved lower part of the riser and is tilted by some degrees.
+The calibration measures this tilt, and also sets the cant zero, so neither the tilt nor how far
+the pod is turned around the bolt matters.
+The extra 65 g changes the balance of the bow, so other weights may need adjusting.
 
 ## 4. Parts and tools
 
@@ -265,9 +278,12 @@ Web Bluetooth only works on pages loaded over https, so the page is opened from 
   `https://<user>.github.io/<repository>/app/`. Alternatively drag the `app` folder onto
   app.netlify.com/drop.
 
-**Demo:** adding `?demo` to the address (e.g. `…/app/?demo`) opens the page with six weeks of
-example arrows and a simulated pod, so every function can be tried without hardware. Nothing is
-saved, and the real history is not touched; *Leave demo* returns to the normal page.
+**Language:** the page follows the phone's language (English, German or Polish); *Settings →
+Language* changes it.
+
+**Trying it without a pod:** adding `?demo` to the address (e.g. `…/app/?demo`) opens the page with
+six weeks of example arrows, so every function can be tried without hardware. Nothing is saved, and
+the real history is not touched; *Back to my data* returns to the normal page.
 
 The history belongs to the exact web address. To move to another address, make a **Backup** on the
 old page and **Restore** it on the new one.
@@ -324,8 +340,8 @@ the time of the first arrow (hours:minutes), then the time since the previous ar
 (+minutes:seconds), and its hold time.
 
 - **Tap an arrow** to open its details: raise, draw & set, hold, aim movement (degrees and cm),
-  bow angle, cant, follow-through and jolt strength. Arrows shot with firmware older than 1.7
-  show the jolt and the still time before the release only.
+  bow angle, cant, follow-through and jolt strength. With the pod in a side bushing, bow angle,
+  cant and follow-through show "–".
 - **Red bin:** delete a single arrow, e.g. a bump that was counted. The arrow is greyed out and
   can be restored with the green arrow.
 - **Delete end**, with **Undo** in the status line.
@@ -335,16 +351,30 @@ the time of the first arrow (hours:minutes), then the time since the previous ar
 
 | Setting | Default | Effect |
 |---|---|---|
+| Language | Automatic | English, German or Polish; Automatic follows the phone |
 | Arrows per end | 6 | Target for the end display and highlighting; stored in the pod, shared with the watch |
 | New end after a pause of (s) | 100 | Pause that separates ends; stored in the pod, shared with the watch |
 | New session after a pause of (min) | 45 | Pause that separates sessions |
 | Shooting distance for the aim movement (m) | 18 | Converts the aim movement from degrees to cm on the target |
 | Clear pod memory after sync when fuller than (%) | 50 | Frees the pod's memory once the arrows are safely on the phone |
-| Bow is upright now: set cant to 0 | – | Hold the bow exactly upright (bubble level on the riser or string) and tap; the pod stores this as cant 0. Until then the first shot counts as 0 |
+| Pod mounted on | back of the riser | Back, front or side bushing (section 3); stored in the pod, shared with the watch, set by the calibration |
+| Calibrate… | – | See below |
 
 Changes to arrows per end and the end pause only apply from the moment they are changed; earlier
 ends keep their grouping. A change on the watch shows up here, and the other way round; the last
 change counts.
+
+**Calibration** (once after mounting the pod, about 10 seconds; the pod must be connected):
+
+1. Hold the bow upright as when aiming, without cant and with the arrow level (horizontal), and
+   keep it still; a bubble level helps. Tap **Next**. This position becomes cant 0 and bow angle 0,
+   which also removes the tilt of the bushing.
+2. Point the arrow at the ground, about 45° down, keep the bow upright and still. Tap **Finish**.
+   From the way the pod turned, it finds its mounting point (back, front or side) and stores it.
+
+The settings show the result, e.g. *Calibrated: pod mounted on the back of the riser*. If the bow
+was not tilted far enough, the calibration asks to start again. Until it is calibrated, the first
+shot counts as cant 0.
 
 **Export & backup**
 
@@ -405,6 +435,8 @@ The touchscreen has no function, so a touch can't start a recording or change an
 | New end after | 30 s – 5 min (default 100 s) | in the pod, shared with the phone page |
 | Big number | this end, session or today | on the watch |
 | Time to sunset | on / off | on the watch; uses the weather position from Garmin Connect or the last GPS position |
+| Mounting point | back of riser, front of riser, side bushing | in the pod, shared with the phone page |
+| Language | Automatic (as the watch), English, Deutsch, Polski | on the watch |
 | Use a different pod | after a confirmation, connects to the next pod found | on the watch |
 
 - **Vibration:** short on every arrow, double when the end is complete.
@@ -507,17 +539,18 @@ The values are at the top of the firmware file:
 | Battery empty after a few days | Check on the Serial Monitor that the pod shows `-> idle` after 3 minutes. The debug firmware never sleeps. |
 | "No Web Bluetooth" on the phone page | Open it over https in Chrome or Edge, or in Bluefy on iPhone. |
 | Arrows listed without a date | The pod restarted with an empty battery and had no clock. Connect the phone page after charging. |
-| Watch shows "Pod firmware 1.5 needed" | Flash the current pod firmware. |
+| Watch shows "Update pod firmware" | Flash the current pod firmware (2.0). |
 | Watch stays at "Pod … in range?" | Check the distance to the pod and that the pod is charged. |
 | Phone or watch connected to another archer's pod | Phone: **Choose pod** and pick your own name. Watch: hold UP → *Use a different pod*, confirm, and keep only your own pod nearby. |
 | No raise / draw times | The bow was not lowered before the shot, or the history was empty after the pod woke up. Hold and the other details are still measured. |
-| Cant values look offset | Hold the bow upright and use **set cant to 0** in the phone settings. |
-| Angle, cant or follow-through look wrong | The pod must be in a bushing that points towards the target (section 3). |
+| Cant values look offset | Calibrate again (phone settings → *Calibrate…*) with the bow exactly upright. |
+| Bow angle negative when aiming up, cant or follow-through reversed | The mounting point is set wrong: calibrate, or set *Pod mounted on* in the settings (section 3). |
+| Bow angle, cant and follow-through show "–" | The mounting point is set to *side bushing*. |
 | Which name is my pod? | Connect and look for the blue LED, or read the name on the Serial Monitor (section 8.3). |
 
 ## 14. Debug firmware
 
-`firmware/PfeilZaehler3000Debug` has the same functions and Bluetooth interface as firmware 1.7,
+`firmware/PfeilZaehler3000Debug` has the same functions and Bluetooth interface as firmware 2.0,
 so the phone page and the watch work with it. In addition it:
 
 - waits up to 5 s for the Serial Monitor and prints the reset reason,
@@ -536,10 +569,10 @@ Use it for diagnosis only, then upload the normal firmware again.
 
 | Path | Content |
 |---|---|
-| `firmware/PfeilZaehler3000/` | Pod firmware 1.7 (Arduino) |
+| `firmware/PfeilZaehler3000/` | Pod firmware 2.0 (Arduino) |
 | `firmware/PfeilZaehler3000Debug/` | Debug firmware |
-| `app/index.html` | Phone page 1.9 |
-| `garmin/PfeilZaehler3000Watch/` | Garmin watch app 1.3 (Connect IQ project) |
+| `app/index.html` | Phone page 2.0 |
+| `garmin/PfeilZaehler3000Watch/` | Garmin watch app 2.0 (Connect IQ project) |
 | `housing/` | STL and 3MF files, OpenSCAD source `pod.scad`, insert test |
 | `docs/` | This guide, Bluetooth protocol, images |
 

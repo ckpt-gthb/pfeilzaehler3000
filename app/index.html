@@ -32,7 +32,8 @@ svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-widt
 .btns{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:8px}
 .btns .btn{width:100%;min-height:44px}
 .btns[hidden]{display:none}
-.btns.three{grid-template-columns:repeat(3,1fr)}
+.btns.three{grid-template-columns:repeat(auto-fit,minmax(104px,1fr))}
+.btns .btn{line-height:1.2}
 .btns.two{grid-template-columns:repeat(2,1fr)}
 .btns.three .btn{padding:10px 6px}
 .icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:transparent;cursor:pointer;flex:none}
@@ -95,6 +96,8 @@ button.end{border:0;font:inherit;color:inherit;cursor:pointer;min-height:32px}
 details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 summary{cursor:pointer;font-weight:600}
 label{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 0}
+label.stack{flex-wrap:wrap}
+label select{max-width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
 label input{width:90px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
 .hint{font-size:12px;color:var(--muted);margin:-2px 0 6px}
 .empty{color:var(--muted);padding:12px 0}
@@ -113,81 +116,96 @@ label input{width:90px;padding:6px 8px;border:1px solid var(--line);border-radiu
 </svg>
 <main>
   <h1>PfeilZaehler3000</h1>
-  <div class="demo" id="demo" hidden>Demo with example data and a simulated pod. Nothing is saved. <a href="./">Leave demo</a></div>
-  <div class="sub">Arrows counted automatically · version 1.9 · 15 Oct 2026</div>
+  <div class="demo" id="demo" data-i18n-html="exampleBanner" hidden></div>
+  <div class="sub" data-i18n="sub"></div>
 
   <div class="status">
     <div class="chips" id="chips"></div>
     <div class="msg" id="status"></div>
   </div>
-  <button class="btn big" id="connect">Connect pod &amp; sync</button>
+  <button class="btn big" id="connect"></button>
   <div class="btns two" id="podbtns" hidden>
-    <button class="btn ghost" id="choose" hidden>Choose pod</button>
-    <button class="btn ghost" id="disconnect" hidden>Disconnect</button>
+    <button class="btn ghost" id="choose" data-i18n="choosePod" hidden></button>
+    <button class="btn ghost" id="disconnect" data-i18n="disconnect" hidden></button>
   </div>
 
-  <h2>This end</h2>
+  <h2 data-i18n="thisEnd"></h2>
   <div class="endbox">
     <div><span class="endn" id="t-end">0</span><span class="endof" id="t-endof">/ 6</span></div>
-    <button class="btn ghost" id="newend">New end</button>
+    <button class="btn ghost" id="newend" data-i18n="newEnd"></button>
   </div>
 
-  <h2>Totals</h2>
+  <h2 data-i18n="totals"></h2>
   <div class="grid">
-    <div class="tile"><div class="n" id="t-today">0</div><div class="l">Today</div></div>
-    <div class="tile"><div class="n" id="t-week">0</div><div class="l">This week</div></div>
-    <div class="tile"><div class="n" id="t-month">0</div><div class="l">This month</div></div>
-    <div class="tile"><div class="n" id="t-all">0</div><div class="l">All time</div></div>
+    <div class="tile"><div class="n" id="t-today">0</div><div class="l" data-i18n="today"></div></div>
+    <div class="tile"><div class="n" id="t-week">0</div><div class="l" data-i18n="thisWeek"></div></div>
+    <div class="tile"><div class="n" id="t-month">0</div><div class="l" data-i18n="thisMonth"></div></div>
+    <div class="tile"><div class="n" id="t-all">0</div><div class="l" data-i18n="allTime"></div></div>
   </div>
 
-  <h2>History</h2>
+  <h2 data-i18n="history"></h2>
   <div class="tabs" id="tabs">
-    <button data-v="day" class="on">Days</button>
-    <button data-v="week">Weeks</button>
-    <button data-v="month">Months</button>
+    <button data-v="day" class="on" data-i18n="days"></button>
+    <button data-v="week" data-i18n="weeks"></button>
+    <button data-v="month" data-i18n="months"></button>
   </div>
   <div class="chart" id="chart"></div>
 
-  <h2>Sessions</h2>
+  <h2 data-i18n="sessions"></h2>
   <div id="sessions"></div>
 
-  <h2>Settings &amp; data</h2>
+  <h2 data-i18n="settingsData"></h2>
   <details>
-    <summary>Settings</summary>
-    <label>Arrows per end <input type="number" id="s-arrows" min="1" max="24"></label>
-    <label>New end after a pause of (seconds) <input type="number" id="s-endgap" min="20" max="900"></label>
-    <p class="hint">These two are stored in the pod and shared with the watch. The last change counts.</p>
-    <label>New session after a pause of (minutes) <input type="number" id="s-sessgap" min="5" max="600"></label>
-    <label>Shooting distance for the aim movement (m) <input type="number" id="s-dist" min="5" max="90"></label>
-    <label>Clear pod memory after sync when it is fuller than (%) <input type="number" id="s-clear" min="0" max="100"></label>
-    <div class="group">Cant</div>
-    <p class="hint" id="cant-state">Cant 0 is not set yet.</p>
-    <button class="btn ghost" id="setlevel">Bow is upright now: set cant to 0</button>
+    <summary data-i18n="settings"></summary>
+    <label><span data-i18n="language"></span> <select id="s-lang"><option value="" data-i18n="langAuto"></option><option value="en">English</option><option value="de">Deutsch</option><option value="pl">Polski</option></select></label>
+    <label><span data-i18n="sArrows"></span> <input type="number" id="s-arrows" min="1" max="24"></label>
+    <label><span data-i18n="sEndgap"></span> <input type="number" id="s-endgap" min="20" max="900"></label>
+    <p class="hint" data-i18n="hintShared"></p>
+    <label><span data-i18n="sSessgap"></span> <input type="number" id="s-sessgap" min="5" max="600"></label>
+    <label><span data-i18n="sDist"></span> <input type="number" id="s-dist" min="5" max="90"></label>
+    <label><span data-i18n="sClear"></span> <input type="number" id="s-clear" min="0" max="100"></label>
+    <div class="group" data-i18n="grpMount"></div>
+    <label class="stack"><span data-i18n="sMount"></span> <select id="s-mount"><option value="0" data-i18n="mount0"></option><option value="1" data-i18n="mount1"></option><option value="2" data-i18n="mount2"></option></select></label>
+    <p class="hint" data-i18n="mountHint"></p>
+    <p class="hint" id="cant-state">Not calibrated yet.</p>
+    <button class="btn ghost" id="setlevel" data-i18n="calibrate"></button>
   </details>
-  <div class="group">Export &amp; backup</div>
+  <div class="group" data-i18n="grpExport"></div>
   <div class="btns three">
-    <button class="btn ghost" id="csv">Export CSV</button>
-    <button class="btn ghost" id="backup">Backup</button>
-    <button class="btn ghost" id="restore">Restore</button>
+    <button class="btn ghost" id="csv" data-i18n="csv"></button>
+    <button class="btn ghost" id="backup" data-i18n="backup"></button>
+    <button class="btn ghost" id="restore" data-i18n="restore"></button>
   </div>
   <input type="file" id="file" accept=".json" hidden>
-  <div class="group">Reset</div>
+  <div class="group" data-i18n="grpReset"></div>
   <div class="btns two">
-    <button class="btn ghost danger" id="resetday">Reset today</button>
-    <button class="btn ghost danger" id="reset">Reset all stats</button>
+    <button class="btn ghost danger" id="resetday" data-i18n="resetToday"></button>
+    <button class="btn ghost danger" id="reset" data-i18n="resetAll"></button>
   </div>
-  <p class="small">Data is kept in this browser. Make a backup now and then. Bluetooth needs Chrome or Edge on Android, Windows, macOS or ChromeOS, or the Bluefy browser on iPhone. <a href="?demo">Try the demo</a> to see the page with example data, no pod needed.</p>
+  <p class="small" data-i18n-html="footer"></p>
 </main>
 
 <div class="overlay" id="box" hidden>
   <div class="panel">
-    <div class="row" style="justify-content:space-between"><b id="box-title">Export</b><button class="btn ghost" id="box-close">Close</button></div>
+    <div class="row" style="justify-content:space-between"><b id="box-title">Export</b><button class="btn ghost" id="box-close" data-i18n="close"></button></div>
     <p class="small" id="box-hint"></p>
     <textarea id="box-text" rows="10"></textarea>
     <div class="row">
-      <button class="btn" id="box-copy">Copy</button>
-      <button class="btn" id="box-restore" hidden>Restore</button>
-      <button class="btn ghost" id="box-file">Choose file…</button>
+      <button class="btn" id="box-copy" data-i18n="copy"></button>
+      <button class="btn" id="box-restore" data-i18n="restore" hidden></button>
+      <button class="btn ghost" id="box-file" data-i18n="chooseFile"></button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="cal" hidden>
+  <div class="panel">
+    <b data-i18n="calTitle"></b>
+    <p id="cal-text"></p>
+    <p class="small" id="cal-msg"></p>
+    <div class="btns two">
+      <button class="btn ghost" id="cal-cancel" data-i18n="cancel"></button>
+      <button class="btn" id="cal-next">Next</button>
     </div>
   </div>
 </div>
@@ -197,17 +215,17 @@ label input{width:90px;padding:6px 8px;border:1px solid var(--line);border-radiu
     <div><b id="sheet-title">End</b><div class="small" id="sheet-sub"></div></div>
     <div class="avg" id="sheet-avg"></div>
     <div class="arrows" id="sheet-list"></div>
-    <p class="small">Tap an arrow for its details. Deleted arrows are removed from all stats, on the pod and the watch too.</p>
+    <p class="small" data-i18n="sheetHint"></p>
     <div class="btns two">
-      <button class="btn ghost danger" id="sheet-delend"><svg class="i"><use href="#i-trash"/></svg> Delete end</button>
-      <button class="btn ghost" id="sheet-done">Done</button>
+      <button class="btn ghost danger" id="sheet-delend"><svg class="i"><use href="#i-trash"/></svg> <span data-i18n="deleteEnd"></span></button>
+      <button class="btn ghost" id="sheet-done" data-i18n="done"></button>
     </div>
   </div>
 </div>
 
 <script>
 // ---------- demo mode (page opened with ?demo) ----------
-// Example history plus a simulated pod: everything works, nothing is saved, no Bluetooth is used.
+// Example history and an example pod: everything works, nothing is saved, no Bluetooth is used.
 if (new URLSearchParams(location.search).has('demo')) (() => {
   let seed = 7;
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
@@ -245,7 +263,7 @@ if (new URLSearchParams(location.search).has('demo')) (() => {
   today.forEach(x => { x.t += shift; });
   const pod = today.map((x, k) => Object.assign(x, { i: past.length + k }));
   const base = past.length;
-  let settings = [0x5E, 6, 100, 0, 1, 0, 0, 0];               // 6 arrows, 100 s, cant zero set
+  let settings = [0x5E, 6, 100, 0, 1, 2, 0, 0];               // 6 arrows, 100 s, calibrated, back of the riser
 
   const listeners = {}, notifyOn = {};
   const dv = a => new DataView(Uint8Array.from(a).buffer);
@@ -282,8 +300,9 @@ if (new URLSearchParams(location.search).has('demo')) (() => {
           emit(5, stats()); emit(2, info());
         } else if (n === 3 && b[0] === 7) {                   // end mark
           pod.push({ i: base + pod.length, t: v, peak: 0, aim: 0, flags: 0x41 }); emit(5, stats()); emit(2, info());
-        } else if (n === 3 && b[0] === 9) { settings[4] = 1; emit(6, settings); }
-        else if (n === 6) { settings = [0x5E, b[0], b[1], b[2], settings[4], 0, 0, 0]; emit(6, settings); }
+        } else if (n === 3 && b[0] === 9) { settings[4] = (settings[4] & 0x0C) | 1; settings[5] = 1; emit(6, settings); }
+        else if (n === 3 && b[0] === 10) { settings[5] = 2; emit(6, settings); }
+        else if (n === 6) { const f = b.length >= 4 ? (settings[4] & ~0x0C) | ((b[3] & 3) << 2) : settings[4]; settings = [0x5E, b[0], b[1], b[2], f, settings[5], 0, 0]; emit(6, settings); }
       },
       async startNotifications() { notifyOn[n] = true; },
       addEventListener(ev, f) { (listeners[n] = listeners[n] || []).push(f); },
@@ -313,6 +332,205 @@ if (new URLSearchParams(location.search).has('demo')) (() => {
 })();
 </script>
 <script>
+// ---------- languages: English, Deutsch, Polski ----------
+// Plural entries are arrays: [one, other] in English and German, [one, few, many] in Polish.
+const I18N = {
+en: {
+  sub: 'Arrows counted automatically · version 2.0 · 16 Oct 2026',
+  exampleBanner: 'Example data, nothing is saved. <a href="./">Back to my data</a>',
+  connect: 'Connect pod & sync', updateNow: 'Update now', reconnect: 'Reconnect & update', choosePod: 'Choose pod', disconnect: 'Disconnect',
+  thisEnd: 'This end', newEnd: 'New end', totals: 'Totals', today: 'Today', thisWeek: 'This week', thisMonth: 'This month', allTime: 'All time',
+  history: 'History', days: 'Days', weeks: 'Weeks', months: 'Months', sessions: 'Sessions', settingsData: 'Settings & data', settings: 'Settings',
+  language: 'Language', langAuto: 'Automatic',
+  sArrows: 'Arrows per end', sEndgap: 'New end after a pause of (seconds)',
+  hintShared: 'These two are stored in the pod and shared with the watch. The last change counts.',
+  sSessgap: 'New session after a pause of (minutes)', sDist: 'Shooting distance for the aim movement (m)',
+  sClear: 'Clear pod memory after sync when it is fuller than (%)',
+  grpMount: 'Mounting point and calibration', sMount: 'Pod mounted on',
+  mount0: "the back of the riser (archer's side)", mount1: 'the front of the riser (target side)', mount2: 'a side bushing (e.g. V-bar)',
+  mountHint: 'Back or front: the bolt points roughly along the arrow (a bushing tilted by a few degrees is fine), so bow angle, cant and follow-through are measured. Side: arrows and phase times only. Stored in the pod; the calibration finds it automatically.',
+  calibrate: 'Calibrate…', grpExport: 'Export & backup', csv: 'Export CSV', backup: 'Backup', restore: 'Restore', restoreArrowTip: 'Restore',
+  grpReset: 'Reset', resetToday: 'Reset today', resetAll: 'Reset all stats',
+  footer: 'Data is kept in this browser. Make a backup now and then. Bluetooth needs Chrome or Edge on Android, Windows, macOS or ChromeOS, or the Bluefy browser on iPhone. <a href="?demo">Try it with example data</a>, no pod needed.',
+  close: 'Close', copy: 'Copy', chooseFile: 'Choose file…', cancel: 'Cancel', next: 'Next', finish: 'Finish', done: 'Done', undo: 'Undo',
+  boxRestoreHint: 'Paste the backup text here, then tap Restore.', boxCopyHint: 'Copy this text and paste it into Notes, Mail or a file.',
+  selected: 'Selected – tap Copy in the iPhone menu.', copied: 'Copied.', restoreTitle: 'Restore backup', backupRestored: 'Backup restored.',
+  invalidBackup: 'That is not a valid backup: ', restoreFailed: 'Restore failed: ',
+  calTitle: 'Calibrate the pod',
+  cal1: 'Step 1 of 2: hold the bow upright as when aiming, without cant and with the arrow level (horizontal), and keep it still. A bubble level helps. Then tap Next.',
+  cal2: 'Step 2 of 2: point the arrow at the ground, about 45° down, keep the bow upright and still. Then tap Finish.',
+  calConnect: 'Connect the pod first.', measuring: 'Measuring…',
+  calDone: 'Done. The pod is mounted on {mount}. Cant 0 = bow upright, bow angle 0 = arrow level.',
+  calDoneSide: 'Done. The pod is mounted on {mount}: arrows and phase times are measured, no bow angle, cant or follow-through.',
+  calFail: 'The bow did not tilt far enough. Start again with step 1.', podNoAnswer: 'the pod did not answer',
+  calState: 'Calibrated: pod mounted on {mount}. Cant 0 = bow upright (positive = top limb to the right), bow angle 0 = arrow level (positive = aiming up).',
+  calStateSide: 'Calibrated: pod mounted on {mount}. Arrows and phase times are measured.',
+  connectToSee: 'Connect the pod to see its calibration.',
+  notCal: 'Not calibrated yet. Calibrate once after mounting the pod (takes 10 seconds); until then the first shot counts as cant 0 and the bow angle includes the tilt of the bushing.',
+  couldNotReach: 'Could not reach the pod: ', saveFail: 'Could not save in this browser – export a backup.',
+  notConnected: 'Not connected', chipNotConn: '{pod} · not connected', chipConnecting: '{pod} · connecting…', chipReconnecting: '{pod} · reconnecting…',
+  tipBt: 'Bluetooth connection', tipBatt: 'Pod battery, measured {t}', tipMem: 'Pod memory used (cleared after a sync when fuller than {p} %)', tipSync: 'Last sync with the pod',
+  retrying: 'Pod not reachable – retrying…',
+  synced: ['<b>1 new arrow</b> synced.', '<b>{n} new arrows</b> synced.'],
+  syncProblem: 'Sync problem: ',
+  noBt: 'This browser has no Web Bluetooth. Use Chrome/Edge (Android, desktop) or Bluefy (iPhone), over https. Or <a href="?demo">try it with example data</a>.',
+  noPodSel: 'No pod selected.', couldNotConnect: 'Could not connect: ', updating: 'Updating…',
+  pickUp: 'Pod not reachable. Pick up the bow and try again.', tapConnect: 'Tap Connect to sync.', notInRange: 'Pod not in range. Tap Connect when it is.',
+  newEndStarted: 'New end started.',
+  confirmResetToday: "Delete today's arrows ({n})? They are removed on the pod and the watch too.", todayDeleted: "Today's arrows deleted ({n}).",
+  endDeleted: 'End deleted ({n}).', restoredN: 'Arrows restored ({n}).',
+  confirmResetAll: 'Delete the whole history on this phone ({n} arrows)? This cannot be undone. Tip: make a backup first.',
+  allReset: 'All stats reset.', podCleared: ' Pod memory cleared too.',
+  ends: ['1 end', '{n} ends'], arrows: ['1 arrow', '{n} arrows'], offN: '{n} incomplete or extra',
+  endAria: 'End {e}: {n} of {a} arrows', undated: 'Arrows without a date: {n} (the pod clock was never set). They count in "All time".',
+  noArrows: 'No arrows yet. Shoot, then connect to sync.',
+  avg: 'Average: ', avgHold: 'hold {v} s', avgMove: 'aim movement {d}° ({c} cm)', avgCant: 'cant ±{v}°',
+  right: 'right', left: 'left', down: 'down', up: 'up', chartAria: 'Arrows',
+  monthNames: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+  sheetTitle: 'End {e} · {arrows}', perEnd: '{n} per end',
+  sheetHint: 'Tap an arrow for its details. Deleted arrows are removed from all stats, on the pod and the watch too.',
+  deleteEnd: 'Delete end', dRaise: 'Raise', dDraw: 'Draw & set', dHold: 'Hold', dMove: 'Aim movement', dAngle: 'Bow angle', dCant: 'Cant',
+  dFollow: 'Follow-through', dJolt: 'Jolt', dStill: 'Still before release',
+  noDetails: 'No phase details: shot with pod firmware older than 2.0.', dTime: 'Time {t}',
+  restoreArrow: 'Restore arrow {n}', deleteArrow: 'Delete arrow {n}', del: 'Delete',
+},
+de: {
+  sub: 'Pfeile automatisch gezählt · Version 2.0 · 16. Okt. 2026',
+  exampleBanner: 'Beispieldaten, es wird nichts gespeichert. <a href="./">Zurück zu meinen Daten</a>',
+  connect: 'Pod verbinden & synchronisieren', updateNow: 'Jetzt aktualisieren', reconnect: 'Neu verbinden & aktualisieren', choosePod: 'Pod wählen', disconnect: 'Trennen',
+  thisEnd: 'Diese Passe', newEnd: 'Neue Passe', totals: 'Summen', today: 'Heute', thisWeek: 'Diese Woche', thisMonth: 'Dieser Monat', allTime: 'Gesamt',
+  history: 'Verlauf', days: 'Tage', weeks: 'Wochen', months: 'Monate', sessions: 'Trainings', settingsData: 'Einstellungen & Daten', settings: 'Einstellungen',
+  language: 'Sprache', langAuto: 'Automatisch',
+  sArrows: 'Pfeile pro Passe', sEndgap: 'Neue Passe nach einer Pause von (Sekunden)',
+  hintShared: 'Diese beiden werden im Pod gespeichert und mit der Uhr geteilt. Die letzte Änderung gilt.',
+  sSessgap: 'Neues Training nach einer Pause von (Minuten)', sDist: 'Schussdistanz für die Zielbewegung (m)',
+  sClear: 'Pod-Speicher nach der Synchronisation leeren, wenn voller als (%)',
+  grpMount: 'Montageort und Kalibrierung', sMount: 'Pod montiert',
+  mount0: 'hinten am Mittelteil (Schützenseite)', mount1: 'vorne am Mittelteil (Zielseite)', mount2: 'seitlich (z. B. V-Bar-Gewinde)',
+  mountHint: 'Hinten oder vorne: Die Schraube zeigt ungefähr in Pfeilrichtung (ein paar Grad Neigung des Gewindes sind kein Problem), so werden Bogenwinkel, Verkantung und Nachhalten gemessen. Seitlich: nur Pfeile und Phasenzeiten. Wird im Pod gespeichert; die Kalibrierung erkennt den Montageort selbst.',
+  calibrate: 'Kalibrieren …', grpExport: 'Export & Sicherung', csv: 'CSV-Export', backup: 'Sichern', restore: 'Einlesen', restoreArrowTip: 'Wiederherstellen',
+  grpReset: 'Zurücksetzen', resetToday: 'Heute zurücksetzen', resetAll: 'Alle Statistiken zurücksetzen',
+  footer: 'Die Daten bleiben in diesem Browser. Ab und zu eine Sicherung machen. Bluetooth braucht Chrome oder Edge auf Android, Windows, macOS oder ChromeOS oder den Bluefy-Browser auf dem iPhone. <a href="?demo">Mit Beispieldaten ausprobieren</a>, ohne Pod.',
+  close: 'Schließen', copy: 'Kopieren', chooseFile: 'Datei wählen …', cancel: 'Abbrechen', next: 'Weiter', finish: 'Fertig', done: 'Fertig', undo: 'Rückgängig',
+  boxRestoreHint: 'Sicherungstext hier einfügen, dann auf Einlesen tippen.', boxCopyHint: 'Diesen Text kopieren und in Notizen, Mail oder eine Datei einfügen.',
+  selected: 'Markiert – im iPhone-Menü auf Kopieren tippen.', copied: 'Kopiert.', restoreTitle: 'Sicherung wiederherstellen', backupRestored: 'Sicherung wiederhergestellt.',
+  invalidBackup: 'Das ist keine gültige Sicherung: ', restoreFailed: 'Wiederherstellen fehlgeschlagen: ',
+  calTitle: 'Pod kalibrieren',
+  cal1: 'Schritt 1 von 2: Den Bogen aufrecht wie beim Zielen halten, ohne Verkantung und mit waagrechtem Pfeil, und ruhig halten. Eine Libelle hilft. Dann auf Weiter tippen.',
+  cal2: 'Schritt 2 von 2: Mit dem Pfeil etwa 45° nach unten auf den Boden zeigen, den Bogen aufrecht und ruhig halten. Dann auf Fertig tippen.',
+  calConnect: 'Zuerst den Pod verbinden.', measuring: 'Messe …',
+  calDone: 'Fertig. Der Pod ist {mount} montiert. Verkantung 0 = Bogen aufrecht, Bogenwinkel 0 = Pfeil waagrecht.',
+  calDoneSide: 'Fertig. Der Pod ist {mount} montiert: Pfeile und Phasenzeiten werden gemessen, ohne Bogenwinkel, Verkantung und Nachhalten.',
+  calFail: 'Der Bogen wurde nicht weit genug geneigt. Noch einmal mit Schritt 1 beginnen.', podNoAnswer: 'der Pod hat nicht geantwortet',
+  calState: 'Kalibriert: Pod {mount} montiert. Verkantung 0 = Bogen aufrecht (positiv = oberer Wurfarm nach rechts), Bogenwinkel 0 = Pfeil waagrecht (positiv = nach oben).',
+  calStateSide: 'Kalibriert: Pod {mount} montiert. Pfeile und Phasenzeiten werden gemessen.',
+  connectToSee: 'Den Pod verbinden, um die Kalibrierung zu sehen.',
+  notCal: 'Noch nicht kalibriert. Nach dem Montieren einmal kalibrieren (dauert 10 Sekunden); bis dahin gilt der erste Schuss als Verkantung 0, und der Bogenwinkel enthält die Neigung des Gewindes.',
+  couldNotReach: 'Pod nicht erreichbar: ', saveFail: 'Speichern in diesem Browser nicht möglich – Sicherung exportieren.',
+  notConnected: 'Nicht verbunden', chipNotConn: '{pod} · nicht verbunden', chipConnecting: '{pod} · verbinde …', chipReconnecting: '{pod} · verbinde neu …',
+  tipBt: 'Bluetooth-Verbindung', tipBatt: 'Pod-Akku, gemessen {t}', tipMem: 'Belegter Pod-Speicher (wird nach der Synchronisation geleert, wenn voller als {p} %)', tipSync: 'Letzte Synchronisation mit dem Pod',
+  retrying: 'Pod nicht erreichbar – neuer Versuch …',
+  synced: ['<b>1 neuer Pfeil</b> synchronisiert.', '<b>{n} neue Pfeile</b> synchronisiert.'],
+  syncProblem: 'Synchronisationsproblem: ',
+  noBt: 'Dieser Browser hat kein Web Bluetooth. Chrome/Edge (Android, Computer) oder Bluefy (iPhone) über https verwenden. Oder <a href="?demo">mit Beispieldaten ausprobieren</a>.',
+  noPodSel: 'Kein Pod gewählt.', couldNotConnect: 'Verbindung fehlgeschlagen: ', updating: 'Aktualisiere …',
+  pickUp: 'Pod nicht erreichbar. Bogen aufnehmen und erneut versuchen.', tapConnect: 'Zum Synchronisieren auf Verbinden tippen.', notInRange: 'Pod nicht in Reichweite. Auf Verbinden tippen, sobald er da ist.',
+  newEndStarted: 'Neue Passe begonnen.',
+  confirmResetToday: 'Die heutigen Pfeile ({n}) löschen? Sie werden auch im Pod und auf der Uhr gelöscht.', todayDeleted: 'Heutige Pfeile gelöscht ({n}).',
+  endDeleted: 'Passe gelöscht ({n}).', restoredN: 'Pfeile wiederhergestellt ({n}).',
+  confirmResetAll: 'Den gesamten Verlauf auf diesem Handy löschen ({n} Pfeile)? Das kann nicht rückgängig gemacht werden. Tipp: vorher eine Sicherung machen.',
+  allReset: 'Alle Statistiken zurückgesetzt.', podCleared: ' Pod-Speicher ebenfalls geleert.',
+  ends: ['1 Passe', '{n} Passen'], arrows: ['1 Pfeil', '{n} Pfeile'], offN: '{n} unvollständig oder zu viel',
+  endAria: 'Passe {e}: {n} von {a} Pfeilen', undated: 'Pfeile ohne Datum: {n} (die Pod-Uhr wurde nie gestellt). Sie zählen bei „Gesamt“.',
+  noArrows: 'Noch keine Pfeile. Schießen, dann zum Synchronisieren verbinden.',
+  avg: 'Durchschnitt: ', avgHold: 'Halten {v} s', avgMove: 'Zielbewegung {d}° ({c} cm)', avgCant: 'Verkantung ±{v}°',
+  right: 'rechts', left: 'links', down: 'nach unten', up: 'nach oben', chartAria: 'Pfeile',
+  monthNames: ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'],
+  sheetTitle: 'Passe {e} · {arrows}', perEnd: '{n} pro Passe',
+  sheetHint: 'Für Details auf einen Pfeil tippen. Gelöschte Pfeile werden aus allen Statistiken entfernt, auch im Pod und auf der Uhr.',
+  deleteEnd: 'Passe löschen', dRaise: 'Anheben', dDraw: 'Auszug & Ankern', dHold: 'Halten', dMove: 'Zielbewegung', dAngle: 'Bogenwinkel', dCant: 'Verkantung',
+  dFollow: 'Nachhalten', dJolt: 'Stoß', dStill: 'Ruhig vor dem Lösen',
+  noDetails: 'Keine Phasendetails: Schuss mit Pod-Firmware älter als 2.0.', dTime: 'Zeit {t}',
+  restoreArrow: 'Pfeil {n} wiederherstellen', deleteArrow: 'Pfeil {n} löschen', del: 'Löschen',
+},
+pl: {
+  sub: 'Strzały liczone automatycznie · wersja 2.0 · 16 paź 2026',
+  exampleBanner: 'Dane przykładowe, nic nie jest zapisywane. <a href="./">Powrót do moich danych</a>',
+  connect: 'Połącz czujnik i synchronizuj', updateNow: 'Aktualizuj teraz', reconnect: 'Połącz ponownie i aktualizuj', choosePod: 'Wybierz czujnik', disconnect: 'Rozłącz',
+  thisEnd: 'Ta seria', newEnd: 'Nowa seria', totals: 'Podsumowanie', today: 'Dziś', thisWeek: 'Ten tydzień', thisMonth: 'Ten miesiąc', allTime: 'Łącznie',
+  history: 'Historia', days: 'Dni', weeks: 'Tygodnie', months: 'Miesiące', sessions: 'Treningi', settingsData: 'Ustawienia i dane', settings: 'Ustawienia',
+  language: 'Język', langAuto: 'Automatycznie',
+  sArrows: 'Strzał w serii', sEndgap: 'Nowa seria po przerwie (sekundy)',
+  hintShared: 'Te dwa ustawienia są zapisane w czujniku i wspólne z zegarkiem. Obowiązuje ostatnia zmiana.',
+  sSessgap: 'Nowy trening po przerwie (minuty)', sDist: 'Odległość strzelania dla ruchu celowania (m)',
+  sClear: 'Czyść pamięć czujnika po synchronizacji, gdy zajęta ponad (%)',
+  grpMount: 'Miejsce montażu i kalibracja', sMount: 'Czujnik zamontowany',
+  mount0: 'z tyłu majdanu (od strony łucznika)', mount1: 'z przodu majdanu (od strony tarczy)', mount2: 'z boku (np. gwint V-bar)',
+  mountHint: 'Z tyłu lub z przodu: śruba wskazuje mniej więcej kierunek strzały (gwint pochylony o kilka stopni nie przeszkadza), więc mierzone są kąt łuku, przechył i praca po strzale. Z boku: tylko strzały i czasy faz. Zapisane w czujniku; kalibracja sama rozpoznaje miejsce montażu.',
+  calibrate: 'Kalibruj…', grpExport: 'Eksport i kopia', csv: 'Eksport CSV', backup: 'Kopia', restore: 'Przywróć', restoreArrowTip: 'Przywróć',
+  grpReset: 'Resetowanie', resetToday: 'Resetuj dzisiaj', resetAll: 'Resetuj wszystkie statystyki',
+  footer: 'Dane są przechowywane w tej przeglądarce. Co jakiś czas zrób kopię. Bluetooth wymaga Chrome lub Edge na Androidzie, Windows, macOS lub ChromeOS albo przeglądarki Bluefy na iPhonie. <a href="?demo">Wypróbuj na danych przykładowych</a>, bez czujnika.',
+  close: 'Zamknij', copy: 'Kopiuj', chooseFile: 'Wybierz plik…', cancel: 'Anuluj', next: 'Dalej', finish: 'Zakończ', done: 'Gotowe', undo: 'Cofnij',
+  boxRestoreHint: 'Wklej tutaj tekst kopii, a potem stuknij Przywróć.', boxCopyHint: 'Skopiuj ten tekst i wklej go do Notatek, poczty lub pliku.',
+  selected: 'Zaznaczono – stuknij Kopiuj w menu iPhone’a.', copied: 'Skopiowano.', restoreTitle: 'Przywróć kopię', backupRestored: 'Kopia przywrócona.',
+  invalidBackup: 'To nie jest prawidłowa kopia: ', restoreFailed: 'Przywracanie nie powiodło się: ',
+  calTitle: 'Kalibracja czujnika',
+  cal1: 'Krok 1 z 2: trzymaj łuk pionowo jak przy celowaniu, bez przechyłu i ze strzałą w poziomie, i nie ruszaj nim. Pomoże poziomica. Potem stuknij Dalej.',
+  cal2: 'Krok 2 z 2: skieruj strzałę w ziemię, ok. 45° w dół, łuk trzymaj pionowo i nieruchomo. Potem stuknij Zakończ.',
+  calConnect: 'Najpierw połącz czujnik.', measuring: 'Pomiar…',
+  calDone: 'Gotowe. Czujnik jest zamontowany {mount}. Przechył 0 = łuk w pionie, kąt łuku 0 = strzała w poziomie.',
+  calDoneSide: 'Gotowe. Czujnik jest zamontowany {mount}: mierzone są strzały i czasy faz, bez kąta łuku, przechyłu i pracy po strzale.',
+  calFail: 'Łuk nie został wystarczająco pochylony. Zacznij ponownie od kroku 1.', podNoAnswer: 'czujnik nie odpowiedział',
+  calState: 'Skalibrowano: czujnik zamontowany {mount}. Przechył 0 = łuk w pionie (dodatni = górne ramię w prawo), kąt łuku 0 = strzała w poziomie (dodatni = w górę).',
+  calStateSide: 'Skalibrowano: czujnik zamontowany {mount}. Mierzone są strzały i czasy faz.',
+  connectToSee: 'Połącz czujnik, aby zobaczyć kalibrację.',
+  notCal: 'Jeszcze nie skalibrowano. Skalibruj raz po zamontowaniu czujnika (trwa 10 sekund); do tego czasu pierwszy strzał liczy się jako przechył 0, a kąt łuku zawiera pochylenie gwintu.',
+  couldNotReach: 'Brak połączenia z czujnikiem: ', saveFail: 'Nie można zapisać w tej przeglądarce – wyeksportuj kopię.',
+  notConnected: 'Nie połączono', chipNotConn: '{pod} · nie połączono', chipConnecting: '{pod} · łączenie…', chipReconnecting: '{pod} · ponowne łączenie…',
+  tipBt: 'Połączenie Bluetooth', tipBatt: 'Akumulator czujnika, pomiar {t}', tipMem: 'Zajęta pamięć czujnika (czyszczona po synchronizacji, gdy ponad {p} %)', tipSync: 'Ostatnia synchronizacja z czujnikiem',
+  retrying: 'Czujnik nieosiągalny – ponawiam…',
+  synced: ['<b>1 nowa strzała</b> zsynchronizowana.', '<b>{n} nowe strzały</b> zsynchronizowane.', '<b>{n} nowych strzał</b> zsynchronizowanych.'],
+  syncProblem: 'Problem z synchronizacją: ',
+  noBt: 'Ta przeglądarka nie obsługuje Web Bluetooth. Użyj Chrome/Edge (Android, komputer) lub Bluefy (iPhone) przez https. Albo <a href="?demo">wypróbuj na danych przykładowych</a>.',
+  noPodSel: 'Nie wybrano czujnika.', couldNotConnect: 'Nie można połączyć: ', updating: 'Aktualizacja…',
+  pickUp: 'Czujnik nieosiągalny. Podnieś łuk i spróbuj ponownie.', tapConnect: 'Stuknij Połącz, aby zsynchronizować.', notInRange: 'Czujnik poza zasięgiem. Stuknij Połącz, gdy będzie w pobliżu.',
+  newEndStarted: 'Rozpoczęto nową serię.',
+  confirmResetToday: 'Usunąć dzisiejsze strzały ({n})? Zostaną usunięte także w czujniku i na zegarku.', todayDeleted: 'Usunięto dzisiejsze strzały ({n}).',
+  endDeleted: 'Usunięto serię ({n}).', restoredN: 'Przywrócono strzały ({n}).',
+  confirmResetAll: 'Usunąć całą historię na tym telefonie (strzały: {n})? Tego nie można cofnąć. Wskazówka: najpierw zrób kopię.',
+  allReset: 'Wszystkie statystyki zresetowane.', podCleared: ' Pamięć czujnika też wyczyszczona.',
+  ends: ['1 seria', '{n} serie', '{n} serii'], arrows: ['1 strzała', '{n} strzały', '{n} strzał'], offN: 'niepełne lub nadmiarowe: {n}',
+  endAria: 'Seria {e}: {n} z {a} strzał', undated: 'Strzały bez daty: {n} (zegar czujnika nie był ustawiony). Liczą się w „Łącznie”.',
+  noArrows: 'Brak strzał. Strzelaj, a potem połącz, aby zsynchronizować.',
+  avg: 'Średnio: ', avgHold: 'utrzymanie {v} s', avgMove: 'ruch celowania {d}° ({c} cm)', avgCant: 'przechył ±{v}°',
+  right: 'w prawo', left: 'w lewo', down: 'w dół', up: 'w górę', chartAria: 'Strzały',
+  monthNames: ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'],
+  sheetTitle: 'Seria {e} · {arrows}', perEnd: '{n} w serii',
+  sheetHint: 'Stuknij strzałę, aby zobaczyć szczegóły. Usunięte strzały znikają ze wszystkich statystyk, także w czujniku i na zegarku.',
+  deleteEnd: 'Usuń serię', dRaise: 'Podniesienie', dDraw: 'Naciąg i zakotwiczenie', dHold: 'Utrzymanie', dMove: 'Ruch celowania', dAngle: 'Kąt łuku', dCant: 'Przechył',
+  dFollow: 'Praca po strzale', dJolt: 'Wstrząs', dStill: 'Bez ruchu przed zwolnieniem',
+  noDetails: 'Brak szczegółów faz: strzał z oprogramowaniem czujnika starszym niż 2.0.', dTime: 'Czas {t}',
+  restoreArrow: 'Przywróć strzałę {n}', deleteArrow: 'Usuń strzałę {n}', del: 'Usuń',
+} };
+const LOCALES = { en: 'en-GB', de: 'de-AT', pl: 'pl-PL' };
+function pickLang(pref) {
+  if (pref && I18N[pref]) return pref;
+  for (const l of (navigator.languages || [navigator.language || 'en'])) { const k = String(l).slice(0, 2).toLowerCase(); if (I18N[k]) return k; }
+  return 'en';
+}
+let LANG = 'en', LOC = 'en-GB';
+function pluralIndex(n) {
+  if (LANG === 'pl') { if (n === 1) return 0; const m10 = n % 10, m100 = n % 100; return m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? 1 : 2; }
+  return n === 1 ? 0 : 1;
+}
+// t('key', {var: value}) – with a number n, plural entries pick the right form
+function t(key, vars = {}) {
+  let s = I18N[LANG][key]; if (s === undefined) s = I18N.en[key]; if (s === undefined) return key;
+  if (Array.isArray(s) && typeof s[0] === 'string' && 'n' in vars && !key.endsWith('Names')) s = s[Math.min(pluralIndex(vars.n), s.length - 1)];
+  return typeof s === 'string' ? s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m)) : s;
+}
+</script>
+<script>
 const SVC  = 'a7c10000-5b1e-4c5a-9d1e-3b7a0c0f0ee0';
 const U = n => 'a7c1000' + n + '-5b1e-4c5a-9d1e-3b7a0c0f0ee0';
 const UUID_TIME = U(1), UUID_INFO = U(2), UUID_CTRL = U(3), UUID_DATA = U(4), UUID_STATS = U(5),
@@ -323,8 +541,8 @@ const icon = (id, cls = 'i') => `<svg class="${cls}" aria-hidden="true"><use hre
 // ---------- storage ----------
 const KEY = 'pfeilzaehler3000.v1';
 const OLD_KEY = 'arrowlog.v1';                     // data saved before the rename is taken over once
-const DEMO = !!window.__pzDemo;                    // ?demo: example data, simulated pod, nothing saved
-const BT = DEMO ? window.__pzDemo.bluetooth : navigator.bluetooth;   // Web Bluetooth, or the simulated pod
+const DEMO = !!window.__pzDemo;                    // ?demo: example data, example pod, nothing saved
+const BT = DEMO ? window.__pzDemo.bluetooth : navigator.bluetooth;   // Web Bluetooth, or the example pod
 if (DEMO) document.getElementById('demo').hidden = false;
 function load() {
   if (DEMO) return window.__pzDemo.db();
@@ -341,7 +559,7 @@ const live = () => db.shots.filter(x => !(x.flags & F_DEL));
 // history of "arrows per end" / "new end after pause": each end is judged with the values valid at that time
 if (!Array.isArray(db.hist) || !db.hist.length) db.hist = [{ from: 0, arrows: db.settings.arrows, endGap: db.settings.endGap }];
 function setAt(t) { let r = db.hist[0]; for (const h of db.hist) if (h.from <= t) r = h; return r; }
-function save() { if (DEMO) return; try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { setStatus('Could not save in this browser – export a backup.'); } }
+function save() { if (DEMO) return; try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { setStatus(t('saveFail')); } }
 
 // ---------- analysis (exposed for testing) ----------
 function groupSessions(shots, s, marks = [], at = null) {
@@ -386,7 +604,7 @@ function buckets(shots, mode, now = new Date()) {
     const idx = Object.fromEntries(out.map((b, i) => [b.key, i]));
     for (const x of shots) { const k = weekStart(new Date(x.t * 1000)).getTime(); if (k in idx) out[idx[k]].n++; }
   } else {
-    const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const names = t('monthNames');
     for (let i = 11; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); out.push({ key: monthKey(d), label: names[d.getMonth()], n: 0 }); }
     const idx = Object.fromEntries(out.map((b, i) => [b.key, i]));
     for (const x of shots) { const k = monthKey(new Date(x.t * 1000)); if (k in idx) out[idx[k]].n++; }
@@ -394,7 +612,7 @@ function buckets(shots, mode, now = new Date()) {
   return out;
 }
 
-// shot details from the pod (firmware 1.7+): times in s, angles in degrees; null = not measured
+// shot details from the pod (firmware 2.0+): times in s, angles in degrees; null = not measured
 function parseDetailBytes(dv, o) {
   const u = k => dv.getUint8(o + k), s = k => dv.getInt8(o + k);
   let any = false;
@@ -402,7 +620,8 @@ function parseDetailBytes(dv, o) {
   if (!any) return null;
   const tm = v => v ? v / 10 : null;
   return { raise: tm(u(0)), draw: tm(u(1)), hold: tm(u(2)), move: u(3) ? u(3) / 100 : null,
-           pitch: s(4) / 2, cant: s(5) / 2, drop: s(6), side: s(7) };
+           pitch: s(4) === -128 ? null : s(4) / 2, cant: s(5) === -128 ? null : s(5) / 2,      // -128: side mount, not measured
+           drop: s(6) === -128 ? null : s(6), side: s(7) === -128 ? null : s(7) };
 }
 function parseDetail(dv) {
   const first = dv.getUint32(0, true), out = [];
@@ -424,17 +643,18 @@ function summary(list) {
 let chartMode = 'day';
 const $ = id => document.getElementById(id);
 function setStatus(html) { $('status').innerHTML = html; }
-function fmtTime(t) { return new Date(t * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
-function fmtDate(t) { return new Date(t * 1000).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); }
+function fmtTime(ts) { return new Date(ts * 1000).toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit' }); }
+function fmtDate(ts) { return new Date(ts * 1000).toLocaleDateString(LOC, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); }
 function fmtSplit(sec) { sec = Math.max(0, Math.round(sec)); return '+' + Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
 const f1 = v => v === null || v === undefined ? '–' : v.toFixed(1);
 function cm(deg) { return Math.tan(deg * Math.PI / 180) * db.settings.dist * 100; }
 function fmtMove(deg) { return deg === null || deg === undefined ? '–' : `${deg.toFixed(2)}° ≈ ${cm(deg).toFixed(1)} cm`; }
-function fmtCant(c) { if (c === null || c === undefined) return '–'; if (Math.abs(c) < 0.25) return '0°'; return `${Math.abs(c).toFixed(1)}° ${c > 0 ? 'right' : 'left'}`; }
+function fmtCant(c) { if (c === null || c === undefined) return '–'; if (Math.abs(c) < 0.25) return '0°'; return `${Math.abs(c).toFixed(1)}° ${c > 0 ? t('right') : t('left')}`; }
 function fmtFollow(d) {
   const a = [];
-  a.push(d.drop >= 0 ? `${d.drop}° down` : `${-d.drop}° up`);
-  if (d.side) a.push(`${Math.abs(d.side)}° ${d.side > 0 ? 'right' : 'left'}`);
+  if (d.drop === null) return '–';
+  a.push(d.drop >= 0 ? `${d.drop}° ${t('down')}` : `${-d.drop}° ${t('up')}`);
+  if (d.side) a.push(`${Math.abs(d.side)}° ${d.side > 0 ? t('right') : t('left')}`);
   return a.join(', ');
 }
 
@@ -444,12 +664,12 @@ function renderChart() {
   const W = 340, H = 150, pad = 18, top = 16;
   const max = Math.max(6, ...b.map(x => x.n));
   const bw = (W - 8) / b.length;
-  let s = `<svg viewBox="0 0 ${W} ${H + pad}" role="img" aria-label="Arrows per ${chartMode}">`;
+  let s = `<svg viewBox="0 0 ${W} ${H + pad}" role="img" aria-label="${t('chartAria')}">`;
   s += `<line x1="0" x2="${W}" y1="${H}" y2="${H}" stroke="var(--line)"/>`;
   b.forEach((x, i) => {
     const h = x.n ? Math.max(2, (x.n / max) * (H - top)) : 0;
     const X = 4 + i * bw + bw * 0.15, w = bw * 0.7;
-    if (h) s += `<rect x="${X}" y="${H - h}" width="${w}" height="${h}" rx="2" fill="var(--bar)"><title>${x.n} arrows</title></rect>`;
+    if (h) s += `<rect x="${X}" y="${H - h}" width="${w}" height="${h}" rx="2" fill="var(--bar)"><title>${t('arrows', { n: x.n })}</title></rect>`;
     if (x.n && (b.length <= 12 || x.n === max)) s += `<text x="${X + w / 2}" y="${H - h - 3}" text-anchor="middle">${x.n}</text>`;
     if (x.label) s += `<text x="${X + w / 2}" y="${H + 13}" text-anchor="middle">${x.label}</text>`;
   });
@@ -459,10 +679,10 @@ function renderChart() {
 function avgLine(sm) {
   if (!sm) return '';
   const p = [];
-  if (sm.hold !== null) p.push(`hold ${f1(sm.hold)} s`);
-  if (sm.move !== null) p.push(`aim movement ${sm.move.toFixed(2)}° (${cm(sm.move).toFixed(1)} cm)`);
-  if (sm.cantSd !== null) p.push(`cant ±${sm.cantSd.toFixed(1)}°`);
-  return p.length ? 'Average: ' + p.join(' · ') : '';
+  if (sm.hold !== null) p.push(t('avgHold', { v: f1(sm.hold) }));
+  if (sm.move !== null) p.push(t('avgMove', { d: sm.move.toFixed(2), c: cm(sm.move).toFixed(1) }));
+  if (sm.cantSd !== null) p.push(t('avgCant', { v: sm.cantSd.toFixed(1) }));
+  return p.length ? t('avg') + p.join(' · ') : '';
 }
 
 let shownSessions = [];
@@ -471,17 +691,17 @@ function renderSessions() {
   const sess = groupSessions(live(), s, db.endMarks, setAt).reverse().slice(0, 40);
   shownSessions = sess;
   const undated = live().filter(x => x.t <= 1600000000).length;
-  if (!sess.length && !undated) { $('sessions').innerHTML = '<div class="empty">No arrows yet. Shoot, then connect to sync.</div>'; return; }
+  if (!sess.length && !undated) { $('sessions').innerHTML = `<div class="empty">${t('noArrows')}</div>`; return; }
   let h = '';
   for (const [si, x] of sess.entries()) {
     const off = x.ends.filter(e => e.n !== e.arrows).length;
     const all = x.ends.flatMap(e => e.list);
     const av = avgLine(summary(all));
-    h += `<div class="sess"><div class="top"><div><div>${fmtDate(x.start)}</div><div class="small">${fmtTime(x.start)}–${fmtTime(x.stop)} · ${x.ends.length} ends${off ? ` · ${off} incomplete or extra` : ''}</div></div><div class="big">${x.shots}</div></div><div class="ends">`;
-    x.ends.forEach((e, ei) => { h += `<button class="end${e.n !== e.arrows ? ' off' : ''}" data-s="${si}" data-e="${ei}" aria-label="End ${ei + 1}: ${e.n} of ${e.arrows} arrows">${e.n}</button>`; });
+    h += `<div class="sess"><div class="top"><div><div>${fmtDate(x.start)}</div><div class="small">${fmtTime(x.start)}–${fmtTime(x.stop)} · ${t('ends', { n: x.ends.length })}${off ? ` · ${t('offN', { n: off })}` : ''}</div></div><div class="big">${x.shots}</div></div><div class="ends">`;
+    x.ends.forEach((e, ei) => { h += `<button class="end${e.n !== e.arrows ? ' off' : ''}" data-s="${si}" data-e="${ei}" aria-label="${t('endAria', { e: ei + 1, n: e.n, a: e.arrows })}">${e.n}</button>`; });
     h += '</div>' + (av ? `<div class="avg">${av}</div>` : '') + '</div>';
   }
-  if (undated) h += `<div class="small">${undated} arrows have no date (pod clock was never set). They count in "All time".</div>`;
+  if (undated) h += `<div class="small">${t('undated', { n: undated })}</div>`;
   $('sessions').innerHTML = h;
 }
 
@@ -500,9 +720,9 @@ function render() {
   $('t-end').textContent = e;
   $('t-endof').textContent = '/ ' + db.settings.arrows;
   $('t-end').style.color = e === db.settings.arrows ? 'var(--accent)' : (e > db.settings.arrows ? 'var(--warn)' : '');
-  const t = totals(live());
-  $('t-today').textContent = t.today; $('t-week').textContent = t.week;
-  $('t-month').textContent = t.month; $('t-all').textContent = t.all;
+  const tot = totals(live());
+  $('t-today').textContent = tot.today; $('t-week').textContent = tot.week;
+  $('t-month').textContent = tot.month; $('t-all').textContent = tot.all;
   renderChart(); renderSessions(); renderChips(); renderCantState();
 }
 
@@ -516,21 +736,21 @@ function battIcon(mv) {
 function renderChips() {
   const name = (dev && dev.name) || db.podName || '';
   const short = name.replace('PfeilZaehler3000-', 'Pod ') || 'Pod';
-  const cText = { off: dev || db.podName ? `${short} · not connected` : 'Not connected', wait: `${short} · connecting…`, ok: short, lost: `${short} · reconnecting…` }[conn];
+  const cText = { off: dev || db.podName ? t('chipNotConn', { pod: short }) : t('notConnected'), wait: t('chipConnecting', { pod: short }), ok: short, lost: t('chipReconnecting', { pod: short }) }[conn];
   const cCls = { off: 'off', wait: 'wait', ok: 'ok', lost: 'bad' }[conn];
-  let h = `<span class="chip ${cCls}" title="Bluetooth connection">${icon('bt')}${cText}</span>`;
+  let h = `<span class="chip ${cCls}" title="${t('tipBt')}">${icon('bt')}${cText}</span>`;
   if (info) {
     const v = info.mv / 1000, bc = !info.mv ? 'off' : v < 3.6 ? 'bad' : v < 3.7 ? 'wait' : '';
-    h += `<span class="chip ${bc}" title="Pod battery, measured ${fmtClock(info.at)}">${battIcon(info.mv)}${info.mv ? v.toFixed(2) + ' V' : '–'}</span>`;
-    h += `<span class="chip${info.storage >= 80 ? ' bad' : ''}" title="Pod memory used (cleared after a sync when fuller than ${db.settings.clearAt} %)">${icon('mem')}${info.storage} %</span>`;
+    h += `<span class="chip ${bc}" title="${t('tipBatt', { t: fmtClock(info.at) })}">${battIcon(info.mv)}${info.mv ? v.toFixed(2) + ' V' : '–'}</span>`;
+    h += `<span class="chip${info.storage >= 80 ? ' bad' : ''}" title="${t('tipMem', { p: db.settings.clearAt })}">${icon('mem')}${info.storage} %</span>`;
   }
-  if (db.lastSync) h += `<span class="chip" title="Last sync with the pod">${icon('sync')}${fmtClock(db.lastSync)}</span>`;
+  if (db.lastSync) h += `<span class="chip" title="${t('tipSync')}">${icon('sync')}${fmtClock(db.lastSync)}</span>`;
   $('chips').innerHTML = h;
 }
 function fmtClock(ms) {
   const d = new Date(ms), today = dayKey(new Date()) === dayKey(d);
-  return today ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-               : d.toLocaleDateString([], { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return today ? d.toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit' })
+               : d.toLocaleDateString(LOC, { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit' });
 }
 
 // ---------- Bluetooth ----------
@@ -549,7 +769,7 @@ function parseData(dv) {
   return { recs };
 }
 function parseSettings(dv) {
-  return { arrows: dv.getUint8(1), endGap: dv.getUint16(2, true), flags: dv.getUint8(4), cantRef: dv.getInt16(6, true) / 10 };
+  return { arrows: dv.getUint8(1), endGap: dv.getUint16(2, true), flags: dv.getUint8(4), cal: dv.getUint8(5), cantRef: dv.getInt16(6, true) / 10 };
 }
 
 function showInfo() { renderChips(); }
@@ -558,7 +778,7 @@ let userDisconnect = false, retryTimer = null, retryUntil = 0;
 function updateButtons() {
   const connected = !!(dev && dev.gatt.connected);
   if (!connected && conn === 'ok') conn = 'off';
-  $('connect').textContent = dev ? (connected ? 'Update now' : 'Reconnect & update') : 'Connect pod & sync';
+  $('connect').textContent = dev ? (connected ? t('updateNow') : t('reconnect')) : t('connect');
   $('disconnect').hidden = !connected;
   $('choose').hidden = !dev;
   $('podbtns').hidden = !dev;
@@ -573,7 +793,7 @@ function scheduleReconnect(seconds = 60) {
     retryTimer = null;
     if (!dev || dev.gatt.connected || userDisconnect || document.hidden || Date.now() > retryUntil) { if (!dev || !dev.gatt.connected) conn = 'off'; updateButtons(); return; }
     try { await attach(dev); }
-    catch (e) { conn = 'lost'; setStatus('Pod not reachable – retrying…'); renderChips(); retryTimer = setTimeout(tryOnce, 5000); }
+    catch (e) { conn = 'lost'; setStatus(t('retrying')); renderChips(); retryTimer = setTimeout(tryOnce, 5000); }
   };
   retryTimer = setTimeout(tryOnce, 1000);
 }
@@ -644,7 +864,9 @@ async function attach(device) {
 
 // settings from the pod (changed on the watch or another phone): take them over
 function adoptSettings(p) {
-  db.podSettings = { flags: p.flags, cantRef: p.cantRef };
+  db.podSettings = { flags: p.flags, cal: p.cal, cantRef: p.cantRef };
+  if (calWait) calWait(p);
+  db.settings.mount = (p.flags >> 2) & 3; $('s-mount').value = db.settings.mount;
   if (p.arrows >= 1 && p.endGap >= 20 && (p.arrows !== db.settings.arrows || p.endGap !== db.settings.endGap)) {
     db.settings.arrows = p.arrows; db.settings.endGap = p.endGap;
     db.hist.push({ from: Math.floor(Date.now() / 1000), arrows: p.arrows, endGap: p.endGap });
@@ -653,11 +875,52 @@ function adoptSettings(p) {
   save(); render();
 }
 function renderCantState() {
-  const f = db.podSettings ? db.podSettings.flags : 0;
-  $('cant-state').textContent = f & 1 ? 'Cant 0 was set with the bow upright. Positive = top limb to the right.'
-    : f & 2 ? 'Cant 0 is the position of the first shot. For true values hold the bow upright (bubble level) and tap the button.'
-    : 'Hold the bow upright (bubble level) and tap the button. Until then the first shot counts as 0.';
+  const ps = db.podSettings || { flags: 0, cal: 0 };
+  const m = (ps.flags >> 2) & 3, where = t('mount' + m);
+  $('cant-state').textContent = ps.cal === 2 ? t(m === 2 ? 'calStateSide' : 'calState', { mount: where })
+    : !db.podSettings ? t('connectToSee') : t('notCal');
 }
+
+// ---------- calibration: 1. bow upright and level, 2. arrow pointed at the ground ----------
+let calWait = null, calStep = 0;
+const CAL_TEXT = () => [t('cal1'), t('cal2')];
+function openCal() {
+  calStep = 0; $('cal-text').textContent = CAL_TEXT()[0]; $('cal-msg').textContent = '';
+  $('cal-next').textContent = t('next'); $('cal-next').disabled = false; $('cal').hidden = false;
+}
+// send a calibration step and wait for the pod's answer (its settings notification)
+function calSend(cmd, want) {
+  return new Promise(async (resolve, reject) => {
+    const timer = setTimeout(() => { calWait = null; reject(new Error(t('podNoAnswer'))); }, 5000);
+    calWait = p => { if (want.includes(p.cal)) { clearTimeout(timer); calWait = null; resolve(p); } };
+    try { const c = new Uint8Array(5); c[0] = cmd; await chars.ctrl.writeValue(c); }
+    catch (e) { clearTimeout(timer); calWait = null; reject(e); }
+  });
+}
+$('setlevel').onclick = openCal;
+$('cal-cancel').onclick = () => { calWait = null; $('cal').hidden = true; };
+$('cal-next').onclick = async () => {
+  if (calStep === 2) { $('cal').hidden = true; return; }
+  if (!dev || !dev.gatt.connected || !chars.settings) { $('cal-msg').textContent = t('calConnect'); return; }
+  $('cal-next').disabled = true; $('cal-msg').textContent = t('measuring');
+  try {
+    if (calStep === 0) {
+      await calSend(9, [1]);
+      calStep = 1; $('cal-text').textContent = CAL_TEXT()[1]; $('cal-next').textContent = t('finish'); $('cal-msg').textContent = '';
+    } else {
+      const p = await calSend(10, [2, 3]);
+      if (p.cal === 2) {
+        const m = (p.flags >> 2) & 3;
+        $('cal-text').textContent = t(m === 2 ? 'calDoneSide' : 'calDone', { mount: t('mount' + m) });
+        $('cal-msg').textContent = ''; $('cal-next').textContent = t('close'); calStep = 2;
+      } else {
+        calStep = 0; $('cal-text').textContent = CAL_TEXT()[0]; $('cal-next').textContent = t('next');
+        $('cal-msg').textContent = t('calFail');
+      }
+    }
+  } catch (e) { $('cal-msg').textContent = t('couldNotReach') + e.message; }
+  $('cal-next').disabled = false;
+};
 
 let podStats = null;
 function parseStats(dv) {
@@ -685,11 +948,7 @@ async function sendOps() {
   while (db.ops.length) {
     const op = db.ops[0], c = new Uint8Array(8), v = new DataView(c.buffer);
     if (op.k === 'set') {
-      if (chars.settings) { const b = new Uint8Array(3); b[0] = db.settings.arrows; new DataView(b.buffer).setUint16(1, db.settings.endGap, true); await chars.settings.writeValue(b); }
-      db.ops.shift(); save(); continue;
-    }
-    if (op.k === 'level') {
-      if (chars.settings) { c[0] = 9; await chars.ctrl.writeValue(c.slice(0, 5)); }
+      if (chars.settings) { const b = new Uint8Array(4); b[0] = db.settings.arrows; new DataView(b.buffer).setUint16(1, db.settings.endGap, true); b[3] = db.settings.mount || 0; await chars.settings.writeValue(b); }
       db.ops.shift(); save(); continue;
     }
     if (op.k === 'del') { c[0] = 4; v.setUint32(1, op.i, true); v.setUint16(5, op.n, true); c[7] = op.d; }
@@ -734,24 +993,25 @@ async function sync(mayClear) {
     if (total !== null) { db.nextIndex = Math.max(db.nextIndex, total); db.lastSync = Date.now(); }
     save(); render();
     info = parseInfo(await chars.info.readValue()); showInfo();
-    setStatus(fresh.length ? `<b>${fresh.length} new ${fresh.length === 1 ? 'arrow' : 'arrows'}</b> synced.` : '');
+    if (fresh.length) setStatus(t('synced', { n: fresh.length }));
+    else if ($('status').textContent === t('updating')) setStatus('');   // keep other messages (e.g. Undo)
     if (mayClear && total !== null && db.nextIndex >= info.total && info.storage >= db.settings.clearAt && info.total > info.base) {
       const c = new Uint8Array(5); c[0] = 2; new DataView(c.buffer).setUint32(1, info.total, true);
       await chars.ctrl.writeValue(c);
     }
-  } catch (e) { setStatus('Sync problem: ' + e.message); }
+  } catch (e) { setStatus(t('syncProblem') + e.message); }
   syncing = false;
 }
 
 async function choosePod() {
-  if (!BT) { setStatus('This browser has no Web Bluetooth. Use Chrome/Edge (Android, desktop) or Bluefy (iPhone), over https. Or <a href="?demo">try the demo</a>.'); return; }
+  if (!BT) { setStatus(t('noBt')); return; }
   try { await attach(await BT.requestDevice({ filters: [{ services: [SVC] }] })); }
-  catch (e) { conn = dev && dev.gatt.connected ? 'ok' : 'off'; renderChips(); setStatus(e.name === 'NotFoundError' ? 'No pod selected.' : 'Could not connect: ' + e.message); }
+  catch (e) { conn = dev && dev.gatt.connected ? 'ok' : 'off'; renderChips(); setStatus(e.name === 'NotFoundError' ? t('noPodSel') : t('couldNotConnect') + e.message); }
 }
 // one tap: already connected -> sync, known pod -> reconnect without the list, otherwise choose it once
 $('connect').onclick = async () => {
-  if (dev && dev.gatt.connected) { setStatus('Updating…'); await sync(true); return; }
-  if (dev) { try { await attach(dev); } catch (e) { conn = 'off'; renderChips(); setStatus('Pod not reachable. Pick up the bow and try again.'); } return; }
+  if (dev && dev.gatt.connected) { setStatus(t('updating')); await sync(true); return; }
+  if (dev) { try { await attach(dev); } catch (e) { conn = 'off'; renderChips(); setStatus(t('pickUp')); } return; }
   await choosePod();
 };
 $('choose').onclick = choosePod;
@@ -772,9 +1032,9 @@ document.addEventListener('visibilitychange', async () => {
     conn = 'wait'; renderChips();
     if (d.watchAdvertisements) {
       const ac = new AbortController();
-      d.addEventListener('advertisementreceived', async () => { ac.abort(); try { await attach(d); } catch (e) { conn = 'off'; renderChips(); setStatus('Tap Connect to sync.'); } }, { once: true });
+      d.addEventListener('advertisementreceived', async () => { ac.abort(); try { await attach(d); } catch (e) { conn = 'off'; renderChips(); setStatus(t('tapConnect')); } }, { once: true });
       await d.watchAdvertisements({ signal: ac.signal });
-      setTimeout(() => { if (!d.gatt.connected) { ac.abort(); conn = 'off'; renderChips(); setStatus('Pod not in range. Tap Connect when it is.'); } }, 15000);
+      setTimeout(() => { if (!d.gatt.connected) { ac.abort(); conn = 'off'; renderChips(); setStatus(t('notInRange')); } }, 15000);
     } else await attach(d);
   } catch (e) { conn = 'off'; renderChips(); }
 })();
@@ -795,11 +1055,15 @@ for (const [k, id] of Object.entries(S)) {
     if (dev && dev.gatt.connected) { try { await flushOps(); } catch (err) {} }
   };
 }
-$('setlevel').onclick = async () => {
-  db.ops.push({ k: 'level' }); save();
-  try { await flushOps(); setStatus('Cant 0 set. The next arrows show the cant relative to upright.'); }
-  catch (e) { setStatus('Could not reach the pod: ' + e.message); }
+$('s-mount').value = db.settings.mount || 0;
+$('s-mount').onchange = async e => {
+  db.settings.mount = Number(e.target.value);
+  db.ops = db.ops.filter(o => o.k !== 'set'); db.ops.push({ k: 'set' });
+  save();
+  if (dev && dev.gatt.connected) { try { await flushOps(); } catch (err) {} }
 };
+$('s-lang').value = db.settings.lang || '';
+$('s-lang').onchange = e => { db.settings.lang = e.target.value; save(); applyLang(); };
 $('tabs').onclick = e => { const b = e.target.closest('button'); if (!b) return; chartMode = b.dataset.v; [...$('tabs').children].forEach(x => x.classList.toggle('on', x === b)); renderChart(); };
 
 // iPhone browsers like Bluefy ignore normal downloads: use the share sheet (save to Files, AirDrop,
@@ -824,14 +1088,14 @@ function showText(title, text, restore = false) {
   $('box-copy').hidden = restore;
   $('box-restore').hidden = !restore;
   $('box-file').hidden = !restore;
-  $('box-hint').textContent = restore ? 'Paste the backup text here, then tap Restore.' : 'Copy this text and paste it into Notes, Mail or a file.';
+  $('box-hint').textContent = restore ? t('boxRestoreHint') : t('boxCopyHint');
   $('box').hidden = false;
 }
 $('box-close').onclick = () => { $('box').hidden = true; };
 $('box-copy').onclick = async () => {
-  const t = $('box-text');
-  try { await navigator.clipboard.writeText(t.value); setStatus('Copied.'); $('box').hidden = true; }
-  catch (e) { t.focus(); t.select(); t.setSelectionRange(0, t.value.length); $('box-hint').textContent = 'Selected – tap Copy in the iPhone menu.'; }
+  const ta = $('box-text');
+  try { await navigator.clipboard.writeText(ta.value); setStatus(t('copied')); $('box').hidden = true; }
+  catch (e) { ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length); $('box-hint').textContent = t('selected'); }
 };
 function restoreFrom(text) {
   const d = JSON.parse(text);
@@ -844,8 +1108,8 @@ function restoreFrom(text) {
   save(); render();
 }
 $('box-restore').onclick = () => {
-  try { restoreFrom($('box-text').value); $('box').hidden = true; setStatus('Backup restored.'); }
-  catch (err) { $('box-hint').textContent = 'That is not a valid backup: ' + err.message; }
+  try { restoreFrom($('box-text').value); $('box').hidden = true; setStatus(t('backupRestored')); }
+  catch (err) { $('box-hint').textContent = t('invalidBackup') + err.message; }
 };
 $('csv').onclick = () => {
   const rows = ['index,datetime_local,unix,peak_g,still_before_release_s,raise_s,draw_s,hold_s,aim_movement_deg,angle_deg,cant_deg,follow_down_deg,follow_right_deg,clock_exact,deleted'];
@@ -859,22 +1123,22 @@ $('csv').onclick = () => {
   exportText('PfeilZaehler3000.csv', rows.join('\n'), 'text/csv');
 };
 $('backup').onclick = () => exportText('PfeilZaehler3000-backup.json', JSON.stringify(db), 'application/json');
-$('restore').onclick = () => showText('Restore backup', '', true);
+$('restore').onclick = () => showText(t('restoreTitle'), '', true);
 $('box-file').onclick = () => $('file').click();
 $('file').onchange = async e => {
-  try { restoreFrom(await e.target.files[0].text()); $('box').hidden = true; setStatus('Backup restored.'); }
-  catch (err) { setStatus('Restore failed: ' + err.message); }
+  try { restoreFrom(await e.target.files[0].text()); $('box').hidden = true; setStatus(t('backupRestored')); }
+  catch (err) { setStatus(t('restoreFailed') + err.message); }
   e.target.value = '';
 };
 
 // New end: no confirmation. The next arrow starts a new end.
 $('newend').onclick = async () => {
-  const t = Math.floor(Date.now() / 1000);
-  db.endMarks.push(t);
+  const now = Math.floor(Date.now() / 1000);
+  db.endMarks.push(now);
   if (db.endMarks.length > 500) db.endMarks = db.endMarks.slice(-500);
-  db.ops.push({ k: 'end', t });                     // tell the pod, so the watch starts a new end too
+  db.ops.push({ k: 'end', t: now });                // tell the pod, so the watch starts a new end too
   save(); render();
-  setStatus('New end started.');
+  setStatus(t('newEndStarted'));
   if (dev && dev.gatt.connected) { try { await flushOps(); } catch (e) {} }
 };
 
@@ -882,12 +1146,12 @@ $('newend').onclick = async () => {
 $('resetday').onclick = async () => {
   const today = dayKey(new Date());
   const list = live().filter(x => x.t > 1600000000 && dayKey(new Date(x.t * 1000)) === today);
-  if (!confirm(`Delete today's ${list.length} arrows? They are removed on the pod and the watch too.`)) return;
+  if (!confirm(t('confirmResetToday', { n: list.length }))) return;
   await deleteArrows(list, true);
-  const t = Math.floor(Date.now() / 1000);
-  db.endMarks.push(t); db.ops.push({ k: 'end', t });
+  const now = Math.floor(Date.now() / 1000);
+  db.endMarks.push(now); db.ops.push({ k: 'end', t: now });
   save(); render();
-  setStatus(`Today's ${list.length} arrows deleted.`);
+  setStatus(t('todayDeleted', { n: list.length }));
 };
 
 // ---------- the arrows of one end: delete, restore, details ----------
@@ -901,23 +1165,24 @@ async function deleteArrows(list, del) {
 let sheetEnd = null, sheetNo = 0, openRows = new Set();
 function openSheet(end, no) {
   sheetEnd = end; sheetNo = no; openRows = new Set();
-  $('sheet-title').textContent = `End ${no} · ${end.n} ${end.n === 1 ? 'arrow' : 'arrows'}`;
-  $('sheet-sub').textContent = `${fmtDate(end.start)}, ${fmtTime(end.start)} · ${end.arrows} per end`;
+  $('sheet-title').textContent = t('sheetTitle', { e: no, arrows: t('arrows', { n: end.n }) });
+  $('sheet-sub').textContent = `${fmtDate(end.start)}, ${fmtTime(end.start)} · ${t('perEnd', { n: end.arrows })}`;
   renderSheet();
   $('sheet').hidden = false;
 }
 function detailHtml(x) {
   const d = x.d, rows = [];
   if (d) {
-    rows.push(['Raise', d.raise !== null ? f1(d.raise) + ' s' : '–'], ['Draw &amp; set', d.draw !== null ? f1(d.draw) + ' s' : '–']);
-    rows.push(['Hold', d.hold !== null ? f1(d.hold) + ' s' : '–'], ['Aim movement', fmtMove(d.move)]);
-    rows.push(['Bow angle', (d.pitch >= 0 ? '+' : '') + d.pitch.toFixed(1) + '°'], ['Cant', fmtCant(d.cant)]);
-    rows.push(['Follow-through', fmtFollow(d)], ['Jolt', x.peak + ' g']);
+    const esc = v => v.replace(/&/g, '&amp;');
+    rows.push([esc(t('dRaise')), d.raise !== null ? f1(d.raise) + ' s' : '–'], [esc(t('dDraw')), d.draw !== null ? f1(d.draw) + ' s' : '–']);
+    rows.push([t('dHold'), d.hold !== null ? f1(d.hold) + ' s' : '–'], [t('dMove'), fmtMove(d.move)]);
+    rows.push([t('dAngle'), d.pitch === null ? '–' : (d.pitch >= 0 ? '+' : '') + d.pitch.toFixed(1) + '°'], [t('dCant'), fmtCant(d.cant)]);
+    rows.push([t('dFollow'), fmtFollow(d)], [t('dJolt'), x.peak + ' g']);
   } else {
-    rows.push(['Still before release', x.aim + ' s'], ['Jolt', x.peak + ' g']);
-    rows.push(['<span class="full">No phase details: shot with pod firmware older than 1.7.</span>', null]);
+    rows.push([t('dStill'), x.aim + ' s'], [t('dJolt'), x.peak + ' g']);
+    rows.push([t('noDetails'), null]);
   }
-  rows.push([`Time ${new Date(x.t * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`, null]);
+  rows.push([t('dTime', { t: new Date(x.t * 1000).toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }), null]);
   return rows.map(([k, v]) => v === null ? `<div class="full small">${k}</div>` : `<div><span class="k">${k}</span><br>${v}</div>`).join('');
 }
 function renderSheet() {
@@ -926,11 +1191,11 @@ function renderSheet() {
   $('sheet-list').innerHTML = list.map((x, k) => {
     const gone = x.flags & F_DEL;
     const when = k === 0 ? fmtTime(x.t) : fmtSplit(x.t - list[k - 1].t);
-    const quick = x.d && x.d.hold !== null ? `<span class="small">hold ${f1(x.d.hold)} s</span>` : '';
+    const quick = x.d && x.d.hold !== null ? `<span class="small">${t('avgHold', { v: f1(x.d.hold) })}</span>` : '';
     return `<div class="arow${gone ? ' gone' : ''}${openRows.has(k) ? ' open' : ''}" data-row="${k}"><div class="line">` +
       `<span class="no">${k + 1}</span><span class="tm" data-open="${k}" role="button" aria-expanded="${openRows.has(k)}">${when} ${quick}${icon('chev', 'i chev')}</span>` +
-      (gone ? `<button class="icon-btn undo" data-k="${k}" aria-label="Restore arrow ${k + 1}" title="Restore">${icon('undo')}</button>`
-            : `<button class="icon-btn del" data-k="${k}" aria-label="Delete arrow ${k + 1}" title="Delete">${icon('trash')}</button>`) +
+      (gone ? `<button class="icon-btn undo" data-k="${k}" aria-label="${t('restoreArrow', { n: k + 1 })}" title="${t('restoreArrowTip')}">${icon('undo')}</button>`
+            : `<button class="icon-btn del" data-k="${k}" aria-label="${t('deleteArrow', { n: k + 1 })}" title="${t('del')}">${icon('trash')}</button>`) +
       `</div><div class="det">${detailHtml(x)}</div></div>`;
   }).join('');
 }
@@ -953,13 +1218,13 @@ $('sheet-delend').onclick = async () => {
   if (!list.length) return;
   await deleteArrows(list, true);
   lastDeleted = list;
-  setStatus(`End with ${list.length} arrows deleted. <button class="btn ghost" id="undo">Undo</button>`);
+  setStatus(`${t('endDeleted', { n: list.length })} <button class="btn ghost" id="undo">${t('undo')}</button>`);
 };
 $('sheet-done').onclick = () => { $('sheet').hidden = true; };
 $('status').onclick = async e => {
   if (!e.target.closest('#undo') || !lastDeleted) return;
   await deleteArrows(lastDeleted, false);
-  setStatus(`${lastDeleted.length} arrows restored.`);
+  setStatus(t('restoredN', { n: lastDeleted.length }));
   lastDeleted = null;
 };
 
@@ -967,7 +1232,7 @@ $('status').onclick = async e => {
 // again (nextIndex is kept), and if the pod is connected its memory is cleared as well.
 $('reset').onclick = async () => {
   const n = db.shots.length;
-  if (!confirm(`Delete all ${n} arrows and the whole history on this phone? This cannot be undone. Tip: make a backup first.`)) return;
+  if (!confirm(t('confirmResetAll', { n }))) return;
   if (chars.ctrl && dev && dev.gatt.connected) {
     try {
       await sync(false);                                   // pick up anything new first, so it is not imported later
@@ -980,13 +1245,21 @@ $('reset').onclick = async () => {
   }
   db.shots = [];
   db.endMarks = [];
-  db.ops = db.ops.filter(o => o.k === 'set' || o.k === 'level');
+  db.ops = db.ops.filter(o => o.k === 'set');
   save(); render();
-  setStatus('All stats reset.' + (dev && dev.gatt.connected ? ' Pod memory cleared too.' : ''));
+  setStatus(t('allReset') + (dev && dev.gatt.connected ? t('podCleared') : ''));
 };
 
-render();
-updateButtons();
+// language: static texts, then everything drawn by script
+function applyLang() {
+  LANG = pickLang(db.settings.lang); LOC = LOCALES[LANG];
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); });
+  render(); updateButtons();
+  if (!$('sheet').hidden && sheetEnd) { $('sheet-title').textContent = t('sheetTitle', { e: sheetNo, arrows: t('arrows', { n: sheetEnd.n }) }); renderSheet(); }
+}
+applyLang();
 setInterval(() => { $('t-end').textContent = currentEnd(); }, 10000);
 if (typeof window !== 'undefined') window.PfeilZaehler3000 = { groupSessions, totals, buckets, parseData, parseInfo, parseStats, parseDetail, parseSettings, summary, fmtSplit, currentEnd, queueDelete, getDb: () => db };
 </script>

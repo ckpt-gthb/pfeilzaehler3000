@@ -67,12 +67,12 @@ class PfeilView extends WatchUi.View {
         }
         sunsetCheck = now;
         sunsetAt = null;
-        if (DEMO > 0) {                          // simulator screenshots: sunset in 1:23
+        if (DEMO > 0) {                          // example screens: sunset in 1:23
             sunsetAt = new Time.Moment(now + 83 * 60);
             return;
         }
         if (!(Toybox has :Weather) || !(Weather has :getSunset)) {
-            sunsetMsg = "no sunset on this watch";
+            sunsetMsg = tr(:noSunset);
             return;
         }
         var loc = null;
@@ -87,11 +87,11 @@ class PfeilView extends WatchUi.View {
             }
         }
         if (loc == null) {
-            sunsetMsg = "sunset: no position";
+            sunsetMsg = tr(:noPosition);
             return;
         }
         sunsetAt = Weather.getSunset(loc, Time.now());
-        sunsetMsg = (sunsetAt == null) ? "sunset: -" : "";
+        sunsetMsg = (sunsetAt == null) ? tr(:noSunset) : "";
     }
 
     function sunsetText() {
@@ -101,11 +101,11 @@ class PfeilView extends WatchUi.View {
         }
         var d = (sunsetAt as Time.Moment).value() - Time.now().value();
         if (d <= 0) {
-            return "after sunset";
+            return tr(:afterSunset);
         }
         var hrs = d / 3600;
         var mins = (d % 3600) / 60;
-        return "sunset in " + hrs.format("%d") + ":" + mins.format("%02d");
+        return trf(:sunsetIn, [hrs.format("%d") + ":" + mins.format("%02d")]);
     }
 
     function endColor(pod) {
@@ -131,24 +131,24 @@ class PfeilView extends WatchUi.View {
         dc.drawText(cx, h * 0.045, Graphics.FONT_TINY, clockText(), Graphics.TEXT_JUSTIFY_CENTER);
 
         // ---- status line ----
-        var statusText = "Starting...";
+        var statusText = tr(:starting);
         var statusColor = Graphics.COLOR_LT_GRAY;
         if (pod != null) {
             if (pod.status == :scanning) {
-                statusText = (pod.searchingSeconds() > 20) ? (pod.podLabel() + " in range?") : ("Looking for " + pod.podLabel() + "...");
+                statusText = (pod.searchingSeconds() > 20) ? trf(:inRange, [pod.podLabel()]) : trf(:looking, [pod.podLabel()]);
             } else if (pod.status == :connecting) {
-                statusText = "Connecting...";
+                statusText = tr(:connecting);
             } else if (pod.status == :lost) {
-                statusText = "Reconnecting...";
+                statusText = tr(:reconnecting);
                 statusColor = Graphics.COLOR_ORANGE;
             } else if (pod.status == :error) {
-                statusText = "Pod firmware 1.5 needed";
+                statusText = tr(:updateFw);
                 statusColor = Graphics.COLOR_RED;
             } else if (pod.status == :connected) {
-                statusText = (pod.batteryMv > 0) ? (pod.podLabel() + "  " + (pod.batteryMv / 1000.0).format("%.2f") + " V") : (pod.podLabel() + " connected");
+                statusText = (pod.batteryMv > 0) ? (pod.podLabel() + "  " + (pod.batteryMv / 1000.0).format("%.2f") + " V") : trf(:connected, [pod.podLabel()]);
                 statusColor = Graphics.COLOR_GREEN;
                 if (pod.batteryMv > 0 && pod.batteryMv < 3500) {
-                    statusText = pod.podLabel() + " low " + (pod.batteryMv / 1000.0).format("%.2f") + " V";
+                    statusText = trf(:low, [pod.podLabel(), (pod.batteryMv / 1000.0).format("%.2f")]);
                     statusColor = Graphics.COLOR_RED;
                 } else if (pod.batteryMv > 0 && pod.batteryMv < 3650) {
                     statusColor = Graphics.COLOR_ORANGE;
@@ -164,7 +164,7 @@ class PfeilView extends WatchUi.View {
 
         // ---- end number + time since the last arrow ----
         var since = pod.secondsSinceShot();
-        var endLine = "END " + (pod.endsDone + 1);
+        var endLine = tr(:endLine) + " " + (pod.endsDone + 1);
         if (since >= 0) {
             endLine += "   " + mmss(since);
         }
@@ -175,14 +175,14 @@ class PfeilView extends WatchUi.View {
         // end / session / today: the chosen one is big, the other two go into the row (in this order),
         // the row always ends with "week"
         var vals = [pod.endCount, pod.sessionCount, pod.today];
-        var names = ["end", "session", "today"];
+        var names = [tr(:end), tr(:session), tr(:today)];
         var big = pod.bigNum;
         var bigColor = (big == 0) ? endColor(pod) : Graphics.COLOR_WHITE;
         dc.setColor(bigColor, Graphics.COLOR_TRANSPARENT);
         dc.drawText(cx, h * 0.39, Graphics.FONT_NUMBER_THAI_HOT, num(vals[big] as Number),
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, h * 0.51, Graphics.FONT_XTINY, (big == 0) ? ("of " + pod.arrowsEnd) : (names[big] as String),
+        dc.drawText(cx, h * 0.51, Graphics.FONT_XTINY, (big == 0) ? trf(:of, [pod.arrowsEnd]) : (names[big] as String),
                     Graphics.TEXT_JUSTIFY_CENTER);
 
         var col = 0;
@@ -192,7 +192,7 @@ class PfeilView extends WatchUi.View {
             }
             var x = w * (0.25 + 0.25 * col);
             var value = (i == 3) ? num(pod.week) : num(vals[i] as Number);
-            var label = (i == 3) ? "week" : (names[i] as String);
+            var label = (i == 3) ? tr(:week) : (names[i] as String);
             if (i == 0) {
                 value = pod.endCount.toString() + "/" + pod.arrowsEnd.toString();
             }
@@ -202,7 +202,7 @@ class PfeilView extends WatchUi.View {
             dc.drawText(x, h * 0.68, Graphics.FONT_XTINY, label, Graphics.TEXT_JUSTIFY_CENTER);
             col += 1;
         }
-        dc.drawText(cx, h * 0.76, Graphics.FONT_XTINY, "month " + num(pod.month), Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, h * 0.76, Graphics.FONT_XTINY, trf(:month, [num(pod.month)]), Graphics.TEXT_JUSTIFY_CENTER);
 
         // ---- recording (bottom), time to sunset ----
         if (pod.isRecording()) {
@@ -211,7 +211,7 @@ class PfeilView extends WatchUi.View {
             dc.drawText(cx - 32, h * 0.84, Graphics.FONT_XTINY, "REC " + mmss(pod.recordingSeconds()), Graphics.TEXT_JUSTIFY_LEFT);
         } else {
             dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, h * 0.84, Graphics.FONT_XTINY, "START: record", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, h * 0.84, Graphics.FONT_XTINY, tr(:startRec), Graphics.TEXT_JUSTIFY_CENTER);
         }
         if (pod.showSunset) {
             dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);

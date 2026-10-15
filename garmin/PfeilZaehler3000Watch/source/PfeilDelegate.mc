@@ -3,7 +3,8 @@
 //   BACK     saves a running activity first; pressed again it leaves the app
 //   DOWN     start a new end now
 //   UP       delete the last arrow (asks first)
-//   hold UP  settings: arrows per end, new end after, big number, time to sunset, different pod
+//   hold UP  settings: arrows per end, new end after, big number, time to sunset, mounting point,
+//            language, different pod
 // The touchscreen does nothing: taps, holds and swipes are ignored, so a touch can't start
 // a recording or change anything by accident.
 
@@ -28,7 +29,7 @@ class PfeilDelegate extends WatchUi.BehaviorDelegate {
         }
         if (key == WatchUi.KEY_UP) {
             if (pod.sessionCount > 0) {
-                WatchUi.pushView(new WatchUi.Confirmation("Delete last arrow?"), new UndoDelegate(), WatchUi.SLIDE_IMMEDIATE);
+                WatchUi.pushView(new WatchUi.Confirmation(tr(:deleteLastQ)), new UndoDelegate(), WatchUi.SLIDE_IMMEDIATE);
             }
             return true;
         }
@@ -110,7 +111,6 @@ class ForgetPodDelegate extends WatchUi.ConfirmationDelegate {
 
 const ARROW_CHOICES = [3, 4, 5, 6, 7, 8, 9, 10, 12];
 const GAP_CHOICES   = [30, 45, 60, 90, 100, 120, 150, 180, 240, 300];
-const BIG_NAMES     = ["This end", "Session", "Today"];
 
 function gapText(sec) {
     if (sec % 60 == 0) {
@@ -119,17 +119,34 @@ function gapText(sec) {
     return sec.format("%d") + " s";
 }
 
+function bigName(n) {
+    return tr(n == 1 ? :bigSession : (n == 2 ? :bigToday : :bigEnd));
+}
+
+function mountName(m) {
+    return tr(m == 1 ? :mount1 : (m == 2 ? :mount2 : :mount0));
+}
+
+function langName(n) {
+    if (n == 1) { return "English"; }
+    if (n == 2) { return "Deutsch"; }
+    if (n == 3) { return "Polski"; }
+    return tr(:langAuto);
+}
+
 function openSettings() {
     var pod = getPod();
     if (pod == null) {
         return;
     }
-    var m = new WatchUi.Menu2({ :title => "Settings" });
-    m.addItem(new WatchUi.MenuItem("Arrows per end", pod.arrowsEnd.toString(), :arrows, null));
-    m.addItem(new WatchUi.MenuItem("New end after", gapText(pod.endGapS), :gap, null));
-    m.addItem(new WatchUi.MenuItem("Big number", BIG_NAMES[pod.bigNum] as String, :big, null));
-    m.addItem(new WatchUi.ToggleMenuItem("Time to sunset", null, :sunset, pod.showSunset, null));
-    m.addItem(new WatchUi.MenuItem("Use a different pod", pod.podLabel(), :forget, null));
+    var m = new WatchUi.Menu2({ :title => tr(:settings) });
+    m.addItem(new WatchUi.MenuItem(tr(:arrowsEnd), pod.arrowsEnd.toString(), :arrows, null));
+    m.addItem(new WatchUi.MenuItem(tr(:newEndAfter), gapText(pod.endGapS), :gap, null));
+    m.addItem(new WatchUi.MenuItem(tr(:bigNumber), bigName(pod.bigNum), :big, null));
+    m.addItem(new WatchUi.ToggleMenuItem(tr(:timeSunset), null, :sunset, pod.showSunset, null));
+    m.addItem(new WatchUi.MenuItem(tr(:mounting), mountName(pod.mount), :mount, null));
+    m.addItem(new WatchUi.MenuItem(tr(:language), langName(pod.langPref), :lang, null));
+    m.addItem(new WatchUi.MenuItem(tr(:otherPod), pod.podLabel(), :forget, null));
     WatchUi.pushView(m, new SettingsDelegate(), WatchUi.SLIDE_UP);
 }
 
@@ -146,15 +163,19 @@ class SettingsDelegate extends WatchUi.Menu2InputDelegate {
         }
         var id = item.getId();
         if (id == :arrows) {
-            pushChoice("Arrows per end", ARROW_CHOICES, pod.arrowsEnd, :arrows, item);
+            pushChoice(tr(:arrowsEnd), ARROW_CHOICES, pod.arrowsEnd, :arrows, item);
         } else if (id == :gap) {
-            pushChoice("New end after", GAP_CHOICES, pod.endGapS, :gap, item);
+            pushChoice(tr(:newEndAfter), GAP_CHOICES, pod.endGapS, :gap, item);
         } else if (id == :big) {
-            pushChoice("Big number", [0, 1, 2], pod.bigNum, :big, item);
+            pushChoice(tr(:bigNumber), [0, 1, 2], pod.bigNum, :big, item);
+        } else if (id == :mount) {
+            pushChoice(tr(:mounting), [0, 1, 2], pod.mount, :mount, item);
+        } else if (id == :lang) {
+            pushChoice(tr(:language), [0, 1, 2, 3], pod.langPref, :lang, item);
         } else if (id == :sunset) {
             pod.setShowSunset((item as WatchUi.ToggleMenuItem).isEnabled());
         } else if (id == :forget) {
-            WatchUi.pushView(new WatchUi.Confirmation("Use a different pod?"), new ForgetPodDelegate(), WatchUi.SLIDE_IMMEDIATE);
+            WatchUi.pushView(new WatchUi.Confirmation(tr(:otherPodQ)), new ForgetPodDelegate(), WatchUi.SLIDE_IMMEDIATE);
         }
     }
 
@@ -168,7 +189,13 @@ function choiceText(kind, v) {
         return gapText(v);
     }
     if (kind == :big) {
-        return BIG_NAMES[v] as String;
+        return bigName(v);
+    }
+    if (kind == :mount) {
+        return mountName(v);
+    }
+    if (kind == :lang) {
+        return langName(v);
     }
     return v.toString();
 }
@@ -179,7 +206,7 @@ function pushChoice(title, values, current, kind, parentItem) {
     var focus = 0;
     for (var i = 0; i < values.size(); i++) {
         var v = values[i] as Number;
-        m.addItem(new WatchUi.MenuItem(choiceText(kind, v), (v == current) ? "current" : null, v, null));
+        m.addItem(new WatchUi.MenuItem(choiceText(kind, v), (v == current) ? tr(:current) : null, v, null));
         if (v == current) {
             focus = i;
         }
@@ -209,6 +236,14 @@ class ChoiceDelegate extends WatchUi.Menu2InputDelegate {
                 pod.setEndGap(v);
             } else if (kind == :big) {
                 pod.setBigNum(v);
+            } else if (kind == :mount) {
+                pod.setMount(v);
+            } else if (kind == :lang) {
+                pod.setLangPref(v);
+                WatchUi.popView(WatchUi.SLIDE_IMMEDIATE);   // close the list
+                WatchUi.popView(WatchUi.SLIDE_IMMEDIATE);   // and the settings, written in the old language
+                openSettings();                             // open them again in the new one
+                return;
             }
         }
         (parentItem as WatchUi.MenuItem).setSubLabel(choiceText(kind, v));

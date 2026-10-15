@@ -1,4 +1,4 @@
-# Bluetooth interface (pod firmware 1.7)
+# Bluetooth interface (pod firmware 2.0)
 
 The pod is a Bluetooth Low Energy peripheral named `PfeilZaehler3000-XXXX`, where `XXXX` is the
 pod ID: the two lowest bytes of its Bluetooth address in hex (firmware 1.5 and older: just
@@ -18,8 +18,8 @@ Characteristic UUIDs: same, with the 8th hex digit replaced (`a7c1000N-…`).
 | `a7c10003-…` | CTRL | write | commands, see below |
 | `a7c10004-…` | DATA | notify | records sent after command 0x01 |
 | `a7c10005-…` | STATS | read, notify | 20 bytes, see below |
-| `a7c10006-…` | SETTINGS | read, write, notify | 8 bytes, see below (firmware 1.7+) |
-| `a7c10007-…` | DETAIL | notify | shot details, sent with DATA (firmware 1.7+) |
+| `a7c10006-…` | SETTINGS | read, write, notify | 10 bytes, see below |
+| `a7c10007-…` | DETAIL | notify | shot details, sent with DATA |
 
 ## TIME
 
@@ -36,8 +36,8 @@ The phone page and the watch write it on every connection.
 | 8 | u16 | battery voltage (mV) |
 | 10 | u8 | memory used (%) |
 | 11 | u8 | flags: bit0 clock set since start, bit1 awake |
-| 12 | u8 | firmware version (17 = 1.7, 97 = debug build of 1.7) |
-| 13 | 7 bytes | reserved, 0 (firmware 1.3–1.6: wake-ups, share of time awake, seconds since start) |
+| 12 | u8 | firmware version (20 = 2.0, 120 = debug build of 2.0) |
+| 13 | 7 bytes | reserved, 0 |
 
 Memory used counts records and shot details together. Notified after every record, deletion, end
 mark, wake-up and power-saving switch.
@@ -66,22 +66,25 @@ Notified together with INFO.
 | `05` 00 00 00 00 | Delete the newest arrow that is not deleted |
 | `06` 00 00 00 00 | Reset the today/week/month counters |
 | `07` u32 time | Store an end mark ("new end") with this time |
-| `09` 00 00 00 00 | The bow is upright now: store the current roll angle as cant 0 (firmware 1.7+) |
+| `09` 00 00 00 00 | Calibration step 1: the bow is upright, the arrow level; roll angle = cant 0, Z angle = bow angle 0 |
+| `0A` 00 00 00 00 | Calibration step 2: the arrow points at the ground; the pod finds its mounting point |
 
-Commands 04–07 and 09 are processed in the main loop, up to 8 can be queued.
+Commands 04–07, 09 and 0A are processed in the main loop, up to 8 can be queued.
 
-## SETTINGS (8 bytes, firmware 1.7+)
+## SETTINGS (10 bytes)
 
 | Offset | Type | Content |
 |---|---|---|
 | 0 | u8 | 0x5E |
 | 1 | u8 | arrows per end (1–24, default 6) |
 | 2 | u16 | new end after a pause of this many seconds (20–900, default 100) |
-| 4 | u8 | flags: bit0 cant 0 set with "bow upright", bit1 cant 0 taken from the first shot |
-| 5 | u8 | reserved |
+| 4 | u8 | flags: bit0 cant 0 set by the calibration, bit1 cant 0 taken from the first shot, bits 2–3 mounting point (0 back of the riser, 1 front, 2 side bushing) |
+| 5 | u8 | calibration: 0 not done, 1 step 1 done, 2 done, 3 failed (bow not tilted far enough) |
 | 6 | i16 | roll angle of the pod at cant 0 (0.1°) |
+| 8 | i16 | angle of the pod's Z axis with the arrow level, from the calibration (0.1°): tilt of the bushing |
 
-Write 3 bytes `[arrows per end][u16 seconds]` to change the settings. They are stored in flash and
+Write `[arrows per end][u16 seconds]` and optionally `[u8 mounting point 0–2]` (4 bytes) to
+change the settings; with 3 bytes the mounting point stays unchanged. They are stored in flash and
 notified to every connected device, so the phone page and the watch always use the same values;
 the last change counts.
 
@@ -99,7 +102,7 @@ Record (8 bytes):
 | 6 | u8 | still time before the release × 10 (s): rotation below 25 °/s |
 | 7 | u8 | flags: bit0 clock set, bit1 clock restored after a restart, bit6 end mark, bit7 deleted |
 
-## DETAIL (firmware 1.7+)
+## DETAIL
 
 If notifications on DETAIL are switched on, the pod sends a DETAIL notification right after every
 DATA notification of a dump: `u32 index of the first record` followed by one 8-byte detail per
@@ -116,5 +119,6 @@ record of the DATA packet. End marks and records stored by older firmware have a
 | 6 | i8 | follow-through 0.5 s after the release, forward / down (°) |
 | 7 | i8 | follow-through sideways, + = right (°) |
 
-Times above 25.4 s are stored as 255. Angles assume the bolt points towards the target (sensor Z
-axis along the arrow).
+Times above 25.4 s are stored as 255. Bow angle, cant and follow-through need the pod on the back
+or the front of the riser (sensor Z axis roughly along the arrow) and the mounting point set in SETTINGS;
+with the pod in a side bushing they are -128 (not measured).
