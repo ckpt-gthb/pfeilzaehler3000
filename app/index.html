@@ -938,6 +938,11 @@ function queueDelete(indices, del) {
     k += n;
   }
 }
+// one waiting settings write; a waiting change of the mounting point is kept
+function queueSettings(mount) {
+  const had = db.ops.some(o => o.k === 'set' && o.mount);
+  db.ops = db.ops.filter(o => o.k !== 'set'); db.ops.push({ k: 'set', mount: mount || had });
+}
 let flushing = null;                               // one sender at a time (a pod notification may start a sync meanwhile)
 function flushOps() {
   if (!flushing) flushing = sendOps().finally(() => { flushing = null; });
@@ -948,7 +953,11 @@ async function sendOps() {
   while (db.ops.length) {
     const op = db.ops[0], c = new Uint8Array(8), v = new DataView(c.buffer);
     if (op.k === 'set') {
-      if (chars.settings) { const b = new Uint8Array(4); b[0] = db.settings.arrows; new DataView(b.buffer).setUint16(1, db.settings.endGap, true); b[3] = db.settings.mount || 0; await chars.settings.writeValue(b); }
+      if (chars.settings) {                     // the mounting point only if it was changed here (op.mount)
+        const b = new Uint8Array(op.mount ? 4 : 3); b[0] = db.settings.arrows; new DataView(b.buffer).setUint16(1, db.settings.endGap, true);
+        if (op.mount) b[3] = db.settings.mount || 0;
+        await chars.settings.writeValue(b);
+      }
       db.ops.shift(); save(); continue;
     }
     if (op.k === 'del') { c[0] = 4; v.setUint32(1, op.i, true); v.setUint16(5, op.n, true); c[7] = op.d; }
@@ -1049,7 +1058,7 @@ for (const [k, id] of Object.entries(S)) {
     db.settings[k] = v;
     if (k === 'arrows' || k === 'endGap') {        // applies from now on, earlier ends keep their values
       db.hist.push({ from: Math.floor(Date.now() / 1000), arrows: db.settings.arrows, endGap: db.settings.endGap });
-      db.ops = db.ops.filter(o => o.k !== 'set'); db.ops.push({ k: 'set' });   // to the pod, the watch follows
+      queueSettings(false);                         // to the pod, the watch follows
     }
     save(); render();
     if (dev && dev.gatt.connected) { try { await flushOps(); } catch (err) {} }
@@ -1058,7 +1067,7 @@ for (const [k, id] of Object.entries(S)) {
 $('s-mount').value = db.settings.mount || 0;
 $('s-mount').onchange = async e => {
   db.settings.mount = Number(e.target.value);
-  db.ops = db.ops.filter(o => o.k !== 'set'); db.ops.push({ k: 'set' });
+  queueSettings(true);
   save();
   if (dev && dev.gatt.connected) { try { await flushOps(); } catch (err) {} }
 };

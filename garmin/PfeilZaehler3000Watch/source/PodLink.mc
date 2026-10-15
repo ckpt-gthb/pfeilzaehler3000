@@ -131,14 +131,14 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     function setArrowsEnd(n) {
         arrowsEnd = n;
         Storage.setValue("arrowsEnd", n);
-        sendSettings();
+        sendSettings(false);
         WatchUi.requestUpdate();
     }
 
     function setEndGap(sec) {
         endGapS = sec;
         Storage.setValue("endGapS", sec);
-        sendSettings();
+        sendSettings(false);
         WatchUi.requestUpdate();
     }
 
@@ -151,7 +151,7 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     function setMount(m) {
         mount = m;
         Storage.setValue("mount", m);
-        sendSettings();
+        sendSettings(true);
         WatchUi.requestUpdate();
     }
 
@@ -168,15 +168,23 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     }
 
     // to the pod; the phone page takes it over from there
-    function sendSettings() {
-        var b = new [4]b;
+    // withMount: only when the mounting point was changed here; otherwise 3 bytes, so a mounting
+    // point found by the calibration on the phone is never overwritten with an old value
+    function sendSettings(withMount) {
+        for (var i = queue.size() - 1; i >= 0; i--) {   // only the newest settings matter
+            var old = queue[i] as Array;
+            if (old[0] == :set) {
+                if ((old[1] as ByteArray).size() == 4) {
+                    withMount = true;            // a waiting mounting point change is kept
+                }
+                queue.remove(old);
+            }
+        }
+        var b = new [withMount ? 4 : 3]b;
         b[0] = arrowsEnd;
         b.encodeNumber(endGapS, Lang.NUMBER_FORMAT_UINT16, { :offset => 1, :endianness => Lang.ENDIAN_LITTLE });
-        b[3] = mount;
-        for (var i = queue.size() - 1; i >= 0; i--) {   // only the newest settings matter
-            if ((queue[i] as Array)[0] == :set) {
-                queue.remove(queue[i]);
-            }
+        if (withMount) {
+            b[3] = mount;
         }
         queue.add([:set, b]);
         sendNext();
