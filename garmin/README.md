@@ -1,21 +1,43 @@
 # PfeilZaehler3000 watch app – Garmin Epix Gen 2
 
-Watch app version 1.2 (12 Oct 2026). Needs pod firmware v1.5 or newer; v1.6 for pairing with your own pod.
+Watch app version 1.3 (15 Oct 2026). Needs pod firmware v1.5 or newer; v1.6 for pairing with your own pod,
+v1.7 for settings shared with the phone page.
 
 The watch connects straight to the pod over Bluetooth, no phone needed while shooting.
 
-**Screen:** pod ID and battery at the top, e.g. "Pod A3F2 3.95 V" (orange when getting low, red when it needs charging), end number
-and time since the last arrow, arrows in the current end (big, green at 6, orange above 6), then
-arrows this session, today, this week and this month.
-**Each arrow:** a short vibration, a double vibration when the end has 6 arrows. A pause of more than
-100 s starts a new end.
+**Screen, from the top:** time of day; pod ID and battery, e.g. "Pod A3F2 3.95 V" (orange when
+getting low, red when it needs charging); end number and time since the last arrow; the big number;
+below it the other counters (this end, session, today, week); this month; the recording state; and,
+if switched on, the time to sunset.
+The big number is the current end by default (green when the end is complete, orange with an extra
+arrow). It can be changed to the session or today's arrows in the settings.
+**Each arrow:** a short vibration, a double vibration when the end is complete. A pause longer than
+the "new end after" setting (100 s by default) starts a new end.
 
 **Buttons**
 * **START:** start / stop a Garmin activity "Bogenschiessen". Arrows and ends are saved in it, and
   every end is a lap with its arrow count. **BACK** saves a running activity; press again to leave.
 * **DOWN:** start a new end now (e.g. after a miss you don't want to shoot again).
 * **UP:** delete the last arrow (asks first), e.g. after a bump that was counted.
-* **Hold UP:** use a different pod (asks first).
+* **Hold UP:** settings (see below).
+* The touchscreen is not used, so touching the screen can't start a recording by accident.
+
+## Settings (hold UP)
+
+| Setting | Values | Stored |
+|---|---|---|
+| Arrows per end | 3–12 (default 6) | in the pod, shared with the phone page |
+| New end after | 30 s – 5 min (default 100 s) | in the pod, shared with the phone page |
+| Big number | this end, session, today | on the watch |
+| Time to sunset | on / off | on the watch |
+| Use a different pod | asks first | on the watch |
+
+"Arrows per end" and "new end after" are the same values as on the phone page: a change on either
+one reaches the other through the pod, and the last change counts. With pod firmware older than 1.7
+they stay on the watch.
+
+The sunset time comes from the watch's weather position (synced by Garmin Connect), otherwise from
+the last GPS position. The app asks for the location permission for this.
 
 ## Your own pod
 
@@ -28,7 +50,8 @@ to another pod, hold UP, confirm, and keep only the new pod nearby.
 
 Today, week and month come from the pod, so the watch and the phone page show the same numbers,
 including arrows shot while the watch app was closed. An arrow deleted on the watch is also deleted
-on the phone page, and the other way round. "New end" on the phone also starts a new end on the
+on the phone page, and the other way round: the watch then takes it off the session and the end
+too. An arrow restored on the phone comes back without a vibration. "New end" on the phone also starts a new end on the
 watch, and DOWN on the watch shows up on the phone. The watch and the phone page can be connected
 at the same time.
 
@@ -60,7 +83,26 @@ the pod is back. There's no need to restart the app.
 
 Never publish the developer key, and keep `.prg` files out of the repository.
 
-The simulator (`Monkey C: Run`) only checks the screen layout; it can't reach the real pod.
+The simulator (Run → Run Without Debugging) only checks the screen layout; it can't reach the real pod.
+
+## Screenshots in the simulator
+
+`source/PodLink.mc` has a demo mode with example values, so every screen can be shown without a pod.
+Set `const DEMO = 1;` (near the top of the file), start the simulator, take the screenshot
+(File → Save Screenshot in the simulator), change the number, run again:
+
+| DEMO | Screen |
+|---|---|
+| 1 | Recording, end 8 with 4 of 6 arrows, time to sunset |
+| 2 | End complete (6 of 6, green), not recording |
+| 3 | Big number = session, an extra arrow (7/6, orange), pod battery getting low, recording |
+| 4 | Big number = today, 3 arrows per end, pod out of range ("Reconnecting...") |
+
+The buttons work in the demo too: hold UP for the settings menu (and its lists), UP for "Delete
+last arrow?", DOWN for a new end, START to switch recording on and off. Nothing is sent anywhere.
+
+**Set `DEMO = 0` again before building for the watch.** With a demo number the app never connects
+to the pod.
 
 ## Good to know
 

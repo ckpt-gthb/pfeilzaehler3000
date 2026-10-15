@@ -6,15 +6,19 @@
 //   a7c10005  STATS  read/notify 20 bytes: arrows u32 @0 (lifetime, without deleted), today u16 @4,
 //                    week u16 @6, month u16 @8, battery mV u16 @10, last end mark u32 @12,
 //                    last arrow u32 @16
+//   a7c10006  SETTINGS read/write/notify (pod firmware v1.7+): 8 bytes, arrows per end u8 @1,
+//                    new end after u16 seconds @2; write [arrows][u16 seconds]
 // The pod notifies STATS after every arrow, deletion or end mark (from the watch or the phone),
-// so today / week / month are the same on the watch and on the phone page.
+// so today / week / month are the same on the watch and on the phone page. SETTINGS are shared
+// the same way: a change on the watch or the phone reaches the other one, the last change counts.
 //
 // Several pods at one range: every pod (firmware 1.6+) is named "PfeilZaehler3000-XXXX" and sends
 // the same 16-bit ID as manufacturer data in its advertising. The watch remembers the first pod it
 // connects to and from then on only connects to that one (hold UP to choose another).
 //
 // Connect IQ allows one outstanding BLE request at a time, so the setup runs as a chain:
-//   connect -> enable STATS notifications -> write TIME -> read STATS -> live (queued CTRL writes).
+//   connect -> STATS notifications on -> SETTINGS notifications on -> write TIME -> read STATS
+//   -> read SETTINGS -> live (queued CTRL / SETTINGS writes).
 // If the pod goes out of range, the watch stays paired and reconnects by itself; after
 // RECONNECT_S without success it searches again from scratch.
 
@@ -31,8 +35,10 @@ import Toybox.Timer;
 import Toybox.Application.Storage;
 
 const POD_NAME    = "PfeilZaehler3000";
-const END_GAP_S   = 100;     // longer pause than this = new end (walk to the target)
-const ARROWS_END  = 6;
+
+// DEMO for simulator screenshots: 0 = normal app (always use 0 for the real watch),
+// 1–4 = example screens without a pod (see garmin/README.md, "Screenshots in the simulator")
+const DEMO = 0;
 const RECONNECT_S = 30;      // after this long without the pod: search again
 
 class PodLink extends BluetoothLowEnergy.BleDelegate {
@@ -42,16 +48,18 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     var timeUuid;
     var ctrlUuid;
     var statsUuid;
+    var setUuid;
     var device = null;
     var statsCh = null;
+    var setCh = null;
     var timeCh = null;
     var ctrlCh = null;
     var status = :starting;      // :starting :scanning :connecting :lost :connected :error
     var scanSince = 0;
     var lostSince = 0;
-    var setupStep = 0;           // 1 notifications, 2 time, 3 first read, 4 live
+    var setupStep = 0;           // 1 STATS notif., 5 SETTINGS notif., 2 time, 3 read STATS, 6 read SETTINGS, 4 live
     var busy = false;
-    var queue = [];              // CTRL commands waiting to be sent
+    var queue = [];              // [characteristic id, bytes] waiting to be sent (:ctrl or :set)
     var timer = null;
     var myPod = null;            // ID of this watch's pod (null = take the first one found)
     var candId = -1;             // ID of the pod being connected
@@ -63,6 +71,13 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     var month = -1;
     var batteryMv = 0;
     var podEndMark = 0;
+    var podLastArrow = 0;        // newest "last arrow" time seen: a smaller one means a restored arrow
+
+    // ---- settings (stored in the pod, firmware 1.7+; kept on the watch too) ----
+    var arrowsEnd = 6;           // arrows per end
+    var endGapS = 100;           // longer pause than this = new end (walk to the target)
+    var bigNum = 0;              // big number on the screen: 0 end, 1 session, 2 today (watch only)
+    var showSunset = false;      // time to sunset at the bottom (watch only)
 
     // ---- this session on the watch ----
     var sessionCount = 0;
@@ -79,6 +94,7 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     var fArrowsRecord = null;
     var fArrowsLap = null;
     var recStartSec = 0;
+    var demoRec = false;         // DEMO: recording shown without a real activity
 
     function initialize() {
         BleDelegate.initialize();
@@ -86,12 +102,91 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
         timeUuid  = BluetoothLowEnergy.stringToUuid("a7c10001-5b1e-4c5a-9d1e-3b7a0c0f0ee0");
         ctrlUuid  = BluetoothLowEnergy.stringToUuid("a7c10003-5b1e-4c5a-9d1e-3b7a0c0f0ee0");
         statsUuid = BluetoothLowEnergy.stringToUuid("a7c10005-5b1e-4c5a-9d1e-3b7a0c0f0ee0");
+        setUuid   = BluetoothLowEnergy.stringToUuid("a7c10006-5b1e-4c5a-9d1e-3b7a0c0f0ee0");
         var v = Storage.getValue("podId");
         myPod = (v instanceof Number) ? v as Number : null;
+        arrowsEnd = numPref("arrowsEnd", 6, 1, 24);
+        endGapS = numPref("endGapS", 100, 20, 900);
+        bigNum = numPref("bigNum", 0, 0, 2);
+        showSunset = Storage.getValue("sunset") == true;
+    }
+
+    function numPref(key, def, lo, hi) {
+        var v = Storage.getValue(key);
+        if (v instanceof Number) {
+            var n = v as Number;
+            if (n >= lo && n <= hi) {
+                return n;
+            }
+        }
+        return def;
+    }
+
+    // ---- settings menu ----
+    function setArrowsEnd(n) {
+        arrowsEnd = n;
+        Storage.setValue("arrowsEnd", n);
+        sendSettings();
+        WatchUi.requestUpdate();
+    }
+
+    function setEndGap(sec) {
+        endGapS = sec;
+        Storage.setValue("endGapS", sec);
+        sendSettings();
+        WatchUi.requestUpdate();
+    }
+
+    function setBigNum(n) {
+        bigNum = n;
+        Storage.setValue("bigNum", n);
+        WatchUi.requestUpdate();
+    }
+
+    function setShowSunset(on) {
+        showSunset = on;
+        Storage.setValue("sunset", on);
+        WatchUi.requestUpdate();
+    }
+
+    // to the pod (firmware 1.7+); the phone page takes it over from there
+    function sendSettings() {
+        var b = new [3]b;
+        b[0] = arrowsEnd;
+        b.encodeNumber(endGapS, Lang.NUMBER_FORMAT_UINT16, { :offset => 1, :endianness => Lang.ENDIAN_LITTLE });
+        for (var i = queue.size() - 1; i >= 0; i--) {   // only the newest settings matter
+            if ((queue[i] as Array)[0] == :set) {
+                queue.remove(queue[i]);
+            }
+        }
+        queue.add([:set, b]);
+        sendNext();
+    }
+
+    // SETTINGS from the pod (changed on the phone or by this watch)
+    function handleSettings(v) {
+        if (v == null || v.size() < 4) {
+            return;
+        }
+        var a = v[1] as Number;
+        var g = v.decodeNumber(Lang.NUMBER_FORMAT_UINT16, { :offset => 2, :endianness => Lang.ENDIAN_LITTLE }).toNumber();
+        if (a >= 1 && a <= 24 && g >= 20 && g <= 900) {
+            arrowsEnd = a;
+            endGapS = g;
+            Storage.setValue("arrowsEnd", a);
+            Storage.setValue("endGapS", g);
+        }
     }
 
     // hold UP: forget the remembered pod and take the next one found
     function forgetPod() {
+        if (DEMO > 0) {
+            status = :scanning;                  // demo: just show the search
+            scanSince = Time.now().value();
+            myPod = null;
+            WatchUi.requestUpdate();
+            return;
+        }
         Storage.deleteValue("podId");
         myPod = null;
         var d = device;
@@ -100,11 +195,13 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
             BluetoothLowEnergy.unpairDevice(d);
         }
         statsCh = null;
+        setCh = null;
         timeCh = null;
         ctrlCh = null;
         busy = false;
         setupStep = 0;
         podArrows = -1;
+        podLastArrow = 0;
         today = -1;
         week = -1;
         month = -1;
@@ -120,12 +217,17 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     }
 
     function start() {
+        if (DEMO > 0) {
+            startDemo();
+            return;
+        }
         BluetoothLowEnergy.setDelegate(self);
         try {
             BluetoothLowEnergy.registerProfile({
                 :uuid => svcUuid,
                 :characteristics => [
                     { :uuid => statsUuid, :descriptors => [ BluetoothLowEnergy.cccdUuid() ] },
+                    { :uuid => setUuid, :descriptors => [ BluetoothLowEnergy.cccdUuid() ] },
                     { :uuid => timeUuid },
                     { :uuid => ctrlUuid }
                 ]
@@ -258,6 +360,7 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
                 return;
             }
             statsCh = svc.getCharacteristic(statsUuid);
+            setCh = svc.getCharacteristic(setUuid);      // null with pod firmware older than 1.7
             timeCh = svc.getCharacteristic(timeUuid);
             ctrlCh = svc.getCharacteristic(ctrlUuid);
             var cccd = (statsCh != null) ? statsCh.getDescriptor(BluetoothLowEnergy.cccdUuid()) : null;
@@ -275,6 +378,7 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
             }
             // out of range or pod restarted: stay paired, the watch reconnects by itself
             statsCh = null;
+            setCh = null;
             timeCh = null;
             ctrlCh = null;
             busy = false;
@@ -286,6 +390,15 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     }
 
     function onDescriptorWrite(descriptor, st) {
+        // step 1b: SETTINGS notifications too (pod firmware 1.7+)
+        if (setupStep == 1 && setCh != null) {
+            var cccd = setCh.getDescriptor(BluetoothLowEnergy.cccdUuid());
+            if (cccd != null) {
+                setupStep = 5;
+                cccd.requestWrite([0x01, 0x00]b);
+                return;
+            }
+        }
         // step 2: pod clock and local time offset from the watch
         if (timeCh != null) {
             setupStep = 2;
@@ -314,8 +427,18 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     }
 
     function onCharacteristicRead(ch, st, value) {
+        var isSettings = setCh != null && ch.getUuid().equals(setUuid);
         if (st == BluetoothLowEnergy.STATUS_SUCCESS) {
-            handleStats(value);
+            if (isSettings) {
+                handleSettings(value);
+            } else {
+                handleStats(value);
+            }
+        }
+        if (setupStep == 3 && setCh != null && !isSettings) {
+            setupStep = 6;                       // step 3b: the pod's settings
+            setCh.requestRead();
+            return;
         }
         setupStep = 4;
         if (myPod == null && candId >= 0) {     // first pod: remember it
@@ -329,21 +452,28 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     }
 
     function onCharacteristicChanged(ch, value) {
-        handleStats(value);
+        if (setCh != null && ch.getUuid().equals(setUuid)) {
+            handleSettings(value);
+        } else {
+            handleStats(value);
+        }
         WatchUi.requestUpdate();
     }
 
     function sendNext() {
-        if (busy || setupStep != 4 || ctrlCh == null || queue.size() == 0) {
-            return;
-        }
-        var b = queue[0];
-        queue = queue.slice(1, null);
-        busy = true;
-        try {
-            ctrlCh.requestWrite(b, { :writeType => BluetoothLowEnergy.WRITE_TYPE_WITH_RESPONSE });
-        } catch (e) {
-            busy = false;
+        while (!busy && setupStep == 4 && queue.size() > 0) {
+            var item = queue[0] as Array;
+            queue = queue.slice(1, null);
+            var ch = (item[0] == :set) ? setCh : ctrlCh;
+            if (ch == null) {
+                continue;                        // older pod firmware: nothing to send this to
+            }
+            busy = true;
+            try {
+                (ch as BluetoothLowEnergy.Characteristic).requestWrite(item[1] as ByteArray, { :writeType => BluetoothLowEnergy.WRITE_TYPE_WITH_RESPONSE });
+            } catch (e) {
+                busy = false;
+            }
         }
     }
 
@@ -351,7 +481,7 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
         var b = new [5]b;
         b[0] = cmd;
         b.encodeNumber(value, Lang.NUMBER_FORMAT_UINT32, { :offset => 1, :endianness => Lang.ENDIAN_LITTLE });
-        queue.add(b);
+        queue.add([:ctrl, b]);
         sendNext();
     }
 
@@ -384,6 +514,8 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
         batteryMv = v.decodeNumber(Lang.NUMBER_FORMAT_UINT16, opt).toNumber();
         opt[:offset] = 12;
         var mark = v.decodeNumber(Lang.NUMBER_FORMAT_UINT32, opt).toNumber();
+        opt[:offset] = 16;
+        var lastArrow = v.decodeNumber(Lang.NUMBER_FORMAT_UINT32, opt).toNumber();
 
         if (podArrows >= 0 && mark != podEndMark && mark > lastShotSec) {
             forceNewEnd = true;                  // "new end" on the phone (or this watch)
@@ -392,18 +524,28 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
 
         if (podArrows < 0) {                     // first value: nothing to add
             podArrows = arrows;
+            podLastArrow = lastArrow;
             return;
         }
         var n = arrows - podArrows;
         podArrows = arrows;
-        if (n > 0) {
+        // a new shot has the newest time; a restored arrow brings back an older one
+        var newShot = lastArrow > podLastArrow || (Time.now().value() - lastArrow).abs() < 10;
+        if (lastArrow > podLastArrow) {
+            podLastArrow = lastArrow;
+        }
+        if (n > 0 && newShot) {
             addArrows(n);
+        } else if (n > 0) {
+            restoreArrows(n);                    // deleted by mistake on the phone and restored
+        } else if (n < 0) {
+            removeArrows(-n);                    // deleted on the phone page
         }
     }
 
     function addArrows(n) {
         var now = Time.now().value();
-        if (endCount > 0 && (now - lastShotSec > END_GAP_S || forceNewEnd)) {
+        if (endCount > 0 && (now - lastShotSec > endGapS || forceNewEnd)) {
             finishEnd();
         }
         forceNewEnd = false;
@@ -412,7 +554,7 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
         lastShotSec = now;
 
         if (Attention has :vibrate) {
-            if (endCount == ARROWS_END) {       // end complete: double buzz
+            if (endCount == arrowsEnd) {        // end complete: double buzz
                 Attention.vibrate([ new Attention.VibeProfile(80, 150), new Attention.VibeProfile(0, 100),
                                     new Attention.VibeProfile(80, 150) ]);
             } else {
@@ -420,6 +562,32 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
             }
         }
         updateFit();
+    }
+
+    // arrows restored on the phone: count them again, without a vibration
+    function restoreArrows(n) {
+        endCount += n;
+        sessionCount += n;
+        updateFit();
+    }
+
+    // arrows deleted on the phone: take them off the session and the end (newest first)
+    function removeArrows(n) {
+        for (var i = 0; i < n && sessionCount > 0; i++) {
+            dropOne();
+        }
+        updateFit();
+    }
+
+    function dropOne() {
+        sessionCount -= 1;
+        if (endCount > 0) {
+            endCount -= 1;
+        } else if (endHist.size() > 0) {
+            endCount = (endHist[endHist.size() - 1] as Number) - 1;
+            endHist = endHist.slice(0, endHist.size() - 1);
+            endsDone -= 1;
+        }
     }
 
     function finishEnd() {
@@ -453,17 +621,10 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
             return;
         }
         sendCtrl(0x05, 0);
-        sessionCount -= 1;
         if (podArrows > 0) {
             podArrows -= 1;                      // the pod's count will drop by one, that's expected
         }
-        if (endCount > 0) {
-            endCount -= 1;
-        } else if (endHist.size() > 0) {
-            endCount = (endHist[endHist.size() - 1] as Number) - 1;
-            endHist = endHist.slice(0, endHist.size() - 1);
-            endsDone -= 1;
-        }
+        dropOne();
         updateFit();
         WatchUi.requestUpdate();
     }
@@ -485,10 +646,19 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     // ================= activity recording =================
 
     function isRecording() {
+        if (DEMO > 0) {
+            return demoRec;
+        }
         return session != null && session.isRecording();
     }
 
     function toggleRecording() {
+        if (DEMO > 0) {                          // demo: no real activity
+            demoRec = !demoRec;
+            recStartSec = Time.now().value();
+            WatchUi.requestUpdate();
+            return;
+        }
         if (isRecording()) {
             stopRecording(true);
         } else {
@@ -564,5 +734,67 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
             return 0;
         }
         return Time.now().value() - recStartSec;
+    }
+
+    // ================= demo screens (simulator) =================
+    // 1: recording, end 4 of 6, time to sunset        2: end complete 6/6, not recording
+    // 3: big number = session, extra arrow 7/6, pod battery getting low, recording
+    // 4: big number = today, pod out of range (reconnecting), 3 arrows per end
+    // In every demo: DOWN = new end, UP = delete last arrow, START = recording on/off,
+    // hold UP = settings menu, all without a pod.
+    function startDemo() {
+        var now = Time.now().value();
+        status = :connected;
+        myPod = 0xA3F2;
+        batteryMv = 3980;
+        arrowsEnd = 6;
+        endGapS = 100;
+        bigNum = 0;
+        showSunset = true;
+        demoRec = true;
+        recStartSec = now - 38 * 60 - 12;
+        endsDone = 7;
+        endHist = [6, 6, 6, 6, 6, 6, 6];
+        endCount = 4;
+        sessionCount = 46;
+        today = 46;
+        week = 212;
+        month = 734;
+        lastShotSec = now - 42;
+        if (DEMO == 2) {
+            endCount = 6;
+            sessionCount = 48;
+            today = 48;
+            week = 214;
+            demoRec = false;
+            showSunset = false;
+            lastShotSec = now - 7;
+        } else if (DEMO == 3) {
+            bigNum = 1;
+            endsDone = 11;
+            endHist = [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6];
+            endCount = 7;
+            sessionCount = 73;
+            today = 73;
+            week = 239;
+            month = 761;
+            batteryMv = 3620;
+            recStartSec = now - 61 * 60 - 5;
+            lastShotSec = now - 18;
+        } else if (DEMO == 4) {
+            bigNum = 2;
+            arrowsEnd = 3;
+            endsDone = 20;
+            endHist = [];
+            endCount = 2;
+            sessionCount = 62;
+            today = 108;
+            week = 304;
+            month = 826;
+            status = :lost;
+            lostSince = now;
+            demoRec = false;
+            lastShotSec = now - 95;
+        }
     }
 }

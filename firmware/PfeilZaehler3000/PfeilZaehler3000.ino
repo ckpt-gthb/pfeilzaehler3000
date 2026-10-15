@@ -5,7 +5,7 @@
             Arduino core: "Seeed nRF52 Boards" (the NON-mbed one – needed for Bluefruit + LittleFS)
   Sensors : onboard LSM6DS3TR-C (gyro + accel, internal I2C bus Wire1)
             ADXL375 high-g accelerometer breakout on Wire (D4 = SDA, D5 = SCL)
-  Storage : internal flash (LittleFS), ~2500 shots between syncs
+  Storage : internal flash (LittleFS), ~1400 shots with details between syncs
   Sync    : Bluetooth LE, custom service, read by the PfeilZaehler3000 web app
 
   A shot is counted when ALL of these happen:
@@ -13,6 +13,13 @@
     2. a sharp jolt above SPIKE_G hits the riser (string stops -> release shock)
     3. the riser keeps ringing (vibration above RING_G) for the next ~150 ms
   Other archers' shots never reach this sensor, so a shared target is not a problem.
+
+  Shot details (v1.7): the last 30 s of bow angle and rotation are kept in RAM. At every shot the
+  pod looks back and finds the raise (bow lowered -> aiming angle), draw and set, and the final
+  hold; it also measures the aim movement in the last second, the bow angle and cant at release
+  and the follow-through (how the bow moves in the first 0.5 s after release).
+  Assumed mounting: bolt in a front bushing, so the sensor's Z axis points along the arrow,
+  lid towards the target.
 
   No libraries to install – everything used ships with the Seeed nRF52 core.
 */
@@ -38,6 +45,29 @@ struct __attribute__((packed)) ShotRec {
 #define FLAG_ENDMARK 0x40
 #define FLAG_DELETED 0x80
 
+// Shot details, one per record in a second file (all zero for end marks and old records).
+// Times: units of 100 ms, 0 = not found, 255 = 25.5 s or more.
+struct __attribute__((packed)) ShotDetail {
+  uint8_t raise100;  // raise: from the lowered bow (pre-draw) until the aiming angle is reached
+  uint8_t draw100;   // draw and set: from reaching the aiming angle until the final hold starts
+  uint8_t hold100;   // hold: the bow almost still (below HOLD_DPS) until the release
+  uint8_t wander;    // aim movement in the last second before release, RMS in 0.01 degrees
+  int8_t  pitch2;    // bow angle at release, 0.5 degrees, + = aiming up
+  int8_t  cant2;     // cant at release, 0.5 degrees, + = top limb to the right (after "set level")
+  int8_t  dropDeg;   // follow-through 0.5 s after release: + = bow tips forward / down, degrees
+  int8_t  sideDeg;   // follow-through sideways: + = to the right, degrees
+};
+
+struct __attribute__((packed)) Settings {    // shared by phone page and watch, last change wins
+  uint8_t  magic;            // SETTINGS_MAGIC
+  uint8_t  arrowsPerEnd;     // 1–24, default 6
+  uint16_t endPauseS;        // pause that starts a new end, 20–900 s, default 100
+  uint8_t  flags;            // bit0: cant zero set ("set level")
+  uint8_t  rsv;
+  int16_t  cantRef10;        // roll angle of the pod when the bow is level, 0.1 degrees
+};
+#define SETTINGS_MAGIC 0x5E
+
 struct __attribute__((packed)) MetaV1 {      // v1.0–1.4 layout, read once and converted
   uint32_t magic;
   uint32_t baseIndex;
@@ -57,6 +87,11 @@ struct __attribute__((packed)) Meta {
 struct __attribute__((packed)) DayCnt {      // arrows per local day, for today / week / month
   int32_t  day;              // days since 1 Jan 1970, local time
   uint16_t n;
+};
+
+struct __attribute__((packed)) HistSample {  // motion history, 50 Hz (see shot detection)
+  int16_t pitch10;   // angle of the pod's Z axis (= arrow) above horizontal, 0.1 degrees
+  uint8_t rate2;     // smoothed rotation, 0.5 deg/s (max 127 deg/s)
 };
 
 struct CtrlOp {                              // control command waiting for the main loop
@@ -81,9 +116,18 @@ struct CtrlOp {                              // control command waiting for the 
 #define USE_MOTOR         0        // 1 = buzz a coin vibration motor on each counted shot
 #define MOTOR_PIN         D2
 
+// shot phases (first estimates – check them with the Serial Monitor, see build guide)
+#define HOLD_DPS           8.0f    // smoothed rotation below this = final hold
+#define AWAY_DEG          15.0f    // bow angle this far from the release angle = lowered (pre-draw)
+#define LEVEL_DEG          4.0f    // bow angle within this of the release angle = raised to aim
+#define REST_DPS           5.0f    // slower than this for 0.3 s while lowered = resting, raise not begun
+#define FOLLOW_MS          500     // follow-through measured over this time after the release
+
 #define MAX_CONNECTIONS   3        // phone page + Garmin watch, plus one spare for a stale link
 
-#define FW_VERSION        16   // v1.6: own name per pod ("PfeilZaehler3000-A3F2"), pod ID in the advertising
+#define FW_VERSION        17   // v1.7: shot details (raise, draw, hold, aim movement, angle, cant,
+                               //       follow-through), settings stored in the pod, no wake-up counter
+                               // v1.6: own name per pod ("PfeilZaehler3000-A3F2"), pod ID in the advertising
                                // v1.5: shared today/week/month counters, delete arrows, end marks, 3 links
                                // v1.4: phone page and Garmin watch can be connected at the same time
                                // v1.3: reports wake-ups and awake time to the app (battery diagnosis)
@@ -257,9 +301,11 @@ static uint32_t nowEpoch() { return epochBase + uptimeSec(); }
 // =====================================================================
 //  Shot log in internal flash
 // =====================================================================
-#define LOG_FILE  "/shots.bin"
-#define META_FILE "/meta.bin"
-#define LOG_LIMIT_BYTES (22 * 1024)
+#define LOG_FILE    "/shots.bin"
+#define META_FILE   "/meta.bin"
+#define DETAIL_FILE "/detail.bin"     // [u32 first local index with details][ShotDetail ...]
+#define SET_FILE    "/settings.bin"
+#define LOG_LIMIT_BYTES (22 * 1024)   // shots + details together
 
 // (ShotRec and Meta are defined at the top of the file)
 
@@ -267,7 +313,23 @@ static uint32_t nowEpoch() { return epochBase + uptimeSec(); }
 #define META_MAGIC    0xA11C0DE6
 Meta meta = {META_MAGIC, 0, 0, 0, 0, 0, 0};
 uint32_t localCount = 0;
+uint32_t detailFrom = 0;      // local index of the first record with details (older firmware had none)
+uint32_t detailCount = 0;     // details stored in DETAIL_FILE
 bool clockRestored = false;
+Settings settings = {SETTINGS_MAGIC, 6, 100, 0, 0, 0};
+
+static void saveSettings() {
+  InternalFS.remove(SET_FILE);
+  File f(InternalFS);
+  if (f.open(SET_FILE, FILE_O_WRITE)) {
+    f.write((const uint8_t *)&settings, sizeof(settings));
+    f.close();
+  }
+}
+
+static uint32_t storedBytes() {
+  return localCount * sizeof(ShotRec) + (detailCount ? 4 + detailCount * sizeof(ShotDetail) : 0);
+}
 
 static void saveMeta() {
   InternalFS.remove(META_FILE);
@@ -306,17 +368,51 @@ static void loadStorage() {
     localCount = f.size() / sizeof(ShotRec);
     f.close();
   }
+  detailFrom = localCount;                    // no details yet: they start with the next record
+  detailCount = 0;
+  if (f.open(DETAIL_FILE, FILE_O_READ)) {
+    uint32_t from = 0;
+    if (f.read((uint8_t *)&from, 4) == 4 && from <= localCount) {
+      uint32_t n = (f.size() - 4) / sizeof(ShotDetail);
+      if (from + n == localCount) { detailFrom = from; detailCount = n; }   // in step with the log
+    }
+    f.close();
+  }
+  if (!detailCount) InternalFS.remove(DETAIL_FILE);
+  Settings s;
+  if (f.open(SET_FILE, FILE_O_READ)) {
+    if (f.read((uint8_t *)&s, sizeof(s)) == (int)sizeof(s) && s.magic == SETTINGS_MAGIC) settings = s;
+    f.close();
+  }
 }
 
-static bool appendShot(const ShotRec &r) {
+static bool appendShot(const ShotRec &r, const ShotDetail &d) {
+  if (storedBytes() + sizeof(ShotRec) + sizeof(ShotDetail) + 4 > LOG_LIMIT_BYTES) return false;
   File f(InternalFS);
   if (!f.open(LOG_FILE, FILE_O_WRITE)) return false;
-  if (f.size() >= LOG_LIMIT_BYTES) { f.close(); return false; }
   f.seek(f.size());
   bool ok = f.write((const uint8_t *)&r, sizeof(r)) == sizeof(r);
   f.close();
-  if (ok) localCount++;
-  return ok;
+  if (!ok) return false;
+  localCount++;
+  // detail file: kept in step with the log (record localCount-1 = detail detailFrom+detailCount)
+  if (f.open(DETAIL_FILE, FILE_O_WRITE)) {
+    if (f.size() < 4) {
+      detailFrom = localCount - 1;
+      detailCount = 0;
+      f.seek(0);
+      f.write((const uint8_t *)&detailFrom, 4);
+    }
+    f.seek(4 + detailCount * sizeof(ShotDetail));
+    if (f.write((const uint8_t *)&d, sizeof(d)) == (int)sizeof(d)) detailCount++;
+    f.close();
+  }
+  if (detailFrom + detailCount != localCount) {     // out of step (flash full?): no details from here
+    InternalFS.remove(DETAIL_FILE);
+    detailFrom = localCount;
+    detailCount = 0;
+  }
+  return true;
 }
 
 // ---------------- day counters (today / week / month, shared with phone and watch) ----------------
@@ -436,7 +532,9 @@ static void addEndMark(uint32_t t) {
   m.peak10 = 0;
   m.aim100 = 0;
   m.flags = FLAG_ENDMARK | (timeExact ? 1 : 0);
-  appendShot(m);
+  ShotDetail none;
+  memset(&none, 0, sizeof(none));
+  appendShot(m, none);
   if (t > meta.lastEndMarkT) meta.lastEndMarkT = t;
 }
 
@@ -481,6 +579,9 @@ static void clearLog() {
   meta.baseIndex += localCount;
   localCount = 0;
   InternalFS.remove(LOG_FILE);
+  InternalFS.remove(DETAIL_FILE);
+  detailFrom = 0;
+  detailCount = 0;
   saveMeta();
 }
 
@@ -520,19 +621,23 @@ static void shotFeedback(bool stored) {
 //   0001 TIME  write/read  u32 unix seconds [+ i32 local time offset in seconds]
 //   0002 INFO  read/notify 20 bytes: total u32 (records), baseIndex u32, battery mV u16,
 //                          storage % u8, flags u8 (bit0 clock exact, bit1 active), fw u8,
-//                          wake-ups u16, % of time awake u8, uptime s u32
+//                          7 bytes reserved (0)
 //   0003 CTRL  write       [0x01, u32 fromIndex] = send records from global index
 //                          [0x02, u32 expectedTotal] = clear pod log if total matches
 //                          [0x04, u32 from, u16 count, u8 del] = mark arrows deleted (1) / restore (0)
 //                          [0x05, 0] = delete the newest arrow   [0x06, 0] = day counters to zero
 //                          [0x07, u32 time] = new end mark
+//                          [0x09, 0] = the bow is level now: zero point for the cant
 //   0004 DATA  notify      [u32 firstIndex][ShotRec][ShotRec]   end marker: [0xFFFFFFFF][u32 total]
 //                          (records with flag bit6 are end marks, bit7 = deleted)
 //   0005 STATS read/notify 20 bytes: arrows u32, today u16, week u16, month u16, battery mV u16,
 //                          last end mark u32, last arrow u32   (see updateStats)
+//   0006 SETTINGS read/write/notify  8 bytes (struct Settings); write [u8 arrows per end][u16 end pause s]
+//   0007 DETAIL notify     [u32 firstIndex][ShotDetail][ShotDetail], sent with every DATA packet
+//                          of a dump (to devices that switched on its notifications)
 static const uint8_t uuidBytes[16] = {0xE0, 0x0E, 0x0F, 0x0C, 0x7A, 0x3B, 0x1E, 0x9D,
                                       0x5A, 0x4C, 0x1E, 0x5B, 0x00, 0x00, 0xC1, 0xA7};
-static uint8_t uuidStore[6][16];
+static uint8_t uuidStore[8][16];
 
 static BLEUuid makeUuid(uint8_t id) {
   memcpy(uuidStore[id], uuidBytes, 16);
@@ -546,10 +651,15 @@ BLECharacteristic chInfo(makeUuid(2));
 BLECharacteristic chCtrl(makeUuid(3));
 BLECharacteristic chData(makeUuid(4));
 BLECharacteristic chStats(makeUuid(5));
+BLECharacteristic chSettings(makeUuid(6));
+BLECharacteristic chDetail(makeUuid(7));
 
 volatile CtrlOp   opQueue[8];             // delete / undo / end mark / reset, done in loop()
 volatile uint8_t  opHead = 0, opTail = 0;
 volatile bool     tzChanged = false;
+volatile bool     settingsPending = false;  // new settings from phone / watch, saved in loop()
+volatile uint8_t  newArrows = 6;
+volatile uint16_t newPause = 100;
 
 volatile bool     dumpPending  = false;
 volatile uint32_t dumpFrom     = 0;
@@ -558,9 +668,6 @@ volatile uint8_t  connCount    = 0;
 volatile bool     clearPending = false;
 volatile uint32_t clearExpect  = 0;
 bool              isActive     = false;
-uint16_t          wakeCount    = 0;      // wake-ups from idle since start
-uint32_t          awakeMsTotal = 0;      // time spent awake (finished stretches)
-uint32_t          activeSinceMs = 0;
 
 static uint32_t totalShots() { return meta.baseIndex + localCount; }
 
@@ -588,7 +695,7 @@ static void updateInfo(bool notify) {
   uint32_t total = totalShots();
   uint16_t mv = batteryMv();
   updateStats(notify, mv);
-  uint32_t pct32 = (localCount * sizeof(ShotRec) * 100UL) / LOG_LIMIT_BYTES;
+  uint32_t pct32 = (storedBytes() * 100UL) / LOG_LIMIT_BYTES;
   uint8_t pct = pct32 > 100 ? 100 : (uint8_t)pct32;
   memcpy(b, &total, 4);
   memcpy(b + 4, &meta.baseIndex, 4);
@@ -596,16 +703,26 @@ static void updateInfo(bool notify) {
   b[10] = pct;
   b[11] = (timeExact ? 1 : 0) | (isActive ? 2 : 0);
   b[12] = FW_VERSION;
-  uint32_t up = uptimeSec();
-  uint32_t awakeMs = awakeMsTotal + (isActive ? millis() - activeSinceMs : 0);
-  uint32_t pctAwake = up ? (awakeMs / 10UL) / up : 0;        // = awake seconds * 100 / uptime
-  memcpy(b + 13, &wakeCount, 2);
-  b[15] = pctAwake > 100 ? 100 : (uint8_t)pctAwake;
-  memcpy(b + 16, &up, 4);
   chInfo.write(b, 20);
   if (!notify) return;
   for (uint16_t c = 0; c < BLE_MAX_CONNECTION; c++)          // every connected phone / watch
     if (Bluefruit.connected(c) && chInfo.notifyEnabled(c)) chInfo.notify(c, b, 20);
+}
+
+static void publishSettings(bool notify) {
+  chSettings.write((const uint8_t *)&settings, sizeof(settings));
+  if (!notify) return;
+  for (uint16_t c = 0; c < BLE_MAX_CONNECTION; c++)
+    if (Bluefruit.connected(c) && chSettings.notifyEnabled(c)) chSettings.notify(c, (const uint8_t *)&settings, sizeof(settings));
+}
+
+static void onSettingsWrite(uint16_t, BLECharacteristic *, uint8_t *data, uint16_t len) {
+  if (len < 3) return;
+  uint16_t p;
+  memcpy(&p, data + 1, 2);
+  newArrows = data[0] < 1 ? 1 : (data[0] > 24 ? 24 : data[0]);
+  newPause = p < 20 ? 20 : (p > 900 ? 900 : p);
+  settingsPending = true;                      // flash write in loop()
 }
 
 static void onTimeWrite(uint16_t, BLECharacteristic *, uint8_t *data, uint16_t len) {
@@ -632,7 +749,7 @@ static void onCtrlWrite(uint16_t conn, BLECharacteristic *, uint8_t *data, uint1
   memcpy(&v, data + 1, 4);
   if (data[0] == 0x01) { dumpFrom = v; dumpConn = conn; dumpPending = true; }
   if (data[0] == 0x02) { clearExpect = v; clearPending = true; }
-  if (data[0] >= 0x04 && data[0] <= 0x07) {    // queue for loop(): flash work does not belong in a callback
+  if ((data[0] >= 0x04 && data[0] <= 0x07) || data[0] == 0x09) {   // queue for loop(): no flash work in a callback
     uint8_t next = (opHead + 1) % 8;
     if (next == opTail) return;                // queue full, drop
     for (int i = 0; i < 8; i++) opQueue[opHead].b[i] = i < len ? data[i] : 0;
@@ -640,6 +757,8 @@ static void onCtrlWrite(uint16_t conn, BLECharacteristic *, uint8_t *data, uint1
     opHead = next;
   }
 }
+
+static void setLevel();                       // in the shot detection part
 
 static void processOps() {
   bool changed = false;
@@ -663,6 +782,9 @@ static void processOps() {
       case 0x07:                               // [0x07, u32 time] new end from here on
         addEndMark(v > 1600000000UL ? v : nowEpoch());
         saveMeta();
+        break;
+      case 0x09:                               // [0x09, 0] the bow is level now
+        setLevel();
         break;
     }
     changed = true;
@@ -732,6 +854,17 @@ static void bleBegin() {
   chStats.setFixedLen(20);
   chStats.begin();
 
+  chSettings.setProperties(CHR_PROPS_READ | CHR_PROPS_WRITE | CHR_PROPS_NOTIFY);
+  chSettings.setPermission(SECMODE_OPEN, SECMODE_OPEN);
+  chSettings.setFixedLen(sizeof(Settings));
+  chSettings.setWriteCallback(onSettingsWrite);
+  chSettings.begin();
+
+  chDetail.setProperties(CHR_PROPS_NOTIFY);
+  chDetail.setPermission(SECMODE_OPEN, SECMODE_NO_ACCESS);
+  chDetail.setMaxLen(20);
+  chDetail.begin();
+
   Bluefruit.Advertising.addFlags(BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE);
   Bluefruit.Advertising.addTxPower();
   Bluefruit.Advertising.addService(svc);
@@ -746,10 +879,10 @@ static void bleBegin() {
   Bluefruit.Advertising.start(0);
 }
 
-static bool notifyRetry(const uint8_t *b, uint16_t len) {
+static bool notifyRetry(BLECharacteristic &ch, const uint8_t *b, uint16_t len) {
   for (int i = 0; i < 50; i++) {
     if (!Bluefruit.connected(dumpConn)) return false;
-    if (chData.notify(dumpConn, b, len)) return true;
+    if (ch.notify(dumpConn, b, len)) return true;
     delay(10);
   }
   return false;
@@ -761,7 +894,10 @@ static void doDump() {
   uint32_t req  = dumpFrom;
   uint32_t from = req < base ? base : req;
   uint32_t localStart = from - base;
+  bool withDetails = chDetail.notifyEnabled(dumpConn);
   File f(InternalFS);
+  File df(InternalFS);
+  bool dfOpen = withDetails && detailCount && df.open(DETAIL_FILE, FILE_O_READ);
   if (localStart < localCount && f.open(LOG_FILE, FILE_O_READ)) {
     f.seek(localStart * sizeof(ShotRec));
     uint32_t idx = from;
@@ -771,17 +907,30 @@ static void doDump() {
       int n = f.read(pkt + 4, 2 * sizeof(ShotRec));
       int recs = n / (int)sizeof(ShotRec);
       if (recs < 1) break;
-      if (!notifyRetry(pkt, 4 + recs * sizeof(ShotRec))) break;
+      if (!notifyRetry(chData, pkt, 4 + recs * sizeof(ShotRec))) break;
+      if (withDetails) {                         // details of the same records, same packet layout
+        uint8_t dp[20] = {0};
+        memcpy(dp, &idx, 4);
+        for (int k = 0; k < recs; k++) {
+          uint32_t local = idx - base + k;
+          if (dfOpen && local >= detailFrom && local < detailFrom + detailCount) {
+            df.seek(4 + (local - detailFrom) * sizeof(ShotDetail));
+            df.read(dp + 4 + k * sizeof(ShotDetail), sizeof(ShotDetail));
+          }
+        }
+        if (!notifyRetry(chDetail, dp, 4 + recs * sizeof(ShotDetail))) break;
+      }
       idx += recs;
     }
     f.close();
   }
+  if (dfOpen) df.close();
   updateInfo(false);                       // fresh battery reading for the app's "Update now"
   uint8_t end[8];
   uint32_t marker = 0xFFFFFFFF, total = totalShots();
   memcpy(end, &marker, 4);
   memcpy(end + 4, &total, 4);
-  notifyRetry(end, 8);
+  notifyRetry(chData, end, 8);
 }
 
 // =====================================================================
@@ -801,6 +950,60 @@ uint32_t spikeMs = 0, aimAtSpike = 0;
 float    peakG = 0;
 uint16_t ringCount = 0;
 
+// ---------------- motion history for the shot details ----------------
+// 50 Hz: bow angle and smoothed rotation of the last 30 s (struct HistSample at the top)
+#define HIST_N   1500                // 30 s at 50 Hz
+#define HIST_MS  20
+HistSample hist[HIST_N];
+uint16_t histHead = 0, histCount = 0;
+
+// 100 Hz: rotation (offset removed) of the last 1.28 s, for the aim movement
+#define GYR_N 128
+float    gyrHist[GYR_N][3];
+uint16_t gyrHead = 0, gyrCount = 0;
+
+// 100 Hz: low-pass accelerometer (= gravity while the bow is held) of the last 80 ms
+#define GRAV_N 8
+float    gravHist[GRAV_N][3];
+uint8_t  gravHead = 0;
+float    gLp[3] = {0, 0, 1};
+float    rateSm = 0;                 // smoothed rotation, deg/s
+uint32_t lastGyroMs = 0;
+
+// follow-through after a release
+bool       followActive = false, shotPending = false;
+float      axP[3], axU[3];           // body-frame axes at release: P = horizontal right, U = up
+float      followP = 0, followU = 0; // rotation summed since the release, degrees
+ShotDetail pendingDetail;
+bool       settingsChanged = false;  // cant zero taken from the first shot: save after the shot
+
+static HistSample &histAt(uint16_t k) {        // k = samples back, 0 = newest
+  return hist[(histHead + HIST_N - 1 - k) % HIST_N];
+}
+
+static float pitchOf(const float g[3]) {       // degrees, + = arrow pointing up
+  float n = sqrtf(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]);
+  if (n < 0.2f) return 0;
+  float s = g[2] / n;
+  if (s > 1) s = 1;
+  if (s < -1) s = -1;
+  return asinf(s) * 57.29578f;
+}
+
+static float rollOf(const float g[3]) {        // degrees, roll of the pod around the arrow axis
+  return atan2f(g[1], g[0]) * 57.29578f;
+}
+
+static uint8_t enc100(uint32_t ms) {           // duration -> units of 100 ms, 1..255 (0 = not found)
+  uint32_t v = (ms + 50) / 100;
+  return v < 1 ? 1 : (v > 255 ? 255 : (uint8_t)v);
+}
+
+static int8_t clamp8(float v) {
+  long r = lroundf(v);
+  return r > 127 ? 127 : (r < -127 ? -127 : (int8_t)r);
+}
+
 static void seedEma() {
   float s[3] = {0, 0, 0}, a[3];
   int n = 0;
@@ -817,12 +1020,16 @@ static void enterActive() {
   delay(15);
   seedEma();
   isActive = true;
-  activeSinceMs = millis();
 #if CALIBRATION_LOG
   Serial.printf("-> active (%s)\n", podName);
 #endif
   still = false;
   detect = WAITING;
+  followActive = shotPending = false;
+  histCount = gyrCount = 0;                    // history starts again after a sleep
+  if (lsmReadAccel(gLp)) for (int i = 0; i < GRAV_N; i++) memcpy(gravHist[i], gLp, sizeof(gLp));
+  rateSm = 0;
+  lastGyroMs = 0;
   lastMotionMs = millis();
   updateInfo(true);
 }
@@ -830,7 +1037,6 @@ static void enterActive() {
 static void enterIdle() {
   lsmIdle();
   adxlStandby();
-  if (isActive) awakeMsTotal += millis() - activeSinceMs;
   isActive = false;
 #if CALIBRATION_LOG
   Serial.printf("-> idle (%s)\n", podName);
@@ -842,6 +1048,25 @@ static void enterIdle() {
   updateInfo(true);
 }
 
+// "set level" from the phone: the pod's roll right now becomes cant 0
+static void setLevel() {
+  float s[3] = {0, 0, 0}, a[3];
+  int n = 0;
+  for (int i = 0; i < 8; i++) {
+    if (lsmReadAccel(a)) { for (int k = 0; k < 3; k++) s[k] += a[k]; n++; }
+    delay(20);
+  }
+  if (!n) return;
+  settings.cantRef10 = (int16_t)lroundf(rollOf(s) * 10.0f);
+  settings.flags = (settings.flags | 1) & ~2;  // bit0 set by hand, bit1 (from the first shot) off
+  saveSettings();
+  publishSettings(true);
+#if CALIBRATION_LOG
+  Serial.printf("cant zero set (roll %.1f deg)\n", settings.cantRef10 / 10.0f);
+#endif
+}
+
+// ~100 Hz: gyro (stillness, hold, aim movement, follow-through) and accelerometer (bow angle)
 static void updateStillness(uint32_t ms) {
   float g[3];
   if (!lsmReadGyro(g)) return;
@@ -856,12 +1081,137 @@ static void updateStillness(uint32_t ms) {
   if (nowStill && !still) stillStartMs = ms;
   if (!nowStill && still) { stillEndMs = ms; lastStillLen = ms - stillStartMs; }
   still = nowStill;
+
+  // ---- shot details ----
+  float dt = lastGyroMs ? (ms - lastGyroMs) / 1000.0f : 0.01f;
+  if (dt > 0.05f) dt = 0.05f;
+  lastGyroMs = ms;
+  rateSm += 0.2f * (turn - rateSm);            // ~50 ms smoothing
+  gyrHist[gyrHead][0] = b0; gyrHist[gyrHead][1] = b1; gyrHist[gyrHead][2] = b2;
+  gyrHead = (gyrHead + 1) % GYR_N;
+  if (gyrCount < GYR_N) gyrCount++;
+
+  float a[3];
+  if (!followActive && lsmReadAccel(a)) {      // the release shock would spoil the angle: skip it
+    for (int k = 0; k < 3; k++) gLp[k] += 0.15f * (a[k] - gLp[k]);
+    memcpy(gravHist[gravHead], gLp, sizeof(gLp));
+    gravHead = (gravHead + 1) % GRAV_N;
+  }
+  if (followActive) {                          // rotation after the release
+    if (ms - spikeMs <= FOLLOW_MS) {
+      followP += (b0 * axP[0] + b1 * axP[1] + b2 * axP[2]) * dt;
+      followU += (b0 * axU[0] + b1 * axU[1] + b2 * axU[2]) * dt;
+    }
+  }
+  static uint8_t half = 0;
+  if (!followActive && (++half & 1)) {         // 50 Hz history
+    HistSample &h = hist[histHead];
+    h.pitch10 = (int16_t)lroundf(pitchOf(gLp) * 10.0f);
+    float r2 = rateSm * 2.0f;
+    h.rate2 = r2 > 255 ? 255 : (uint8_t)r2;
+    histHead = (histHead + 1) % HIST_N;
+    if (histCount < HIST_N) histCount++;
+  }
 }
 
 static uint32_t aimTimeAt(uint32_t ms) {
   if (still) return ms - stillStartMs;
   if (ms - stillEndMs < 120) return lastStillLen;   // release motion may break stillness a few ms early
   return 0;
+}
+
+// At the release jolt: look back over the history and work out the phases of the shot.
+static void analyseShot() {
+  ShotDetail &d = pendingDetail;
+  memset(&d, 0, sizeof(d));
+
+  // gravity 30 ms before the jolt -> axes, bow angle and cant at release
+  float *g = gravHist[(gravHead + GRAV_N - 3) % GRAV_N];
+  float n = sqrtf(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]);
+  if (n < 0.2f) n = 1;
+  for (int k = 0; k < 3; k++) axU[k] = g[k] / n;          // up
+  float px = -axU[1], py = axU[0];                          // Z x U = horizontal, to the right
+  float pn = sqrtf(px * px + py * py);
+  if (pn < 0.05f) { px = 1; py = 0; pn = 1; }               // bow pointing straight up or down
+  axP[0] = px / pn; axP[1] = py / pn; axP[2] = 0;
+  float pitch = pitchOf(g);
+  d.pitch2 = clamp8(pitch * 2.0f);
+  float roll = rollOf(g);
+  if (!(settings.flags & 3)) {                  // no zero point yet: the first shot counts as level
+    settings.cantRef10 = (int16_t)lroundf(roll * 10.0f);
+    settings.flags |= 2;
+    settingsChanged = true;                     // flash write later: not during the jolt
+  }
+  float cant = settings.cantRef10 / 10.0f - roll;
+  while (cant >= 180) cant -= 360;
+  while (cant < -180) cant += 360;
+  d.cant2 = clamp8(cant * 2.0f);
+
+  // aim movement in the last second (from 30 ms before the jolt): rotation summed to an angle
+  // around the two aiming axes, slow drift (and gyro offset) removed by a straight-line fit
+  const int W = 100;
+  if (gyrCount >= W + 3) {
+    float sv = 0, sh = 0, sx = 0, sxx = 0, sxv = 0, sxh = 0, svv = 0, shh = 0;
+    float av = 0, ah = 0;
+    for (int i = 0; i < W; i++) {
+      int k = W + 2 - i;                        // oldest first
+      float *w = gyrHist[(gyrHead + GYR_N - 1 - k) % GYR_N];
+      av += (w[0] * axP[0] + w[1] * axP[1] + w[2] * axP[2]) * 0.01f;
+      ah += (w[0] * axU[0] + w[1] * axU[1] + w[2] * axU[2]) * 0.01f;
+      float x = i;
+      sx += x; sxx += x * x; sv += av; sh += ah; sxv += x * av; sxh += x * ah; svv += av * av; shh += ah * ah;
+    }
+    float den = W * sxx - sx * sx;
+    float bv = (W * sxv - sx * sv) / den, bh = (W * sxh - sx * sh) / den;
+    float cv = (sv - bv * sx) / W, ch = (sh - bh * sx) / W;
+    // residual sum of squares of a straight-line fit
+    float rv = svv - 2 * cv * sv - 2 * bv * sxv + W * cv * cv + 2 * cv * bv * sx + bv * bv * sxx;
+    float rh = shh - 2 * ch * sh - 2 * bh * sxh + W * ch * ch + 2 * ch * bh * sx + bh * bh * sxx;
+    float rms = sqrtf((rv > 0 ? rv : 0) / W + (rh > 0 ? rh : 0) / W);
+    float u = rms * 100.0f;
+    d.wander = u < 1 ? 1 : (u > 255 ? 255 : (uint8_t)lroundf(u));
+  }
+
+  // phases, from the newest history sample backwards (k = samples of 20 ms back)
+  const uint16_t K0 = 2;                        // ~40 ms before the jolt = release position
+  if (histCount <= K0 + 5) return;
+  float pr = histAt(K0).pitch10 / 10.0f;
+
+  // hold: the bow almost still until the release
+  uint16_t kHold = K0;
+  while (kHold + 1 < histCount && histAt(kHold + 1).rate2 < HOLD_DPS * 2) kHold++;
+  bool holding = histAt(K0).rate2 < HOLD_DPS * 2;
+  if (holding) d.hold100 = enc100((uint32_t)(kHold + 1) * HIST_MS);
+
+  // lowered: the last time the bow angle was far from the release angle
+  uint16_t kAway = K0;
+  while (kAway < histCount && fabsf(histAt(kAway).pitch10 / 10.0f - pr) <= AWAY_DEG) kAway++;
+  if (kAway >= histCount) return;               // the bow was not lowered (or too long ago)
+
+  // raised: the first time after that the angle came within LEVEL_DEG of the release angle
+  uint16_t kLevel = kAway - 1;
+  while (kLevel > K0 && fabsf(histAt(kLevel).pitch10 / 10.0f - pr) >= LEVEL_DEG) kLevel--;
+  if (holding && kHold > kLevel) {              // still from the moment it was raised: no separate draw
+    kHold = kLevel;
+    d.hold100 = enc100((uint32_t)(kHold + 1) * HIST_MS);
+  }
+
+  // start of the raise: going further back, the lowest point, or where the bow was resting
+  uint16_t kStart = kAway, k = kAway, rest = 0;
+  float dmax = fabsf(histAt(kAway).pitch10 / 10.0f - pr);
+  while (k + 1 < histCount && k < kAway + 750) {          // up to 15 s further back
+    k++;
+    float dk = fabsf(histAt(k).pitch10 / 10.0f - pr);
+    if (dk < dmax - 1.0f) break;                // the bow was higher before: lowest point passed
+    if (dk > dmax) { dmax = dk; kStart = k; }
+    if (histAt(k).rate2 < REST_DPS * 2) {
+      if (++rest >= 15) { kStart = k - 14; break; }        // resting in the pre-draw position
+    } else {
+      rest = 0;
+    }
+  }
+  d.raise100 = enc100((uint32_t)(kStart - kLevel) * HIST_MS);
+  d.draw100 = enc100(kLevel > kHold ? (uint32_t)(kLevel - kHold) * HIST_MS : 0);
 }
 
 static void recordShot() {
@@ -872,12 +1222,26 @@ static void recordShot() {
   uint32_t aim = aimAtSpike / 100;
   r.aim100 = aim > 255 ? 255 : (uint8_t)aim;
   r.flags = (timeExact ? 1 : 0) | (clockRestored ? 2 : 0);
-  bool ok = appendShot(r);
+  pendingDetail.dropDeg = clamp8(-followP);     // + = bow tips forward / down
+  pendingDetail.sideDeg = clamp8(-followU);     // + = to the right
+  bool ok = appendShot(r, pendingDetail);
+  if (settingsChanged) {
+    settingsChanged = false;
+    saveSettings();
+    publishSettings(true);
+  }
   if (ok) {
     lifetime++;
     ringAdd(r.t, 1);
     lastShotT = r.t;
   }
+#if CALIBRATION_LOG
+  const ShotDetail &d = pendingDetail;
+  Serial.printf("  details: raise %.1fs draw %.1fs hold %.1fs | aim movement %.2f deg | angle %+.1f cant %+.1f | "
+                "follow-through down %+d right %+d deg\n",
+                d.raise100 / 10.0f, d.draw100 / 10.0f, d.hold100 / 10.0f, d.wander / 100.0f,
+                d.pitch2 / 2.0f, d.cant2 / 2.0f, d.dropDeg, d.sideDeg);
+#endif
   shotFeedback(ok);
   updateInfo(true);
 }
@@ -898,12 +1262,19 @@ static void activeStep() {
   if (dev > MOVE_G) lastMotionMs = ms;   // was 0.3 g: ADXL375 noise alone crossed that, so it never idled
 
   if (detect == WAITING) {
-    if (dev > SPIKE_G && (ms - lastShotMs) > REFRACTORY_MS) {
+    if (shotPending && ms - spikeMs >= FOLLOW_MS) {   // follow-through measured: store the shot
+      shotPending = followActive = false;
+      recordShot();
+    }
+    if (!shotPending && dev > SPIKE_G && (ms - lastShotMs) > REFRACTORY_MS) {
       aimAtSpike = aimTimeAt(ms);
       spikeMs = ms;
       peakG = dev;
       ringCount = 0;
       detect = CAPTURING;
+      analyseShot();                           // history up to just before the jolt
+      followP = followU = 0;
+      followActive = true;
     }
   } else {
     uint32_t dt = ms - spikeMs;
@@ -918,12 +1289,14 @@ static void activeStep() {
 #endif
       if (isShot) {
         lastShotMs = ms;
-        recordShot();
+        shotPending = true;                    // stored when the follow-through is measured
+      } else {
+        followActive = false;
       }
     }
   }
 
-  if (ms - lastMotionMs > IDLE_AFTER_MS && detect == WAITING) enterIdle();
+  if (ms - lastMotionMs > IDLE_AFTER_MS && detect == WAITING && !shotPending) enterIdle();
 }
 
 static void idleStep() {
@@ -931,7 +1304,7 @@ static void idleStep() {
   float a[3];
   if (!lsmReadAccel(a)) return;
   float d0 = a[0] - idleRef[0], d1 = a[1] - idleRef[1], d2 = a[2] - idleRef[2];
-  if (sqrtf(d0 * d0 + d1 * d1 + d2 * d2) > WAKE_DELTA_G) { wakeCount++; enterActive(); }
+  if (sqrtf(d0 * d0 + d1 * d1 + d2 * d2) > WAKE_DELTA_G) enterActive();
 }
 
 // =====================================================================
@@ -959,6 +1332,7 @@ void setup() {
   loadStorage();
   rebuildCounts();
   updateInfo(false);
+  publishSettings(false);
   lsmOk = lsmBegin();
   adxlOk = adxlBegin();
   if (lsmOk && adxlOk) {
@@ -977,6 +1351,13 @@ void loop() {
     saveMeta();
     rebuildCounts();
     updateInfo(true);
+  }
+  if (settingsPending) {                       // arrows per end / end pause from phone or watch
+    settingsPending = false;
+    settings.arrowsPerEnd = newArrows;
+    settings.endPauseS = newPause;
+    saveSettings();
+    publishSettings(true);                     // the other devices follow
   }
   if (dumpPending) doDump();
   if (clearPending) {

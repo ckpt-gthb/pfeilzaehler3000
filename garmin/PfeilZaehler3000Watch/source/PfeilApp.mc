@@ -1,7 +1,9 @@
 // PfeilZaehler3000 – Garmin watch app (Epix Gen 2) for the PfeilZaehler3000 pod
-// Watch app version 1.2 (12 Oct 2026). Needs pod firmware v1.5 or newer (v1.6 for own-pod pairing).
+// Watch app version 1.3 (15 Oct 2026). Needs pod firmware v1.5 or newer (v1.6 for own-pod pairing,
+// v1.7 for settings shared with the phone page).
 // Shows arrows per end / session / today live and vibrates on every arrow.
 // START button: record the training as a Garmin activity (arrows saved in the activity).
+// Hold UP: settings.
 
 import Toybox.Application;
 import Toybox.Lang;

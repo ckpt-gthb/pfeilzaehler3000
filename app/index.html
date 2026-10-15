@@ -9,10 +9,12 @@
 :root{
   --bg:#f5f3ee;--card:#fffdf8;--ink:#1d211e;--muted:#6b716c;--line:#e2ded4;
   --accent:#2f6b4f;--accent-soft:#dcebe2;--warn:#b5542a;--warn-soft:#f6e1d6;--bar:#2f6b4f;
+  --red:#c0392b;--red-soft:#f8e0dc;--amber:#b7791f;
 }
 @media (prefers-color-scheme:dark){:root{
   --bg:#141715;--card:#1c201d;--ink:#e9ece8;--muted:#9aa29c;--line:#2c322e;
   --accent:#7cc39c;--accent-soft:#1f3a2c;--warn:#e89a72;--warn-soft:#3b2519;--bar:#7cc39c;
+  --red:#ef7a6c;--red-soft:#3d1f1b;--amber:#e3b25a;
 }}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -21,10 +23,11 @@ h1{font-size:22px;margin:4px 0 2px;letter-spacing:-.01em}
 h2{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:28px 0 10px;font-weight:600}
 .sub{color:var(--muted);font-size:14px}
 button,select,input{font:inherit;color:inherit}
+svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px}
 .btn{background:var(--accent);color:var(--bg);border:0;border-radius:10px;padding:10px 16px;font-weight:600;cursor:pointer}
 .btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
 .btn:disabled{opacity:.5}
-.btn.danger{color:var(--warn);border-color:var(--warn)}
+.btn.danger{color:var(--red);border-color:var(--red)}
 .btn.big{width:100%;padding:14px 16px;font-size:17px}
 .btns{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:8px}
 .btns .btn{width:100%;min-height:44px}
@@ -32,18 +35,31 @@ button,select,input{font:inherit;color:inherit}
 .btns.three{grid-template-columns:repeat(3,1fr)}
 .btns.two{grid-template-columns:repeat(2,1fr)}
 .btns.three .btn{padding:10px 6px}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:transparent;cursor:pointer;flex:none}
+.icon-btn.del{color:var(--red);border-color:var(--red-soft);background:var(--red-soft)}
+.icon-btn.undo{color:var(--accent)}
+.icon-btn svg.i{width:20px;height:20px}
 .endbox .btn{min-height:44px;min-width:120px}
 .group{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:16px 0 0}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;padding:16px;z-index:10}
 .overlay[hidden]{display:none}
-.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;width:100%;max-width:640px;display:flex;flex-direction:column;gap:10px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;width:100%;max-width:640px;display:flex;flex-direction:column;gap:10px;max-height:92vh}
 .panel textarea{width:100%;font:12px/1.4 ui-monospace,Menlo,monospace;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--bg);color:var(--ink)}
 .endbox{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
 .endn{font-size:44px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
 .endof{color:var(--muted);font-size:18px;margin-left:6px}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.status{margin:12px 0;padding:10px 12px;border-radius:10px;background:var(--card);border:1px solid var(--line);font-size:14px}
-.status b{font-weight:600}
+.status{margin:12px 0;padding:10px 12px;border-radius:12px;background:var(--card);border:1px solid var(--line);font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.chip.ok{color:var(--accent)}
+.chip.wait{color:var(--amber)}
+.chip.bad{color:var(--red)}
+.chip.off{color:var(--muted)}
+.chip .k{color:var(--muted);font-size:12px}
+.msg{margin-top:6px;color:var(--muted)}
+.msg:empty{display:none}
+.msg b{color:var(--ink);font-weight:600}
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 @media (min-width:560px){.grid{grid-template-columns:repeat(4,1fr)}}
 .tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
@@ -57,35 +73,58 @@ button,select,input{font:inherit;color:inherit}
 .chart text{fill:var(--muted);font-size:10px}
 .sess{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px}
 .sess .top{display:flex;justify-content:space-between;gap:8px}
-.sess .big{font-weight:700;font-variant-numeric:tabular-nums}
+.sess .big{font-weight:700;font-size:22px;font-variant-numeric:tabular-nums}
 .ends{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
-.end{min-width:28px;text-align:center;padding:2px 6px;border-radius:6px;background:var(--accent-soft);font-size:13px;font-variant-numeric:tabular-nums}
+.end{min-width:32px;text-align:center;padding:2px 6px;border-radius:6px;background:var(--accent-soft);font-size:13px;font-variant-numeric:tabular-nums}
 .end.off{background:var(--warn-soft);color:var(--warn);font-weight:600}
-button.end{border:0;font:inherit;color:inherit;cursor:pointer;min-height:30px}
-.arrows{display:flex;flex-direction:column;gap:6px;max-height:50vh;overflow:auto}
-.arow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-variant-numeric:tabular-nums}
-.arow.gone{opacity:.45;text-decoration:line-through}
-.arow .btn{padding:6px 10px;min-height:36px}
+button.end{border:0;font:inherit;color:inherit;cursor:pointer;min-height:32px}
+.avg{font-size:13px;color:var(--muted);margin-top:8px}
+.arrows{display:flex;flex-direction:column;gap:6px;overflow:auto;min-height:0}
+.arow{border:1px solid var(--line);border-radius:10px;font-variant-numeric:tabular-nums}
+.arow.gone .line{opacity:.45;text-decoration:line-through}
+.arow .line{display:flex;align-items:center;gap:10px;padding:6px 6px 6px 10px}
+.arow .no{color:var(--muted);width:22px}
+.arow .tm{flex:1;cursor:pointer;display:flex;align-items:center;gap:6px}
+.arow .tm .chev{color:var(--muted);transition:transform .15s}
+.arow.open .tm .chev{transform:rotate(90deg)}
+.arow .det{display:none;grid-template-columns:1fr 1fr;gap:4px 12px;padding:0 10px 10px 42px;font-size:13px}
+.arow.open .det{display:grid}
+.det .k{color:var(--muted)}
+.det .full{grid-column:1/-1}
 .small{font-size:13px;color:var(--muted)}
 details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 summary{cursor:pointer;font-weight:600}
 label{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 0}
 label input{width:90px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.hint{font-size:12px;color:var(--muted);margin:-2px 0 6px}
 .empty{color:var(--muted);padding:12px 0}
+.demo{background:var(--warn-soft);color:var(--ink);border-radius:10px;padding:8px 12px;margin:10px 0 0;font-size:14px}
+.demo a,.small a{color:var(--accent);font-weight:600}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-bt" viewBox="0 0 24 24"><path d="M7 7l10 10-5 5V2l5 5L7 17"/></symbol>
+  <symbol id="i-mem" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+  <symbol id="i-sync" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 15h10l1-15"/><path d="M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+</svg>
 <main>
   <h1>PfeilZaehler3000</h1>
-  <div class="sub">Arrows counted automatically · version 1.8 · 12 Oct 2026</div>
+  <div class="demo" id="demo" hidden>Demo with example data and a simulated pod. Nothing is saved. <a href="./">Leave demo</a></div>
+  <div class="sub">Arrows counted automatically · version 1.9 · 15 Oct 2026</div>
 
-  <div class="status" id="status">Not connected.</div>
+  <div class="status">
+    <div class="chips" id="chips"></div>
+    <div class="msg" id="status"></div>
+  </div>
   <button class="btn big" id="connect">Connect pod &amp; sync</button>
   <div class="btns two" id="podbtns" hidden>
     <button class="btn ghost" id="choose" hidden>Choose pod</button>
     <button class="btn ghost" id="disconnect" hidden>Disconnect</button>
   </div>
-  <p class="small">After the first connect the page stays connected and updates by itself after every arrow. Coming back to the page reconnects automatically.</p>
 
   <h2>This end</h2>
   <div class="endbox">
@@ -115,10 +154,15 @@ label input{width:90px;padding:6px 8px;border:1px solid var(--line);border-radiu
   <h2>Settings &amp; data</h2>
   <details>
     <summary>Settings</summary>
-    <label>Arrows per end <input type="number" id="s-arrows" min="1" max="12"></label>
+    <label>Arrows per end <input type="number" id="s-arrows" min="1" max="24"></label>
     <label>New end after a pause of (seconds) <input type="number" id="s-endgap" min="20" max="900"></label>
+    <p class="hint">These two are stored in the pod and shared with the watch. The last change counts.</p>
     <label>New session after a pause of (minutes) <input type="number" id="s-sessgap" min="5" max="600"></label>
+    <label>Shooting distance for the aim movement (m) <input type="number" id="s-dist" min="5" max="90"></label>
     <label>Clear pod memory after sync when it is fuller than (%) <input type="number" id="s-clear" min="0" max="100"></label>
+    <div class="group">Cant</div>
+    <p class="hint" id="cant-state">Cant 0 is not set yet.</p>
+    <button class="btn ghost" id="setlevel">Bow is upright now: set cant to 0</button>
   </details>
   <div class="group">Export &amp; backup</div>
   <div class="btns three">
@@ -132,7 +176,7 @@ label input{width:90px;padding:6px 8px;border:1px solid var(--line);border-radiu
     <button class="btn ghost danger" id="resetday">Reset today</button>
     <button class="btn ghost danger" id="reset">Reset all stats</button>
   </div>
-  <p class="small">Data is kept in this browser. Make a backup now and then. Bluetooth needs Chrome or Edge on Android, Windows, macOS or ChromeOS, or the Bluefy browser on iPhone.</p>
+  <p class="small">Data is kept in this browser. Make a backup now and then. Bluetooth needs Chrome or Edge on Android, Windows, macOS or ChromeOS, or the Bluefy browser on iPhone. <a href="?demo">Try the demo</a> to see the page with example data, no pod needed.</p>
 </main>
 
 <div class="overlay" id="box" hidden>
@@ -150,39 +194,154 @@ label input{width:90px;padding:6px 8px;border:1px solid var(--line);border-radiu
 
 <div class="overlay" id="sheet" hidden>
   <div class="panel">
-    <b id="sheet-title">End</b>
-    <p class="small">Delete arrows that were not real shots. Deleted arrows are removed from all stats, on the pod and on the watch too.</p>
+    <div><b id="sheet-title">End</b><div class="small" id="sheet-sub"></div></div>
+    <div class="avg" id="sheet-avg"></div>
     <div class="arrows" id="sheet-list"></div>
+    <p class="small">Tap an arrow for its details. Deleted arrows are removed from all stats, on the pod and the watch too.</p>
     <div class="btns two">
-      <button class="btn ghost danger" id="sheet-delend">Delete whole end</button>
+      <button class="btn ghost danger" id="sheet-delend"><svg class="i"><use href="#i-trash"/></svg> Delete end</button>
       <button class="btn ghost" id="sheet-done">Done</button>
     </div>
   </div>
 </div>
 
 <script>
+// ---------- demo mode (page opened with ?demo) ----------
+// Example history plus a simulated pod: everything works, nothing is saved, no Bluetooth is used.
+if (new URLSearchParams(location.search).has('demo')) (() => {
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const between = (a, b) => a + (b - a) * rnd();
+  const now = Math.floor(Date.now() / 1000);
+  const day0 = new Date(); day0.setHours(0, 0, 0, 0);
+  const detail = () => ({
+    raise: +between(0.9, 1.7).toFixed(1), draw: +between(1.7, 2.9).toFixed(1), hold: +between(1.1, 2.7).toFixed(1),
+    move: +between(0.05, 0.21).toFixed(2), pitch: Math.round(between(2, 8)) / 2, cant: Math.round(between(-2, 4)) / 2,
+    drop: Math.round(between(10, 26)), side: Math.round(between(-4, 4)) });
+  // one session: ends of 6 (now and then 5 or 7), ~35 s between arrows, ~3 min between ends
+  function session(start, ends, list) {
+    let t = start;
+    for (let e = 0; e < ends; e++) {
+      const n = rnd() < 0.08 ? 5 : rnd() < 0.06 ? 7 : 6;
+      for (let k = 0; k < n; k++) { list.push({ t, peak: +between(32, 58).toFixed(1), aim: +between(4, 7).toFixed(1), flags: 1, d: detail() }); t += Math.round(between(26, 46)); }
+      t += Math.round(between(140, 230));
+    }
+    return t;
+  }
+  // past 6 weeks: 3–4 sessions a week, in the evening
+  const past = [];
+  for (let d = 42; d >= 1; d--) {
+    if (rnd() < 0.45) continue;
+    const start = Math.floor(day0.getTime() / 1000) - d * 86400 + Math.round(between(16.5, 18.5) * 3600);
+    session(start, Math.round(between(6, 14)), past);
+  }
+  past.forEach((x, i) => { x.i = i; });
+  // today: 3 complete ends and 4 arrows of the 4th, still on the pod (not synced yet)
+  const today = [];
+  session(now - 15 * 60, 3, today);
+  const t4 = today[today.length - 1].t + 200;
+  for (let k = 0, tk = t4; k < 4; k++, tk += Math.round(between(27, 44))) today.push({ t: tk, peak: +between(32, 58).toFixed(1), aim: +between(4, 7).toFixed(1), flags: 1, d: detail() });
+  const shift = now - 40 - today[today.length - 1].t;         // last arrow 40 s ago
+  today.forEach(x => { x.t += shift; });
+  const pod = today.map((x, k) => Object.assign(x, { i: past.length + k }));
+  const base = past.length;
+  let settings = [0x5E, 6, 100, 0, 1, 0, 0, 0];               // 6 arrows, 100 s, cant zero set
+
+  const listeners = {}, notifyOn = {};
+  const dv = a => new DataView(Uint8Array.from(a).buffer);
+  const u32 = v => [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255];
+  const u16 = v => [v & 255, (v >> 8) & 255];
+  const emit = (n, bytes) => { if (notifyOn[n]) setTimeout(() => (listeners[n] || []).forEach(f => f({ target: { value: dv(bytes) } })), 30); };
+  const live = () => pod.filter(r => !(r.flags & 0xC0));
+  const info = () => [...u32(base + pod.length), ...u32(base), ...u16(3940), 4, 1, 17, 0, 0, 0, 0, 0, 0, 0];
+  const stats = () => { const n = live().length, l = live(); return [...u32(base + n), ...u16(n), ...u16(n + 61), ...u16(n + 340), ...u16(3940), ...u32(0), ...u32(l.length ? l[l.length - 1].t : 0)]; };
+  const detBytes = d => d ? [Math.round(d.raise * 10), Math.round(d.draw * 10), Math.round(d.hold * 10), Math.round(d.move * 100), Math.round(d.pitch * 2) & 255, Math.round(d.cant * 2) & 255, d.drop & 255, d.side & 255] : [0, 0, 0, 0, 0, 0, 0, 0];
+  function ch(n) {
+    return {
+      async readValue() { return dv(n === 2 ? info() : n === 5 ? stats() : n === 6 ? settings : [0]); },
+      async writeValue(buf) {
+        const b = [...new Uint8Array(buf.buffer || buf)];
+        const v = (b[1] | b[2] << 8 | b[3] << 16 | b[4] << 24) >>> 0;
+        if (n === 3 && b[0] === 1) {                          // dump records + details
+          setTimeout(() => {
+            for (let i = Math.max(v, base); i < base + pod.length; i += 2) {
+              const pk = [...u32(i)], dp = [...u32(i)];
+              for (let k = i; k < Math.min(i + 2, base + pod.length); k++) {
+                const r = pod[k - base];
+                pk.push(...u32(r.t), ...u16(Math.round(r.peak * 10)), Math.round(r.aim * 10), r.flags);
+                dp.push(...detBytes(r.flags & 0x40 ? null : r.d));
+              }
+              (listeners[4] || []).forEach(f => f({ target: { value: dv(pk) } }));
+              (listeners[7] || []).forEach(f => f({ target: { value: dv(dp) } }));
+            }
+            (listeners[4] || []).forEach(f => f({ target: { value: dv([255, 255, 255, 255, ...u32(base + pod.length)]) } }));
+          }, 150);
+        } else if (n === 3 && b[0] === 4) {                   // delete / restore
+          const cnt = b[5] | b[6] << 8;
+          for (let i = v; i < v + cnt; i++) { const r = pod[i - base]; if (r) r.flags = b[7] ? r.flags | 0x80 : r.flags & ~0x80; }
+          emit(5, stats()); emit(2, info());
+        } else if (n === 3 && b[0] === 7) {                   // end mark
+          pod.push({ i: base + pod.length, t: v, peak: 0, aim: 0, flags: 0x41 }); emit(5, stats()); emit(2, info());
+        } else if (n === 3 && b[0] === 9) { settings[4] = 1; emit(6, settings); }
+        else if (n === 6) { settings = [0x5E, b[0], b[1], b[2], settings[4], 0, 0, 0]; emit(6, settings); }
+      },
+      async startNotifications() { notifyOn[n] = true; },
+      addEventListener(ev, f) { (listeners[n] = listeners[n] || []).push(f); },
+    };
+  }
+  let timer = null;
+  const dev = { id: 'demo', name: 'PfeilZaehler3000-A3F2', addEventListener() {},
+    gatt: { connected: false,
+      async connect() {
+        await new Promise(r => setTimeout(r, 400));
+        this.connected = true;
+        if (!timer) timer = setInterval(() => {                // a new arrow every 30 s while connected
+          if (!dev.gatt.connected) return;
+          const last = live().length ? live()[live().length - 1].t : now;
+          const t = Math.max(Math.floor(Date.now() / 1000), last + 1);
+          pod.push({ i: base + pod.length, t, peak: +between(32, 58).toFixed(1), aim: +between(4, 7).toFixed(1), flags: 1, d: detail() });
+          emit(2, info()); emit(5, stats());
+        }, 30000);
+        return { async getPrimaryService() { return { async getCharacteristic(u) { return ch(+u[7]); } }; } };
+      },
+      disconnect() { this.connected = false; } } };
+  window.__pzDemo = {
+    db: () => ({ shots: past, nextIndex: base, endMarks: [], ops: [], lastSync: Date.now() - 2 * 86400000, podName: dev.name,
+                 settings: { arrows: 6, endGap: 100, sessGap: 45, clearAt: 50, dist: 18 } }),
+    bluetooth: { async requestDevice() { return dev; } },
+  };
+})();
+</script>
+<script>
 const SVC  = 'a7c10000-5b1e-4c5a-9d1e-3b7a0c0f0ee0';
 const U = n => 'a7c1000' + n + '-5b1e-4c5a-9d1e-3b7a0c0f0ee0';
-const UUID_TIME = U(1), UUID_INFO = U(2), UUID_CTRL = U(3), UUID_DATA = U(4), UUID_STATS = U(5);
+const UUID_TIME = U(1), UUID_INFO = U(2), UUID_CTRL = U(3), UUID_DATA = U(4), UUID_STATS = U(5),
+      UUID_SETTINGS = U(6), UUID_DETAIL = U(7);
 const F_END = 0x40, F_DEL = 0x80;          // record flags: end mark, deleted
+const icon = (id, cls = 'i') => `<svg class="${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
 
 // ---------- storage ----------
 const KEY = 'pfeilzaehler3000.v1';
 const OLD_KEY = 'arrowlog.v1';                     // data saved before the rename is taken over once
+const DEMO = !!window.__pzDemo;                    // ?demo: example data, simulated pod, nothing saved
+const BT = DEMO ? window.__pzDemo.bluetooth : navigator.bluetooth;   // Web Bluetooth, or the simulated pod
+if (DEMO) document.getElementById('demo').hidden = false;
 function load() {
+  if (DEMO) return window.__pzDemo.db();
   for (const k of [KEY, OLD_KEY]) {
     try { const d = JSON.parse(localStorage.getItem(k)); if (d && d.shots) return d; } catch (e) {}
   }
-  return { shots: [], nextIndex: 0, endMarks: [], settings: { arrows: 6, endGap: 100, sessGap: 45, clearAt: 50 } };
+  return { shots: [], nextIndex: 0, endMarks: [], settings: { arrows: 6, endGap: 100, sessGap: 45, clearAt: 50, dist: 18 } };
 }
 let db = load();
 if (!Array.isArray(db.endMarks)) db.endMarks = [];
-if (!Array.isArray(db.ops)) db.ops = [];        // changes waiting to be sent to the pod (deletes, end marks)
+if (!Array.isArray(db.ops)) db.ops = [];        // changes waiting to be sent to the pod (deletes, end marks, settings)
+if (!db.settings.dist) db.settings.dist = 18;
 const live = () => db.shots.filter(x => !(x.flags & F_DEL));
 // history of "arrows per end" / "new end after pause": each end is judged with the values valid at that time
 if (!Array.isArray(db.hist) || !db.hist.length) db.hist = [{ from: 0, arrows: db.settings.arrows, endGap: db.settings.endGap }];
 function setAt(t) { let r = db.hist[0]; for (const h of db.hist) if (h.from <= t) r = h; return r; }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { setStatus('Could not save in this browser – export a backup.'); } }
+function save() { if (DEMO) return; try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { setStatus('Could not save in this browser – export a backup.'); } }
 
 // ---------- analysis (exposed for testing) ----------
 function groupSessions(shots, s, marks = [], at = null) {
@@ -218,7 +377,7 @@ function totals(shots, now = new Date()) {
 function buckets(shots, mode, now = new Date()) {
   const out = [];
   if (mode === 'day') {
-    for (let i = 29; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i); out.push({ key: dayKey(d), label: d.getDate() === 1 || i === 29 || i % 7 === 0 ? d.getDate() + '.' + (d.getMonth() + 1) + '.' : '', n: 0 }); }
+    for (let i = 29; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i); out.push({ key: dayKey(d), label: i % 7 === 0 ? d.getDate() + '.' + (d.getMonth() + 1) + '.' : '', n: 0 }); }
     const idx = Object.fromEntries(out.map((b, i) => [b.key, i]));
     for (const x of shots) { const k = dayKey(new Date(x.t * 1000)); if (k in idx) out[idx[k]].n++; }
   } else if (mode === 'week') {
@@ -235,11 +394,51 @@ function buckets(shots, mode, now = new Date()) {
   return out;
 }
 
-// ---------- rendering ----------
+// shot details from the pod (firmware 1.7+): times in s, angles in degrees; null = not measured
+function parseDetailBytes(dv, o) {
+  const u = k => dv.getUint8(o + k), s = k => dv.getInt8(o + k);
+  let any = false;
+  for (let k = 0; k < 8; k++) if (u(k)) any = true;
+  if (!any) return null;
+  const tm = v => v ? v / 10 : null;
+  return { raise: tm(u(0)), draw: tm(u(1)), hold: tm(u(2)), move: u(3) ? u(3) / 100 : null,
+           pitch: s(4) / 2, cant: s(5) / 2, drop: s(6), side: s(7) };
+}
+function parseDetail(dv) {
+  const first = dv.getUint32(0, true), out = [];
+  for (let o = 4, i = 0; o + 8 <= dv.byteLength; o += 8, i++) out.push({ i: first + i, d: parseDetailBytes(dv, o) });
+  return out;
+}
+// averages of a list of arrows: hold, aim movement, cant spread, raise
+function summary(list) {
+  const d = list.map(x => x.d).filter(Boolean);
+  if (!d.length) return null;
+  const mean = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null;
+  const pick = k => d.map(x => x[k]).filter(v => v !== null && v !== undefined);
+  const cants = pick('cant'), cm = mean(cants);
+  const sd = cants.length > 1 ? Math.sqrt(mean(cants.map(v => (v - cm) ** 2))) : null;
+  return { n: d.length, hold: mean(pick('hold')), move: mean(pick('move')), raise: mean(pick('raise')), draw: mean(pick('draw')), cantSd: sd, cant: cm };
+}
+
+// ---------- formatting ----------
 let chartMode = 'day';
 const $ = id => document.getElementById(id);
 function setStatus(html) { $('status').innerHTML = html; }
+function fmtTime(t) { return new Date(t * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+function fmtDate(t) { return new Date(t * 1000).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); }
+function fmtSplit(sec) { sec = Math.max(0, Math.round(sec)); return '+' + Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
+const f1 = v => v === null || v === undefined ? '–' : v.toFixed(1);
+function cm(deg) { return Math.tan(deg * Math.PI / 180) * db.settings.dist * 100; }
+function fmtMove(deg) { return deg === null || deg === undefined ? '–' : `${deg.toFixed(2)}° ≈ ${cm(deg).toFixed(1)} cm`; }
+function fmtCant(c) { if (c === null || c === undefined) return '–'; if (Math.abs(c) < 0.25) return '0°'; return `${Math.abs(c).toFixed(1)}° ${c > 0 ? 'right' : 'left'}`; }
+function fmtFollow(d) {
+  const a = [];
+  a.push(d.drop >= 0 ? `${d.drop}° down` : `${-d.drop}° up`);
+  if (d.side) a.push(`${Math.abs(d.side)}° ${d.side > 0 ? 'right' : 'left'}`);
+  return a.join(', ');
+}
 
+// ---------- rendering ----------
 function renderChart() {
   const b = buckets(live(), chartMode);
   const W = 340, H = 150, pad = 18, top = 16;
@@ -257,8 +456,14 @@ function renderChart() {
   $('chart').innerHTML = s + '</svg>';
 }
 
-function fmtTime(t) { return new Date(t * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
-function fmtDate(t) { return new Date(t * 1000).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); }
+function avgLine(sm) {
+  if (!sm) return '';
+  const p = [];
+  if (sm.hold !== null) p.push(`hold ${f1(sm.hold)} s`);
+  if (sm.move !== null) p.push(`aim movement ${sm.move.toFixed(2)}° (${cm(sm.move).toFixed(1)} cm)`);
+  if (sm.cantSd !== null) p.push(`cant ±${sm.cantSd.toFixed(1)}°`);
+  return p.length ? 'Average: ' + p.join(' · ') : '';
+}
 
 let shownSessions = [];
 function renderSessions() {
@@ -270,9 +475,11 @@ function renderSessions() {
   let h = '';
   for (const [si, x] of sess.entries()) {
     const off = x.ends.filter(e => e.n !== e.arrows).length;
+    const all = x.ends.flatMap(e => e.list);
+    const av = avgLine(summary(all));
     h += `<div class="sess"><div class="top"><div><div>${fmtDate(x.start)}</div><div class="small">${fmtTime(x.start)}–${fmtTime(x.stop)} · ${x.ends.length} ends${off ? ` · ${off} incomplete or extra` : ''}</div></div><div class="big">${x.shots}</div></div><div class="ends">`;
-    x.ends.forEach((e, ei) => { h += `<button class="end${e.n !== e.arrows ? ' off' : ''}" data-s="${si}" data-e="${ei}" title="${fmtTime(e.start)} · ${e.arrows} per end">${e.n}</button>`; });
-    h += '</div></div>';
+    x.ends.forEach((e, ei) => { h += `<button class="end${e.n !== e.arrows ? ' off' : ''}" data-s="${si}" data-e="${ei}" aria-label="End ${ei + 1}: ${e.n} of ${e.arrows} arrows">${e.n}</button>`; });
+    h += '</div>' + (av ? `<div class="avg">${av}</div>` : '') + '</div>';
   }
   if (undated) h += `<div class="small">${undated} arrows have no date (pod clock was never set). They count in "All time".</div>`;
   $('sessions').innerHTML = h;
@@ -296,17 +503,42 @@ function render() {
   const t = totals(live());
   $('t-today').textContent = t.today; $('t-week').textContent = t.week;
   $('t-month').textContent = t.month; $('t-all').textContent = t.all;
-  renderChart(); renderSessions();
+  renderChart(); renderSessions(); renderChips(); renderCantState();
+}
+
+// ---------- status line: connection, battery, pod memory, last sync ----------
+let conn = 'off';                                  // off | wait | ok | lost
+function battIcon(mv) {
+  const f = Math.max(0, Math.min(1, (mv - 3500) / (4150 - 3500)));
+  return `<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2"/>` +
+    `<rect x="4" y="9" width="${(13 * f).toFixed(1)}" height="6" rx="1" fill="currentColor" stroke="none"/></svg>`;
+}
+function renderChips() {
+  const name = (dev && dev.name) || db.podName || '';
+  const short = name.replace('PfeilZaehler3000-', 'Pod ') || 'Pod';
+  const cText = { off: dev || db.podName ? `${short} · not connected` : 'Not connected', wait: `${short} · connecting…`, ok: short, lost: `${short} · reconnecting…` }[conn];
+  const cCls = { off: 'off', wait: 'wait', ok: 'ok', lost: 'bad' }[conn];
+  let h = `<span class="chip ${cCls}" title="Bluetooth connection">${icon('bt')}${cText}</span>`;
+  if (info) {
+    const v = info.mv / 1000, bc = !info.mv ? 'off' : v < 3.6 ? 'bad' : v < 3.7 ? 'wait' : '';
+    h += `<span class="chip ${bc}" title="Pod battery, measured ${fmtClock(info.at)}">${battIcon(info.mv)}${info.mv ? v.toFixed(2) + ' V' : '–'}</span>`;
+    h += `<span class="chip${info.storage >= 80 ? ' bad' : ''}" title="Pod memory used (cleared after a sync when fuller than ${db.settings.clearAt} %)">${icon('mem')}${info.storage} %</span>`;
+  }
+  if (db.lastSync) h += `<span class="chip" title="Last sync with the pod">${icon('sync')}${fmtClock(db.lastSync)}</span>`;
+  $('chips').innerHTML = h;
+}
+function fmtClock(ms) {
+  const d = new Date(ms), today = dayKey(new Date()) === dayKey(d);
+  return today ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+               : d.toLocaleDateString([], { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 // ---------- Bluetooth ----------
-let dev = null, chars = {}, info = null, dumpResolve = null, incoming = [];
+let dev = null, chars = {}, info = null, dumpResolve = null, incoming = [], incomingDetails = new Map();
 
 function parseInfo(dv) {
   return { total: dv.getUint32(0, true), base: dv.getUint32(4, true), mv: dv.getUint16(8, true),
-           storage: dv.getUint8(10), at: Date.now(), exact: !!(dv.getUint8(11) & 1), active: !!(dv.getUint8(11) & 2), fw: dv.getUint8(12),
-           wakes: dv.byteLength >= 20 ? dv.getUint16(13, true) : null, awakePct: dv.byteLength >= 20 ? dv.getUint8(15) : null,
-           uptime: dv.byteLength >= 20 ? dv.getUint32(16, true) : null };
+           storage: dv.getUint8(10), at: Date.now(), exact: !!(dv.getUint8(11) & 1), fw: dv.getUint8(12) };
 }
 function parseData(dv) {
   const first = dv.getUint32(0, true);
@@ -316,27 +548,22 @@ function parseData(dv) {
     recs.push({ i: first + i, t: dv.getUint32(o, true), peak: dv.getUint16(o + 4, true) / 10, aim: dv.getUint8(o + 6) / 10, flags: dv.getUint8(o + 7) });
   return { recs };
 }
-
-function showInfo() {
-  if (!info) return;
-  const v = info.mv ? (info.mv / 1000).toFixed(2) + ' V' : '–';
-  const at = new Date(info.at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  let diag = '';
-  if (info.uptime !== null) {
-    const h = info.uptime / 3600;
-    const up = h >= 48 ? (h / 24).toFixed(1) + ' days' : h >= 1 ? h.toFixed(1) + ' h' : Math.round(info.uptime / 60) + ' min';
-    diag = `<br><span class="small">${info.active ? 'Awake' : 'Idle'} now · since start ${up}: awake ${info.awakePct}% of the time, woke up ${info.wakes}×</span>`;
-  }
-  setStatus(`<b>Connected to ${dev && dev.name ? dev.name : 'pod'}.</b> Records ${info.total} · battery ${v} (${at}) · memory ${info.storage}% used${diag}`);
+function parseSettings(dv) {
+  return { arrows: dv.getUint8(1), endGap: dv.getUint16(2, true), flags: dv.getUint8(4), cantRef: dv.getInt16(6, true) / 10 };
 }
+
+function showInfo() { renderChips(); }
 
 let userDisconnect = false, retryTimer = null, retryUntil = 0;
 function updateButtons() {
   const connected = !!(dev && dev.gatt.connected);
+  if (!connected && conn === 'ok') conn = 'off';
   $('connect').textContent = dev ? (connected ? 'Update now' : 'Reconnect & update') : 'Connect pod & sync';
   $('disconnect').hidden = !connected;
   $('choose').hidden = !dev;
   $('podbtns').hidden = !dev;
+  $('setlevel').disabled = !connected || !chars.settings;
+  renderChips();
 }
 // keep trying to reconnect for a while (pod out of range, phone screen was off, ...)
 function scheduleReconnect(seconds = 60) {
@@ -344,9 +571,9 @@ function scheduleReconnect(seconds = 60) {
   if (retryTimer) return;
   const tryOnce = async () => {
     retryTimer = null;
-    if (!dev || dev.gatt.connected || userDisconnect || document.hidden || Date.now() > retryUntil) { updateButtons(); return; }
+    if (!dev || dev.gatt.connected || userDisconnect || document.hidden || Date.now() > retryUntil) { if (!dev || !dev.gatt.connected) conn = 'off'; updateButtons(); return; }
     try { await attach(dev); }
-    catch (e) { setStatus('Pod not reachable – retrying…'); retryTimer = setTimeout(tryOnce, 5000); }
+    catch (e) { conn = 'lost'; setStatus('Pod not reachable – retrying…'); renderChips(); retryTimer = setTimeout(tryOnce, 5000); }
   };
   retryTimer = setTimeout(tryOnce, 1000);
 }
@@ -356,20 +583,21 @@ async function attach(device) {
   if (knownDevice !== device) {                    // add the disconnect handler only once per device
     knownDevice = device;
     dev.addEventListener('gattserverdisconnected', () => {
+      if (userDisconnect) { conn = 'off'; setStatus(''); updateButtons(); return; }
+      conn = 'lost'; setStatus('');
       updateButtons();
-      if (userDisconnect) { setStatus('Disconnected.'); return; }
-      setStatus('Connection lost – reconnecting…');
       scheduleReconnect(60);
     });
   }
   userDisconnect = false;
-  setStatus('Connecting…');
+  conn = 'wait'; setStatus(''); renderChips();
   const server = await dev.gatt.connect();
   db.podId = dev.id; db.podName = dev.name || ''; save();     // the pod this phone uses from now on
   const svc = await server.getPrimaryService(SVC);
   for (const [k, u] of [['time', UUID_TIME], ['info', UUID_INFO], ['ctrl', UUID_CTRL], ['data', UUID_DATA]]) chars[k] = await svc.getCharacteristic(u);
-  try { chars.stats = await svc.getCharacteristic(UUID_STATS); } catch (e) { chars.stats = null; }   // pod firmware 1.5+
-  $('disconnect').hidden = false; $('podbtns').hidden = false;
+  for (const [k, u] of [['stats', UUID_STATS], ['settings', UUID_SETTINGS], ['detail', UUID_DETAIL]]) {
+    try { chars[k] = await svc.getCharacteristic(u); } catch (e) { chars[k] = null; }   // newer pod firmware only
+  }
 
   // pod clock + local time offset (the pod counts "today" / "week" / "month" for the watch)
   const now = new Uint8Array(8), nv = new DataView(now.buffer);
@@ -382,6 +610,10 @@ async function attach(device) {
     if (p.end) { if (dumpResolve) dumpResolve(p.total); dumpResolve = null; } else incoming.push(...p.recs);
   });
   await chars.data.startNotifications();
+  if (chars.detail) {                              // shot details arrive together with the records
+    chars.detail.addEventListener('characteristicvaluechanged', e => { for (const r of parseDetail(e.target.value)) incomingDetails.set(r.i, r.d); });
+    await chars.detail.startNotifications();
+  }
   chars.info.addEventListener('characteristicvaluechanged', async e => {
     const prev = info ? info.total : 0;
     info = parseInfo(e.target.value); showInfo();
@@ -399,8 +631,32 @@ async function attach(device) {
     podStats = parseStats(await chars.stats.readValue());
   }
   info = parseInfo(await chars.info.readValue());
+  conn = 'ok';
   updateButtons();
+  await flushOps();                                // settings changed here while offline go first
+  if (chars.settings) {
+    chars.settings.addEventListener('characteristicvaluechanged', e => adoptSettings(parseSettings(e.target.value)));
+    await chars.settings.startNotifications();
+    adoptSettings(parseSettings(await chars.settings.readValue()));
+  }
   await sync(true);
+}
+
+// settings from the pod (changed on the watch or another phone): take them over
+function adoptSettings(p) {
+  db.podSettings = { flags: p.flags, cantRef: p.cantRef };
+  if (p.arrows >= 1 && p.endGap >= 20 && (p.arrows !== db.settings.arrows || p.endGap !== db.settings.endGap)) {
+    db.settings.arrows = p.arrows; db.settings.endGap = p.endGap;
+    db.hist.push({ from: Math.floor(Date.now() / 1000), arrows: p.arrows, endGap: p.endGap });
+    $('s-arrows').value = p.arrows; $('s-endgap').value = p.endGap;
+  }
+  save(); render();
+}
+function renderCantState() {
+  const f = db.podSettings ? db.podSettings.flags : 0;
+  $('cant-state').textContent = f & 1 ? 'Cant 0 was set with the bow upright. Positive = top limb to the right.'
+    : f & 2 ? 'Cant 0 is the position of the first shot. For true values hold the bow upright (bubble level) and tap the button.'
+    : 'Hold the bow upright (bubble level) and tap the button. Until then the first shot counts as 0.';
 }
 
 let podStats = null;
@@ -419,10 +675,23 @@ function queueDelete(indices, del) {
     k += n;
   }
 }
-async function flushOps() {
-  if (!chars.ctrl || !chars.stats) return;         // pod firmware older than 1.5 doesn't know these
+let flushing = null;                               // one sender at a time (a pod notification may start a sync meanwhile)
+function flushOps() {
+  if (!flushing) flushing = sendOps().finally(() => { flushing = null; });
+  return flushing;
+}
+async function sendOps() {
+  if (!chars.ctrl || !chars.stats || !dev || !dev.gatt.connected) return;   // pod firmware older than 1.5 doesn't know these
   while (db.ops.length) {
     const op = db.ops[0], c = new Uint8Array(8), v = new DataView(c.buffer);
+    if (op.k === 'set') {
+      if (chars.settings) { const b = new Uint8Array(3); b[0] = db.settings.arrows; new DataView(b.buffer).setUint16(1, db.settings.endGap, true); await chars.settings.writeValue(b); }
+      db.ops.shift(); save(); continue;
+    }
+    if (op.k === 'level') {
+      if (chars.settings) { c[0] = 9; await chars.ctrl.writeValue(c.slice(0, 5)); }
+      db.ops.shift(); save(); continue;
+    }
     if (op.k === 'del') { c[0] = 4; v.setUint32(1, op.i, true); v.setUint16(5, op.n, true); c[7] = op.d; }
     else if (op.k === 'end') { c[0] = 7; v.setUint32(1, op.t, true); }
     else if (op.k === 'resetdays') { c[0] = 6; }
@@ -442,7 +711,7 @@ async function sync(mayClear) {
   if (syncing || !chars.ctrl) return; syncing = true;
   try {
     await flushOps();
-    incoming = [];
+    incoming = []; incomingDetails = new Map();
     // full update: read today's records again too, so deletions / end marks from the watch arrive
     const from = Math.max(mayClear && chars.stats ? Math.min(db.nextIndex, firstIndexToday()) : db.nextIndex, info.base);
     const done = new Promise(r => { dumpResolve = r; setTimeout(() => r(null), 30000); });
@@ -456,15 +725,16 @@ async function sync(mayClear) {
         if (r.t > 1600000000 && !db.endMarks.includes(r.t)) { db.endMarks.push(r.t); db.endMarks.sort((a, b) => a - b); }
         continue;
       }
+      const det = incomingDetails.get(r.i);
       const k = known.get(r.i);
-      if (k) k.flags = r.flags;                      // deleted / restored on the pod
-      else { fresh.push(r); known.set(r.i, r); }
+      if (k) { k.flags = r.flags; if (det && !k.d) k.d = det; }   // deleted / restored on the pod
+      else { if (det) r.d = det; fresh.push(r); known.set(r.i, r); }
     }
     db.shots.push(...fresh);
-    if (total !== null) db.nextIndex = Math.max(db.nextIndex, total);
+    if (total !== null) { db.nextIndex = Math.max(db.nextIndex, total); db.lastSync = Date.now(); }
     save(); render();
     info = parseInfo(await chars.info.readValue()); showInfo();
-    if (fresh.length) setStatus($('status').innerHTML + ` · <b>${fresh.length} new</b>`);
+    setStatus(fresh.length ? `<b>${fresh.length} new ${fresh.length === 1 ? 'arrow' : 'arrows'}</b> synced.` : '');
     if (mayClear && total !== null && db.nextIndex >= info.total && info.storage >= db.settings.clearAt && info.total > info.base) {
       const c = new Uint8Array(5); c[0] = 2; new DataView(c.buffer).setUint32(1, info.total, true);
       await chars.ctrl.writeValue(c);
@@ -474,18 +744,18 @@ async function sync(mayClear) {
 }
 
 async function choosePod() {
-  if (!navigator.bluetooth) { setStatus('This browser has no Web Bluetooth. Use Chrome/Edge (Android, desktop) or Bluefy (iPhone), over https.'); return; }
-  try { await attach(await navigator.bluetooth.requestDevice({ filters: [{ services: [SVC] }] })); }
-  catch (e) { setStatus(e.name === 'NotFoundError' ? 'No pod selected.' : 'Could not connect: ' + e.message); }
+  if (!BT) { setStatus('This browser has no Web Bluetooth. Use Chrome/Edge (Android, desktop) or Bluefy (iPhone), over https. Or <a href="?demo">try the demo</a>.'); return; }
+  try { await attach(await BT.requestDevice({ filters: [{ services: [SVC] }] })); }
+  catch (e) { conn = dev && dev.gatt.connected ? 'ok' : 'off'; renderChips(); setStatus(e.name === 'NotFoundError' ? 'No pod selected.' : 'Could not connect: ' + e.message); }
 }
 // one tap: already connected -> sync, known pod -> reconnect without the list, otherwise choose it once
 $('connect').onclick = async () => {
   if (dev && dev.gatt.connected) { setStatus('Updating…'); await sync(true); return; }
-  if (dev) { try { await attach(dev); } catch (e) { setStatus('Pod not reachable. Pick up the bow and try again.'); } return; }
+  if (dev) { try { await attach(dev); } catch (e) { conn = 'off'; renderChips(); setStatus('Pod not reachable. Pick up the bow and try again.'); } return; }
   await choosePod();
 };
 $('choose').onclick = choosePod;
-$('disconnect').onclick = () => { userDisconnect = true; if (dev && dev.gatt.connected) dev.gatt.disconnect(); updateButtons(); };
+$('disconnect').onclick = () => { userDisconnect = true; if (dev && dev.gatt.connected) dev.gatt.disconnect(); conn = 'off'; updateButtons(); };
 // back to the page (phone unlocked, app switched): update automatically
 document.addEventListener('visibilitychange', async () => {
   if (document.hidden || !dev || userDisconnect) return;
@@ -494,33 +764,42 @@ document.addEventListener('visibilitychange', async () => {
 
 // Reconnect without the chooser when the browser supports remembered devices
 (async () => {
-  if (!navigator.bluetooth || !navigator.bluetooth.getDevices) return;
+  if (DEMO || !navigator.bluetooth || !navigator.bluetooth.getDevices) return;
   try {
     const list = await navigator.bluetooth.getDevices();
     // the pod chosen last time; other pods nearby are ignored
     const d = list.find(x => x.id === db.podId) || list.find(x => (x.name || '').startsWith('PfeilZaehler3000')); if (!d) return;
-    setStatus('Looking for your pod…');
+    conn = 'wait'; renderChips();
     if (d.watchAdvertisements) {
       const ac = new AbortController();
-      d.addEventListener('advertisementreceived', async () => { ac.abort(); try { await attach(d); } catch (e) { setStatus('Tap Connect to sync.'); } }, { once: true });
+      d.addEventListener('advertisementreceived', async () => { ac.abort(); try { await attach(d); } catch (e) { conn = 'off'; renderChips(); setStatus('Tap Connect to sync.'); } }, { once: true });
       await d.watchAdvertisements({ signal: ac.signal });
-      setTimeout(() => { if (!d.gatt.connected) { ac.abort(); setStatus('Pod not in range. Tap Connect when it is.'); } }, 15000);
+      setTimeout(() => { if (!d.gatt.connected) { ac.abort(); conn = 'off'; renderChips(); setStatus('Pod not in range. Tap Connect when it is.'); } }, 15000);
     } else await attach(d);
-  } catch (e) { setStatus('Not connected.'); }
+  } catch (e) { conn = 'off'; renderChips(); }
 })();
 
 // ---------- settings & data ----------
-const S = { arrows: 's-arrows', endGap: 's-endgap', sessGap: 's-sessgap', clearAt: 's-clear' };
+const S = { arrows: 's-arrows', endGap: 's-endgap', sessGap: 's-sessgap', clearAt: 's-clear', dist: 's-dist' };
 for (const [k, id] of Object.entries(S)) {
   $(id).value = db.settings[k];
-  $(id).onchange = e => {
-    const v = Number(e.target.value); if (!(v >= 0)) return;
+  $(id).onchange = async e => {
+    const el = e.target, v = Math.round(Number(el.value));
+    if (!(v >= Number(el.min) && v <= Number(el.max))) { el.value = db.settings[k]; return; }
     db.settings[k] = v;
-    if (k === 'arrows' || k === 'endGap')          // applies from now on, earlier ends keep their values
+    if (k === 'arrows' || k === 'endGap') {        // applies from now on, earlier ends keep their values
       db.hist.push({ from: Math.floor(Date.now() / 1000), arrows: db.settings.arrows, endGap: db.settings.endGap });
+      db.ops = db.ops.filter(o => o.k !== 'set'); db.ops.push({ k: 'set' });   // to the pod, the watch follows
+    }
     save(); render();
+    if (dev && dev.gatt.connected) { try { await flushOps(); } catch (err) {} }
   };
 }
+$('setlevel').onclick = async () => {
+  db.ops.push({ k: 'level' }); save();
+  try { await flushOps(); setStatus('Cant 0 set. The next arrows show the cant relative to upright.'); }
+  catch (e) { setStatus('Could not reach the pod: ' + e.message); }
+};
 $('tabs').onclick = e => { const b = e.target.closest('button'); if (!b) return; chartMode = b.dataset.v; [...$('tabs').children].forEach(x => x.classList.toggle('on', x === b)); renderChart(); };
 
 // iPhone browsers like Bluefy ignore normal downloads: use the share sheet (save to Files, AirDrop,
@@ -569,8 +848,14 @@ $('box-restore').onclick = () => {
   catch (err) { $('box-hint').textContent = 'That is not a valid backup: ' + err.message; }
 };
 $('csv').onclick = () => {
-  const rows = ['index,datetime_local,unix,peak_g,aim_s,clock_exact,deleted'];
-  for (const x of [...db.shots].sort((a, b) => a.t - b.t)) rows.push([x.i, x.t > 1600000000 ? new Date(x.t * 1000).toLocaleString('sv') : '', x.t, x.peak, x.aim, x.flags & 1, x.flags & F_DEL ? 1 : 0].join(','));
+  const rows = ['index,datetime_local,unix,peak_g,still_before_release_s,raise_s,draw_s,hold_s,aim_movement_deg,angle_deg,cant_deg,follow_down_deg,follow_right_deg,clock_exact,deleted'];
+  const v = x => x === null || x === undefined ? '' : x;
+  for (const x of [...db.shots].sort((a, b) => a.t - b.t)) {
+    const d = x.d || {};
+    rows.push([x.i, x.t > 1600000000 ? new Date(x.t * 1000).toLocaleString('sv') : '', x.t, x.peak, x.aim,
+      v(d.raise), v(d.draw), v(d.hold), v(d.move), v(d.pitch), v(d.cant), v(d.drop), v(d.side),
+      x.flags & 1, x.flags & F_DEL ? 1 : 0].join(','));
+  }
   exportText('PfeilZaehler3000.csv', rows.join('\n'), 'text/csv');
 };
 $('backup').onclick = () => exportText('PfeilZaehler3000-backup.json', JSON.stringify(db), 'application/json');
@@ -605,7 +890,7 @@ $('resetday').onclick = async () => {
   setStatus(`Today's ${list.length} arrows deleted.`);
 };
 
-// ---------- delete single arrows / ends ----------
+// ---------- the arrows of one end: delete, restore, details ----------
 let lastDeleted = null;
 async function deleteArrows(list, del) {
   for (const x of list) x.flags = del ? (x.flags | F_DEL) : (x.flags & ~F_DEL);
@@ -613,27 +898,50 @@ async function deleteArrows(list, del) {
   save(); render();
   if (dev && dev.gatt.connected) { try { await flushOps(); } catch (e) {} }
 }
-let sheetEnd = null;
-function openSheet(end) {
-  sheetEnd = end;
-  $('sheet-title').textContent = `End of ${end.n} · ${fmtDate(end.start)}, ${fmtTime(end.start)}`;
+let sheetEnd = null, sheetNo = 0, openRows = new Set();
+function openSheet(end, no) {
+  sheetEnd = end; sheetNo = no; openRows = new Set();
+  $('sheet-title').textContent = `End ${no} · ${end.n} ${end.n === 1 ? 'arrow' : 'arrows'}`;
+  $('sheet-sub').textContent = `${fmtDate(end.start)}, ${fmtTime(end.start)} · ${end.arrows} per end`;
   renderSheet();
   $('sheet').hidden = false;
 }
+function detailHtml(x) {
+  const d = x.d, rows = [];
+  if (d) {
+    rows.push(['Raise', d.raise !== null ? f1(d.raise) + ' s' : '–'], ['Draw &amp; set', d.draw !== null ? f1(d.draw) + ' s' : '–']);
+    rows.push(['Hold', d.hold !== null ? f1(d.hold) + ' s' : '–'], ['Aim movement', fmtMove(d.move)]);
+    rows.push(['Bow angle', (d.pitch >= 0 ? '+' : '') + d.pitch.toFixed(1) + '°'], ['Cant', fmtCant(d.cant)]);
+    rows.push(['Follow-through', fmtFollow(d)], ['Jolt', x.peak + ' g']);
+  } else {
+    rows.push(['Still before release', x.aim + ' s'], ['Jolt', x.peak + ' g']);
+    rows.push(['<span class="full">No phase details: shot with pod firmware older than 1.7.</span>', null]);
+  }
+  rows.push([`Time ${new Date(x.t * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`, null]);
+  return rows.map(([k, v]) => v === null ? `<div class="full small">${k}</div>` : `<div><span class="k">${k}</span><br>${v}</div>`).join('');
+}
 function renderSheet() {
-  $('sheet-list').innerHTML = sheetEnd.list.map((x, k) => {
+  const list = sheetEnd.list;
+  $('sheet-avg').textContent = avgLine(summary(list.filter(x => !(x.flags & F_DEL))));
+  $('sheet-list').innerHTML = list.map((x, k) => {
     const gone = x.flags & F_DEL;
-    const tm = new Date(x.t * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    return `<div class="arow${gone ? ' gone' : ''}"><span>${k + 1}. ${tm} · ${x.peak} g · aim ${x.aim} s</span>` +
-      `<button class="btn ghost${gone ? '' : ' danger'}" data-k="${k}">${gone ? 'Restore' : 'Delete'}</button></div>`;
+    const when = k === 0 ? fmtTime(x.t) : fmtSplit(x.t - list[k - 1].t);
+    const quick = x.d && x.d.hold !== null ? `<span class="small">hold ${f1(x.d.hold)} s</span>` : '';
+    return `<div class="arow${gone ? ' gone' : ''}${openRows.has(k) ? ' open' : ''}" data-row="${k}"><div class="line">` +
+      `<span class="no">${k + 1}</span><span class="tm" data-open="${k}" role="button" aria-expanded="${openRows.has(k)}">${when} ${quick}${icon('chev', 'i chev')}</span>` +
+      (gone ? `<button class="icon-btn undo" data-k="${k}" aria-label="Restore arrow ${k + 1}" title="Restore">${icon('undo')}</button>`
+            : `<button class="icon-btn del" data-k="${k}" aria-label="Delete arrow ${k + 1}" title="Delete">${icon('trash')}</button>`) +
+      `</div><div class="det">${detailHtml(x)}</div></div>`;
   }).join('');
 }
 $('sessions').onclick = e => {
   const b = e.target.closest('button.end'); if (!b) return;
   const end = shownSessions[+b.dataset.s] && shownSessions[+b.dataset.s].ends[+b.dataset.e];
-  if (end) openSheet(end);
+  if (end) openSheet(end, +b.dataset.e + 1);
 };
 $('sheet-list').onclick = async e => {
+  const o = e.target.closest('[data-open]');
+  if (o) { const k = +o.dataset.open; openRows.has(k) ? openRows.delete(k) : openRows.add(k); renderSheet(); return; }
   const b = e.target.closest('button[data-k]'); if (!b) return;
   const x = sheetEnd.list[+b.dataset.k];
   await deleteArrows([x], !(x.flags & F_DEL));
@@ -672,7 +980,7 @@ $('reset').onclick = async () => {
   }
   db.shots = [];
   db.endMarks = [];
-  db.ops = [];
+  db.ops = db.ops.filter(o => o.k === 'set' || o.k === 'level');
   save(); render();
   setStatus('All stats reset.' + (dev && dev.gatt.connected ? ' Pod memory cleared too.' : ''));
 };
@@ -680,7 +988,7 @@ $('reset').onclick = async () => {
 render();
 updateButtons();
 setInterval(() => { $('t-end').textContent = currentEnd(); }, 10000);
-if (typeof window !== 'undefined') window.PfeilZaehler3000 = { groupSessions, totals, buckets, parseData, parseInfo, parseStats, currentEnd, queueDelete, getDb: () => db };
+if (typeof window !== 'undefined') window.PfeilZaehler3000 = { groupSessions, totals, buckets, parseData, parseInfo, parseStats, parseDetail, parseSettings, summary, fmtSplit, currentEnd, queueDelete, getDb: () => db };
 </script>
 </body>
 </html>

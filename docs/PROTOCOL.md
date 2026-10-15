@@ -1,4 +1,4 @@
-# Bluetooth interface (pod firmware 1.6)
+# Bluetooth interface (pod firmware 1.7)
 
 The pod is a Bluetooth Low Energy peripheral named `PfeilZaehler3000-XXXX`, where `XXXX` is the
 pod ID: the two lowest bytes of its Bluetooth address in hex (firmware 1.5 and older: just
@@ -18,6 +18,8 @@ Characteristic UUIDs: same, with the 8th hex digit replaced (`a7c1000N-…`).
 | `a7c10003-…` | CTRL | write | commands, see below |
 | `a7c10004-…` | DATA | notify | records sent after command 0x01 |
 | `a7c10005-…` | STATS | read, notify | 20 bytes, see below |
+| `a7c10006-…` | SETTINGS | read, write, notify | 8 bytes, see below (firmware 1.7+) |
+| `a7c10007-…` | DETAIL | notify | shot details, sent with DATA (firmware 1.7+) |
 
 ## TIME
 
@@ -34,12 +36,11 @@ The phone page and the watch write it on every connection.
 | 8 | u16 | battery voltage (mV) |
 | 10 | u8 | memory used (%) |
 | 11 | u8 | flags: bit0 clock set since start, bit1 awake |
-| 12 | u8 | firmware version (16 = 1.6, 96 = debug build of 1.6) |
-| 13 | u16 | wake-ups since start |
-| 15 | u8 | share of time awake since start (%) |
-| 16 | u32 | seconds since start |
+| 12 | u8 | firmware version (17 = 1.7, 97 = debug build of 1.7) |
+| 13 | 7 bytes | reserved, 0 (firmware 1.3–1.6: wake-ups, share of time awake, seconds since start) |
 
-Notified after every record, deletion, end mark, wake-up and power-saving switch.
+Memory used counts records and shot details together. Notified after every record, deletion, end
+mark, wake-up and power-saving switch.
 
 ## STATS (20 bytes)
 
@@ -65,8 +66,24 @@ Notified together with INFO.
 | `05` 00 00 00 00 | Delete the newest arrow that is not deleted |
 | `06` 00 00 00 00 | Reset the today/week/month counters |
 | `07` u32 time | Store an end mark ("new end") with this time |
+| `09` 00 00 00 00 | The bow is upright now: store the current roll angle as cant 0 (firmware 1.7+) |
 
-Commands 04–07 are processed in the main loop, up to 8 can be queued.
+Commands 04–07 and 09 are processed in the main loop, up to 8 can be queued.
+
+## SETTINGS (8 bytes, firmware 1.7+)
+
+| Offset | Type | Content |
+|---|---|---|
+| 0 | u8 | 0x5E |
+| 1 | u8 | arrows per end (1–24, default 6) |
+| 2 | u16 | new end after a pause of this many seconds (20–900, default 100) |
+| 4 | u8 | flags: bit0 cant 0 set with "bow upright", bit1 cant 0 taken from the first shot |
+| 5 | u8 | reserved |
+| 6 | i16 | roll angle of the pod at cant 0 (0.1°) |
+
+Write 3 bytes `[arrows per end][u16 seconds]` to change the settings. They are stored in flash and
+notified to every connected device, so the phone page and the watch always use the same values;
+the last change counts.
 
 ## DATA
 
@@ -79,5 +96,25 @@ Record (8 bytes):
 |---|---|---|
 | 0 | u32 | unix time (seconds since start if the clock was never set) |
 | 4 | u16 | release jolt × 10 (g) |
-| 6 | u8 | aiming time × 10 (s) |
+| 6 | u8 | still time before the release × 10 (s): rotation below 25 °/s |
 | 7 | u8 | flags: bit0 clock set, bit1 clock restored after a restart, bit6 end mark, bit7 deleted |
+
+## DETAIL (firmware 1.7+)
+
+If notifications on DETAIL are switched on, the pod sends a DETAIL notification right after every
+DATA notification of a dump: `u32 index of the first record` followed by one 8-byte detail per
+record of the DATA packet. End marks and records stored by older firmware have all-zero details.
+
+| Offset | Type | Content |
+|---|---|---|
+| 0 | u8 | raise × 10 (s), 0 = not found |
+| 1 | u8 | draw and set × 10 (s), 0 = not found |
+| 2 | u8 | hold × 10 (s), 0 = not found |
+| 3 | u8 | aim movement in the last second, RMS × 100 (°), 0 = not measured |
+| 4 | i8 | bow angle at the release × 2 (°), + = aiming up |
+| 5 | i8 | cant at the release × 2 (°), + = top limb to the right |
+| 6 | i8 | follow-through 0.5 s after the release, forward / down (°) |
+| 7 | i8 | follow-through sideways, + = right (°) |
+
+Times above 25.4 s are stored as 255. Angles assume the bolt points towards the target (sensor Z
+axis along the arrow).

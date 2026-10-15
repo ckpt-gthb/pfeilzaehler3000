@@ -1,14 +1,14 @@
 # PfeilZaehler3000 – Build and User Guide
 
 Automatic arrow counter for recurve, barebow and compound bows.
-Release 1.8 · 12 October 2026
+Release 1.9 · 15 October 2026
 
 | Part | Version |
 |---|---|
-| Pod firmware | 1.6 (`firmware/PfeilZaehler3000`) |
-| Debug firmware | 1.6-debug (`firmware/PfeilZaehler3000Debug`) |
-| Phone page | 1.8 (`app/index.html`) |
-| Garmin watch app | 1.2 (`garmin/PfeilZaehler3000Watch`) |
+| Pod firmware | 1.7 (`firmware/PfeilZaehler3000`) |
+| Debug firmware | 1.7-debug (`firmware/PfeilZaehler3000Debug`) |
+| Phone page | 1.9 (`app/index.html`) |
+| Garmin watch app | 1.3 (`garmin/PfeilZaehler3000Watch`) |
 | Housing | v3 (`housing/`) |
 
 ![The assembled pod](images/pod-closed.png)
@@ -16,9 +16,12 @@ Release 1.8 · 12 October 2026
 ## 1. What it is
 
 PfeilZaehler3000 is a small sensor pod that is screwed into a stabilizer bushing of the bow. It
-detects each shot from the vibration of the riser and stores the time of every arrow. A web page on
-the phone reads the pod over Bluetooth and shows arrows per end, session, day, week and month. An
-optional Garmin watch app shows the current end and vibrates on every arrow.
+detects each shot from the vibration of the riser and stores the time of every arrow, together
+with details of the shot: how long the raise, the draw and the hold took, how much the bow moved
+while aiming, the bow angle and cant at the release and the follow-through. A web page on the
+phone reads the pod over Bluetooth and shows arrows per end, session, day, week and month, and the
+details of every arrow. An optional Garmin watch app shows the current end and vibrates on every
+arrow.
 
 The pod only measures the bow it is mounted on. Shots from other archers on the same target or
 the same line are not counted. It does not record scores or arrow positions.
@@ -29,7 +32,7 @@ the same line are not counted. It does not record scores or arrow positions.
 | Weight | about 65 g including the bolt (measured; base printed with 100 % infill, steel bolt about 14 g) |
 | Mount | 5/16"-24 UNF bolt into a stabilizer bushing |
 | Battery | LiPo 3.7 V, 300–320 mAh, charged over USB-C |
-| Memory | about 2,800 records between two syncs |
+| Memory | about 1,400 arrows with details between two syncs |
 | Connection | Bluetooth Low Energy, up to 3 devices at the same time |
 | Bluetooth name | PfeilZaehler3000-XXXX (XXXX = last 4 characters of the pod's Bluetooth address) |
 | Approx. cost | € 55–70 for all parts (2026 prices) |
@@ -57,9 +60,27 @@ it or carrying it does not produce this sequence. All thresholds can be changed 
 mode and only checks for movement 4 times per second. Picking up the bow wakes it. Bluetooth stays
 available while it is idle, so the phone and the watch can connect at any time.
 
+**Shot details.** The pod keeps the bow angle and rotation of the last 30 seconds in memory. At
+every release it looks back and works out the phases of the shot:
+
+| Detail | How it is measured |
+|---|---|
+| Raise | From the moment the lowered bow (pre-draw, at least 15° below or above the aiming angle) starts to move, until it is within 4° of the aiming angle |
+| Draw & set | From reaching the aiming angle until the final hold starts |
+| Hold | The bow turns less than 8 °/s until the release |
+| Aim movement | How much the bow moves during the last second before the release (drift removed), in degrees; the phone page converts it to cm at the shooting distance |
+| Bow angle | Angle of the arrow axis at the release (+ = aiming up) |
+| Cant | Sideways tilt of the bow at the release (+ = top limb to the right), relative to the zero set on the phone page |
+| Follow-through | How far the bow tips forward/down and sideways in the first 0.5 s after the release |
+
+The thresholds are first estimates and can be adjusted (section 11). Raise and draw are only found
+when the bow was lowered before the shot. The details need the pod in a bushing that points towards
+the target (see section 3).
+
 **Ends and sessions.** The phone page groups arrows into ends and sessions by the pauses between
 them: by default a pause longer than 100 s starts a new end, and a pause longer than 45 minutes
-starts a new session. "New end" on the phone or DOWN on the watch also starts a new end.
+starts a new session. "New end" on the phone or DOWN on the watch also starts a new end. Arrows per
+end and the end pause are stored in the pod, so the phone page and the watch use the same values.
 
 ## 3. Bow compatibility
 
@@ -79,8 +100,11 @@ Check before building:
 - **Flat seat.** The pod sits on the flat face around the bushing. Its underside has ribs that keep
   it from turning once the bolt is tight.
 
-The pod works in any orientation. Its alignment only matters for looks and clearance. The extra
-65 g changes the balance of the bow, so other weights may need adjusting.
+For counting arrows, the pod works in any bushing and any orientation. For the shot details
+(angle, cant, aim movement, follow-through) the bolt must point towards the target, as in the
+front stabilizer bushing; how far the pod is turned around the bolt does not matter, because the
+cant zero is set on the phone page. The extra 65 g changes the balance of the bow, so other
+weights may need adjusting.
 
 ## 4. Parts and tools
 
@@ -193,7 +217,9 @@ No tape or glue is used inside the pod.
    (see section 13).
 4. Open the **Serial Monitor** at 115200 baud. Hold the board still for a second, then tap it
    sharply with a screwdriver handle. The monitor shows `jolt peak=… aim=… ring=… -> SHOT` or
-   `-> ignored`. A light tap on the table is usually ignored, which is correct.
+   `-> ignored`. A light tap on the table is usually ignored, which is correct. After a counted
+   shot a `details:` line follows (raise, draw, hold, aim movement, angle, cant, follow-through);
+   on the bench most of these values are meaningless.
 5. Leave the board untouched for 3 minutes. The monitor shows `-> idle`, and `-> active` when it
    is moved again. Both lines include the pod's name, e.g. `-> idle (PfeilZaehler3000-A3F2)`.
 6. **Write the 4 characters of the name on the pod** (marker or label), e.g. *A3F2*. They come from
@@ -239,6 +265,10 @@ Web Bluetooth only works on pages loaded over https, so the page is opened from 
   `https://<user>.github.io/<repository>/app/`. Alternatively drag the `app` folder onto
   app.netlify.com/drop.
 
+**Demo:** adding `?demo` to the address (e.g. `…/app/?demo`) opens the page with six weeks of
+example arrows and a simulated pod, so every function can be tried without hardware. Nothing is
+saved, and the real history is not touched; *Leave demo* returns to the normal page.
+
 The history belongs to the exact web address. To move to another address, make a **Backup** on the
 old page and **Restore** it on the new one.
 
@@ -255,7 +285,7 @@ All data is stored in the browser (local storage of that web address). Use **Bac
 
 - **Connect pod & sync** – first connection: choose your pod (*PfeilZaehler3000-XXXX*) in the list.
   The page remembers it from then on, sets the pod's clock and time zone and downloads all new
-  arrows. The status line shows the name of the connected pod.
+  arrows.
 - **Update now** – while connected: downloads new arrows and reads the battery voltage again.
 - **Reconnect & update** – when the connection was lost.
 - **Choose pod** – pick a different pod (the page then remembers that one).
@@ -267,9 +297,17 @@ All data is stored in the browser (local storage of that web address). Use **Bac
 for the first time with only your own pod nearby. If several pods are listed, choose one and look
 for the blue LED: it lights on the pod that is connected.
 
-**Status line:** the pod's record counter, battery voltage with the time it was measured, pod
-memory used, and whether the pod is awake or idle, how long it has been running, the share of
-time it was awake and how often it woke up (for checking battery use).
+**Status line** (on a computer, pointing at a symbol shows a short explanation):
+
+| Symbol | Shows |
+|---|---|
+| Bluetooth | The pod's name, e.g. *Pod A3F2*: green when connected, amber while connecting, red while reconnecting, grey when not connected |
+| Battery | Pod battery voltage; amber below 3.7 V, red below 3.6 V |
+| Memory | How full the pod's memory is; it is cleared after a sync once it is fuller than the set value |
+| Circular arrows | Time of the last sync |
+
+Below the symbols a short message appears after a sync (e.g. *3 new arrows synced*) or when
+something went wrong.
 
 **This end:** arrows in the current end out of the set number per end (green when complete,
 orange when more). **New end** starts a new end immediately, without confirmation. The pod and
@@ -279,30 +317,41 @@ the watch start a new end too.
 
 **History:** bar chart of arrows per day (30 days), per week (12 weeks) or per month (12 months).
 
-**Sessions:** the last 40 sessions with date, time span, number of ends and arrows. Ends with a
-different number of arrows than set are highlighted. **Tap an end** to see its arrows with time,
-jolt strength (g) and aiming time:
+**Sessions:** the last 40 sessions with date, time span, number of ends and arrows, and the
+average hold time, aim movement and cant spread. Ends with a different number of arrows than set
+are highlighted. **Tap an end** to see its arrows and the averages of that end. Each arrow shows
+the time of the first arrow (hours:minutes), then the time since the previous arrow
+(+minutes:seconds), and its hold time.
 
-- **Delete / Restore** a single arrow, e.g. a bump that was counted.
-- **Delete whole end**, with **Undo** in the status line.
+- **Tap an arrow** to open its details: raise, draw & set, hold, aim movement (degrees and cm),
+  bow angle, cant, follow-through and jolt strength. Arrows shot with firmware older than 1.7
+  show the jolt and the still time before the release only.
+- **Red bin:** delete a single arrow, e.g. a bump that was counted. The arrow is greyed out and
+  can be restored with the green arrow.
+- **Delete end**, with **Undo** in the status line.
 - Deleted arrows are removed from all statistics and are also deleted on the pod and on the watch.
 
 **Settings**
 
 | Setting | Default | Effect |
 |---|---|---|
-| Arrows per end | 6 | Target for the end display and highlighting |
-| New end after a pause of (s) | 100 | Pause that separates ends |
+| Arrows per end | 6 | Target for the end display and highlighting; stored in the pod, shared with the watch |
+| New end after a pause of (s) | 100 | Pause that separates ends; stored in the pod, shared with the watch |
 | New session after a pause of (min) | 45 | Pause that separates sessions |
+| Shooting distance for the aim movement (m) | 18 | Converts the aim movement from degrees to cm on the target |
 | Clear pod memory after sync when fuller than (%) | 50 | Frees the pod's memory once the arrows are safely on the phone |
+| Bow is upright now: set cant to 0 | – | Hold the bow exactly upright (bubble level on the riser or string) and tap; the pod stores this as cant 0. Until then the first shot counts as 0 |
 
-Changes to the first two settings only apply from the moment they are changed; earlier ends keep
-their grouping.
+Changes to arrows per end and the end pause only apply from the moment they are changed; earlier
+ends keep their grouping. A change on the watch shows up here, and the other way round; the last
+change counts.
 
 **Export & backup**
 
-- **Export CSV** – one line per arrow: index, local date and time, unix time, jolt (g), aiming
-  time (s), clock exact (1/0), deleted (1/0). On iPhone it opens the share sheet.
+- **Export CSV** – one line per arrow: index, local date and time, unix time, jolt (g), still time
+  before the release (s), raise, draw and hold (s), aim movement, bow angle and cant (°),
+  follow-through down and right (°), clock exact (1/0), deleted (1/0). On iPhone it opens the share
+  sheet.
 - **Backup** – the complete history as a JSON file.
 - **Restore** – reads a backup from a file or from pasted text and merges it with the existing data.
 
@@ -320,14 +369,21 @@ Low Energy support may work after adding them in `manifest.xml`; this has not be
 
 ### Screen
 
-- Top: the pod's ID and battery voltage, e.g. *Pod A3F2 3.95 V* (orange when getting low, red
-  when it needs charging), or the connection state: *Looking for Pod A3F2…*, *Pod A3F2 in range?*,
+From top to bottom:
+
+- Time of day.
+- The pod's ID and battery voltage, e.g. *Pod A3F2 3.95 V* (orange when getting low, red when it
+  needs charging), or the connection state: *Looking for Pod A3F2…*, *Pod A3F2 in range?*,
   *Connecting…*, *Reconnecting…*.
 - End number and time since the last arrow.
-- Arrows in the current end, large (green at 6, orange above 6).
-- Arrows this session, today, this week and this month. Today, week and month come from the pod
-  and match the phone page, including arrows shot while the watch app was closed.
-- Bottom: recording time, or a short button help.
+- The big number: arrows in the current end (green when complete, orange with an extra arrow), or
+  the session or today's arrows, as chosen in the settings.
+- The other counters in a row: this end (e.g. *4/6*), session, today and week, without the one
+  shown big. Today, week and month come from the pod and match the phone page, including arrows
+  shot while the watch app was closed.
+- Arrows this month.
+- Recording time, or *START: record*.
+- Time to sunset, if switched on.
 
 ### Buttons
 
@@ -337,12 +393,22 @@ Low Energy support may work after adding them in `manifest.xml`; this has not be
 | BACK | Saves a running activity; pressed again, leaves the app |
 | DOWN | Start a new end now (also shown on the phone page) |
 | UP | Delete the last arrow, after a confirmation (also deleted on the phone page) |
-| hold UP | Use a different pod, after a confirmation (connects to the next pod found) |
+| hold UP | Settings |
 
-Swiping the touchscreen has no function, to prevent accidental changes.
+The touchscreen has no function, so a touch can't start a recording or change anything.
 
-- **Vibration:** short on every arrow, double when the end reaches 6 arrows.
-- **Ends:** a pause of more than 100 s or DOWN starts a new end (fixed values on the watch).
+### Settings (hold UP)
+
+| Setting | Values | Stored |
+|---|---|---|
+| Arrows per end | 3–12 (default 6) | in the pod, shared with the phone page |
+| New end after | 30 s – 5 min (default 100 s) | in the pod, shared with the phone page |
+| Big number | this end, session or today | on the watch |
+| Time to sunset | on / off | on the watch; uses the weather position from Garmin Connect or the last GPS position |
+| Use a different pod | after a confirmation, connects to the next pod found | on the watch |
+
+- **Vibration:** short on every arrow, double when the end is complete.
+- **Ends:** a pause longer than the set time, or DOWN, starts a new end.
 - **Recording:** a recorded activity contains duration, heart rate and calories like any other
   activity, plus the number of arrows and ends in the summary, a chart of the arrow count and one
   lap per end with its number of arrows. Garmin's own Archery activity cannot be used by Connect IQ
@@ -351,7 +417,9 @@ Swiping the touchscreen has no function, to prevent accidental changes.
 - **Reconnecting:** if the pod is out of range, the watch reconnects by itself when it is back.
 - **Own pod:** the watch remembers the first pod it connects to and from then on only connects to
   that one, even when other pods are nearby. Open the app for the first time with only your own pod
-  nearby. Hold UP to change to a different pod.
+  nearby. Use *Use a different pod* in the settings to change it.
+- **Deleted on the phone:** an arrow deleted on the phone page is also taken off the watch's
+  session and end; a restored one comes back without a vibration.
 
 ### Build and install
 
@@ -380,6 +448,11 @@ Swiping the touchscreen has no function, to prevent accidental changes.
    again.
 4. **Extra arrows:** raise `MIN_AIM_MS` (e.g. to 1000) or `SPIKE_G`.
 
+**Shot phases.** Upload the debug firmware (section 14), open the Serial Monitor and shoot a few
+arrows. After every shot it prints the details and a trace of the last 12 s (bow angle / rotation,
+5 values per second). If raise, draw or hold look wrong, adjust `HOLD_DPS`, `AWAY_DEG` or
+`LEVEL_DEG`. Sending a few of these traces makes tuning easier.
+
 The values are at the top of the firmware file:
 
 | Name | Default | Meaning |
@@ -391,6 +464,11 @@ The values are at the top of the firmware file:
 | `MIN_AIM_MS` | 600 | Minimum holding time before the release (ms) |
 | `REFRACTORY_MS` | 1500 | Dead time after a counted shot (ms) |
 | `IDLE_AFTER_MS` | 180000 | Time without movement before power saving (ms) |
+| `HOLD_DPS` | 8 | Rotation below this counts as the final hold (°/s) |
+| `AWAY_DEG` | 15 | Angle away from the aiming angle that counts as lowered (pre-draw) (°) |
+| `LEVEL_DEG` | 4 | Angle within this of the aiming angle counts as raised (°) |
+| `REST_DPS` | 5 | Rotation below this for 0.3 s while lowered counts as resting (°/s) |
+| `FOLLOW_MS` | 500 | Time after the release for the follow-through (ms) |
 | `CALIBRATION_LOG` | 1 | Print every jolt to the Serial Monitor |
 | `USE_MOTOR` | 0 | 1 = vibration motor on D2 |
 
@@ -400,9 +478,8 @@ The values are at the top of the firmware file:
 - Open the phone page after training (or keep it connected). The watch app can run at the same
   time.
 - Charge when the voltage is below about 3.6 V. The watch shows this in orange and red.
-- Battery life depends on how long the pod is moved and awake. The status line of the phone page
-  shows the share of time the pod was awake since its last start; a pod lying unused should be
-  awake only a few percent of the time.
+- Battery life depends on how long the pod is moved and awake. A pod lying unused switches to power
+  saving after 3 minutes (shown as `-> idle` on the Serial Monitor).
 
 **Pod LED**
 
@@ -432,19 +509,24 @@ The values are at the top of the firmware file:
 | Arrows listed without a date | The pod restarted with an empty battery and had no clock. Connect the phone page after charging. |
 | Watch shows "Pod firmware 1.5 needed" | Flash the current pod firmware. |
 | Watch stays at "Pod … in range?" | Check the distance to the pod and that the pod is charged. |
-| Phone or watch connected to another archer's pod | Phone: **Choose pod** and pick your own name. Watch: hold UP, confirm, and keep only your own pod nearby. |
+| Phone or watch connected to another archer's pod | Phone: **Choose pod** and pick your own name. Watch: hold UP → *Use a different pod*, confirm, and keep only your own pod nearby. |
+| No raise / draw times | The bow was not lowered before the shot, or the history was empty after the pod woke up. Hold and the other details are still measured. |
+| Cant values look offset | Hold the bow upright and use **set cant to 0** in the phone settings. |
+| Angle, cant or follow-through look wrong | The pod must be in a bushing that points towards the target (section 3). |
 | Which name is my pod? | Connect and look for the blue LED, or read the name on the Serial Monitor (section 8.3). |
 
 ## 14. Debug firmware
 
-`firmware/PfeilZaehler3000Debug` has the same functions and Bluetooth interface as firmware 1.6,
+`firmware/PfeilZaehler3000Debug` has the same functions and Bluetooth interface as firmware 1.7,
 so the phone page and the watch work with it. In addition it:
 
 - waits up to 5 s for the Serial Monitor and prints the reset reason,
 - prints every start-up step including the pod's name and Bluetooth address, the state of both I2C
   buses and the I2C addresses found,
 - prints a status line every 2 s: sensors, awake/idle, Bluetooth connections and advertising,
-  records, arrows today/week/month, battery voltage and the current accelerometer values,
+  records, arrows today/week/month, battery voltage, the current accelerometer values, the bow
+  angle and the rotation,
+- prints the shot details and a 12 s trace of bow angle and rotation after every arrow,
 - blinks the blue LED briefly every 2 s while nothing is connected,
 - never switches to power saving, so it empties the battery within a few days.
 
@@ -454,10 +536,10 @@ Use it for diagnosis only, then upload the normal firmware again.
 
 | Path | Content |
 |---|---|
-| `firmware/PfeilZaehler3000/` | Pod firmware 1.6 (Arduino) |
+| `firmware/PfeilZaehler3000/` | Pod firmware 1.7 (Arduino) |
 | `firmware/PfeilZaehler3000Debug/` | Debug firmware |
-| `app/index.html` | Phone page 1.8 |
-| `garmin/PfeilZaehler3000Watch/` | Garmin watch app 1.2 (Connect IQ project) |
+| `app/index.html` | Phone page 1.9 |
+| `garmin/PfeilZaehler3000Watch/` | Garmin watch app 1.3 (Connect IQ project) |
 | `housing/` | STL and 3MF files, OpenSCAD source `pod.scad`, insert test |
 | `docs/` | This guide, Bluetooth protocol, images |
 
