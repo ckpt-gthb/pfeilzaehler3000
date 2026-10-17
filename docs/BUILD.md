@@ -1,14 +1,14 @@
 # PfeilZaehler3000 – Build and User Guide
 
 Automatic arrow counter for recurve, barebow and compound bows.
-Release 2.0 · 16 October 2026
+Release 2.1 · 17 October 2026
 
 | Part | Version |
 |---|---|
-| Pod firmware | 2.0 (`firmware/PfeilZaehler3000`) |
-| Debug firmware | 2.0-debug (`firmware/PfeilZaehler3000Debug`) |
-| Phone page | 2.0 (`app/index.html`), English, German, Polish |
-| Garmin watch app | 2.0 (`garmin/PfeilZaehler3000Watch`), English, German, Polish |
+| Pod firmware | 2.1 (`firmware/PfeilZaehler3000`) |
+| Debug firmware | 2.1-debug (`firmware/PfeilZaehler3000Debug`) |
+| Phone page | 2.1 (`app/index.html`), English, German, Polish |
+| Garmin watch app | 2.1 (`garmin/PfeilZaehler3000Watch`), English, German, Polish |
 | Housing | v3 (`housing/`) |
 
 ![The assembled pod](images/pod-closed.png)
@@ -539,7 +539,7 @@ The values are at the top of the firmware file:
 | Battery empty after a few days | Check on the Serial Monitor that the pod shows `-> idle` after 3 minutes. The debug firmware never sleeps. |
 | "No Web Bluetooth" on the phone page | Open it over https in Chrome or Edge, or in Bluefy on iPhone. |
 | Arrows listed without a date | The pod restarted with an empty battery and had no clock. Connect the phone page after charging. |
-| Watch shows "Update pod firmware" | Flash the current pod firmware (2.0). |
+| Watch shows "Update pod firmware" | Flash the current pod firmware (2.1). |
 | Watch stays at "Pod … in range?" | Check the distance to the pod and that the pod is charged. |
 | Phone or watch connected to another archer's pod | Phone: **Choose pod** and pick your own name. Watch: hold UP → *Use a different pod*, confirm, and keep only your own pod nearby. |
 | No raise / draw times | The bow was not lowered before the shot, or the history was empty after the pod woke up. Hold and the other details are still measured. |
@@ -550,7 +550,7 @@ The values are at the top of the firmware file:
 
 ## 14. Debug firmware
 
-`firmware/PfeilZaehler3000Debug` has the same functions and Bluetooth interface as firmware 2.0,
+`firmware/PfeilZaehler3000Debug` has the same functions and Bluetooth interface as firmware 2.1,
 so the phone page and the watch work with it. In addition it:
 
 - waits up to 5 s for the Serial Monitor and prints the reset reason,
@@ -569,10 +569,10 @@ Use it for diagnosis only, then upload the normal firmware again.
 
 | Path | Content |
 |---|---|
-| `firmware/PfeilZaehler3000/` | Pod firmware 2.0 (Arduino) |
+| `firmware/PfeilZaehler3000/` | Pod firmware 2.1 (Arduino) |
 | `firmware/PfeilZaehler3000Debug/` | Debug firmware |
-| `app/index.html` | Phone page 2.0 |
-| `garmin/PfeilZaehler3000Watch/` | Garmin watch app 2.0 (Connect IQ project) |
+| `app/index.html` | Phone page 2.1 |
+| `garmin/PfeilZaehler3000Watch/` | Garmin watch app 2.1 (Connect IQ project) |
 | `housing/` | STL and 3MF files, OpenSCAD source `pod.scad`, insert test |
 | `docs/` | This guide, Bluetooth protocol, images |
 

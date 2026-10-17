@@ -1,6 +1,6 @@
 # PfeilZaehler3000 watch app – Garmin Epix Gen 2
 
-Watch app version 2.0 (16 Oct 2026), for pod firmware 2.0. English, German and Polish.
+Watch app version 2.1 (17 Oct 2026), for pod firmware 2.0 and later. English, German and Polish.
 
 The watch connects straight to the pod over Bluetooth, no phone needed while shooting.
 
@@ -92,6 +92,6 @@ Never publish the developer key, and keep `.prg` files out of the repository.
   The activity type can be changed afterwards in Garmin Connect.
 * If the watch stays at "Looking for pod…" or shows "Pod … in range?", check that the pod is
   charged and within a few metres. "Update pod firmware" means the pod has an old firmware: flash
-  firmware 2.0.
+  the current firmware.
 * German and Polish texts use the watch's own fonts. The language follows the watch unless it is
   chosen in the settings.

@@ -1,4 +1,4 @@
-# Bluetooth interface (pod firmware 2.0)
+# Bluetooth interface (pod firmware 2.0 and 2.1)
 
 The pod is a Bluetooth Low Energy peripheral named `PfeilZaehler3000-XXXX`, where `XXXX` is the
 pod ID: the two lowest bytes of its Bluetooth address in hex (firmware 1.5 and older: just

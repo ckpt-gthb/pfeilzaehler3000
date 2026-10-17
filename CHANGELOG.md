@@ -1,6 +1,8 @@
 # Changelog
 
-## Release 2.1 – in progress
+## Release 2.1 – 17 October 2026
+
+Bug fixes. All three parts are updated: pod firmware, phone page and watch app are all version 2.1.
 
 **Pod firmware 2.1**
 - The shot details are worked out once a jolt is confirmed as a shot, no longer during the jolt:
