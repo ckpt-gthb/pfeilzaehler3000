@@ -1,5 +1,18 @@
 # Changelog
 
+## Release 2.1 – in progress
+
+**Pod firmware 2.1**
+- The shot details are worked out once a jolt is confirmed as a shot, no longer during the jolt:
+  the peak of the jolt is measured completely, and a bump can no longer set the cant zero (#3).
+- Calibration wakes the sensors from power-saving idle first, so both steps use the full-rate
+  accelerometer (#8).
+- Aim movement uses the measured time between gyro readings (#10).
+
+**Phone page and watch app**
+- The mounting point is sent to the pod only when it is changed on that device, so a mounting
+  point found by the calibration is no longer overwritten (#2).
+
 ## Release 2.0 – 16 October 2026
 
 All three parts are updated: pod firmware, phone page and watch app are all version 2.0.

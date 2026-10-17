@@ -36,7 +36,7 @@ The phone page and the watch write it on every connection.
 | 8 | u16 | battery voltage (mV) |
 | 10 | u8 | memory used (%) |
 | 11 | u8 | flags: bit0 clock set since start, bit1 awake |
-| 12 | u8 | firmware version (20 = 2.0, 120 = debug build of 2.0) |
+| 12 | u8 | firmware version (21 = 2.1, 121 = debug build of 2.1; 20 / 120 = 2.0) |
 | 13 | 7 bytes | reserved, 0 |
 
 Memory used counts records and shot details together. Notified after every record, deletion, end

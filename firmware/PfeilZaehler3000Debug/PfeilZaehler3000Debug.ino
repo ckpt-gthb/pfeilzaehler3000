@@ -1,6 +1,6 @@
 /*
-  PfeilZaehler3000 – DEBUG BUILD (firmware v2.0 + diagnostics)
-  - same functions and Bluetooth interface as the normal firmware v2.0 (phone page and watch work)
+  PfeilZaehler3000 – DEBUG BUILD (firmware v2.1 + diagnostics)
+  - same functions and Bluetooth interface as the normal firmware v2.1 (phone page and watch work)
   - prints every startup step, I2C scans and a status line every 2 s to the Serial Monitor (115200)
   - never goes to sleep (drains the battery in a few days): for diagnosis only, then flash the normal one
   - blue LED blinks briefly every 2 s while nothing is connected
@@ -144,7 +144,7 @@ struct CtrlOp {                              // control command waiting for the 
 
 #define MAX_CONNECTIONS   3        // phone page + Garmin watch, plus one spare for a stale link
 
-#define FW_VERSION        120  // debug build of v2.0
+#define FW_VERSION        121  // debug build of v2.1
 
 // =====================================================================
 //  I2C helpers
@@ -795,6 +795,8 @@ static void onCtrlWrite(uint16_t conn, BLECharacteristic *, uint8_t *data, uint1
 
 static void setLevel();                       // calibration, in the shot detection part
 static void setTilt();
+static void enterActive();
+extern uint32_t lastMotionMs;
 
 static void processOps() {
   bool changed = false;
@@ -820,10 +822,10 @@ static void processOps() {
         saveMeta();
         break;
       case 0x09:                               // [0x09, 0] calibration 1: bow upright and level
-        setLevel();
-        break;
       case 0x0A:                               // [0x0A, 0] calibration 2: bow pointed at the ground
-        setTilt();
+        if (!isActive && lsmOk && adxlOk) enterActive();   // idle: accelerometer at 12.5 Hz low power
+        lastMotionMs = millis();               // and not back to idle between the two steps
+        if (b[0] == 0x09) setLevel(); else setTilt();
         break;
     }
     changed = true;
@@ -999,10 +1001,12 @@ uint16_t ringCount = 0;
 HistSample hist[HIST_N];
 uint16_t histHead = 0, histCount = 0;
 
-// 100 Hz: rotation (offset removed) of the last 1.28 s, for the aim movement
+// 100 Hz: rotation since the previous sample (offset removed, degrees) of the last 1.28 s, for the aim movement
 #define GYR_N 128
 float    gyrHist[GYR_N][3];
 uint16_t gyrHead = 0, gyrCount = 0;
+uint16_t gyrHeadAtJolt = 0, gyrCountAtJolt = 0;  // position in it at the release jolt
+float    gAtJolt[3] = {0, 0, 1};       // gravity 30 ms before the jolt
 
 // 100 Hz: low-pass accelerometer (= gravity while the bow is held) of the last 80 ms
 #define GRAV_N 8
@@ -1185,7 +1189,7 @@ static void updateStillness(uint32_t ms) {
   if (dt > 0.05f) dt = 0.05f;
   lastGyroMs = ms;
   rateSm += 0.2f * (turn - rateSm);            // ~50 ms smoothing
-  gyrHist[gyrHead][0] = b0; gyrHist[gyrHead][1] = b1; gyrHist[gyrHead][2] = b2;
+  gyrHist[gyrHead][0] = b0 * dt; gyrHist[gyrHead][1] = b1 * dt; gyrHist[gyrHead][2] = b2 * dt;
   gyrHead = (gyrHead + 1) % GYR_N;
   if (gyrCount < GYR_N) gyrCount++;
 
@@ -1222,26 +1226,38 @@ static uint32_t aimTimeAt(uint32_t ms) {
   return 0;
 }
 
-// At the release jolt: look back over the history and work out the phases of the shot.
+// At every jolt (quick, the jolt is still being measured): the bow's axes at the release, for the
+// follow-through, and where the history stands. Nothing is changed here, it may not be a shot.
+static void markJolt() {
+  memcpy(gAtJolt, gravHist[(gravHead + GRAV_N - 3) % GRAV_N], sizeof(gAtJolt));   // 30 ms before
+  gyrHeadAtJolt = gyrHead;
+  gyrCountAtJolt = gyrCount;
+  float *g = gAtJolt;
+  float n = sqrtf(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]);
+  if (n < 0.2f) n = 1;
+  for (int k = 0; k < 3; k++) axU[k] = g[k] / n;          // up
+  // arrow direction = +Z on the front of the riser (lid towards the target), -Z on the back
+  float zs = mountOf() == MOUNT_FRONT ? 1.0f : -1.0f;
+  float px = -zs * axU[1], py = zs * axU[0];                // arrow x up = horizontal, to the right
+  float pn = sqrtf(px * px + py * py);
+  if (pn < 0.05f) { px = 1; py = 0; pn = 1; }               // bow pointing straight up or down
+  axP[0] = px / pn; axP[1] = py / pn; axP[2] = 0;
+}
+
+// Once the jolt is confirmed as a shot: look back over the history from just before the jolt and
+// work out the phases of the shot. (The 50 Hz history and the gravity stop at the jolt; the gyro
+// history goes on, so it is read from the position marked at the jolt.)
 static void analyseShot() {
   ShotDetail &d = pendingDetail;
   memset(&d, 0, sizeof(d));
 
-  // gravity 30 ms before the jolt -> axes, bow angle and cant at release
-  float *g = gravHist[(gravHead + GRAV_N - 3) % GRAV_N];
-  float n = sqrtf(g[0] * g[0] + g[1] * g[1] + g[2] * g[2]);
-  if (n < 0.2f) n = 1;
-  for (int k = 0; k < 3; k++) axU[k] = g[k] / n;          // up
+  // gravity 30 ms before the jolt -> bow angle and cant at release
+  float *g = gAtJolt;
   bool side = mountOf() == MOUNT_SIDE;
   if (side) {                                   // arrow direction unknown: no angles
     d.pitch2 = d.cant2 = DETAIL_NA;
   } else {
-    // arrow direction = +Z on the front of the riser (lid towards the target), -Z on the back
     float zs = mountOf() == MOUNT_FRONT ? 1.0f : -1.0f;
-    float px = -zs * axU[1], py = zs * axU[0];              // arrow x up = horizontal, to the right
-    float pn = sqrtf(px * px + py * py);
-    if (pn < 0.05f) { px = 1; py = 0; pn = 1; }             // bow pointing straight up or down
-    axP[0] = px / pn; axP[1] = py / pn; axP[2] = 0;
     float ref = (settings.flags & 1) ? settings.pitchRef10 / 10.0f : 0;   // bushing tilt from the calibration
     float pitch = zs * (pitchOf(g) - ref);
     d.pitch2 = clamp8(pitch * 2.0f);
@@ -1262,7 +1278,8 @@ static void analyseShot() {
   // around the two aiming axes (side mount: all three axes), slow drift and gyro offset removed
   // by a straight-line fit
   const int W = 100;
-  if (gyrCount >= W + 3) {
+  uint16_t since = (gyrHead + GYR_N - gyrHeadAtJolt) % GYR_N;   // gyro samples after the jolt
+  if (gyrCountAtJolt >= W + 3 && since + W + 3 <= GYR_N) {
     float ax[3][3] = {{axP[0], axP[1], axP[2]}, {axU[0], axU[1], axU[2]}, {0, 0, 0}};
     if (side) {
       for (int a = 0; a < 3; a++) for (int b = 0; b < 3; b++) ax[a][b] = a == b ? 1.0f : 0.0f;
@@ -1273,8 +1290,8 @@ static void analyseShot() {
       float ang = 0, sv = 0, sxv = 0, svv = 0;
       for (int i = 0; i < W; i++) {
         int k = W + 2 - i;                      // oldest first
-        float *w = gyrHist[(gyrHead + GYR_N - 1 - k) % GYR_N];
-        ang += (w[0] * ax[a][0] + w[1] * ax[a][1] + w[2] * ax[a][2]) * 0.01f;
+        float *w = gyrHist[(gyrHeadAtJolt + GYR_N - 1 - k) % GYR_N];
+        ang += w[0] * ax[a][0] + w[1] * ax[a][1] + w[2] * ax[a][2];
         sv += ang; sxv += i * ang; svv += ang * ang;
       }
       float den = W * sxx - sx * sx;
@@ -1410,7 +1427,7 @@ static void activeStep() {
       peakG = dev;
       ringCount = 0;
       detect = CAPTURING;
-      analyseShot();                           // history up to just before the jolt
+      markJolt();                              // axes at the release; details once it is a shot
       followP = followU = 0;
       followActive = true;
     }
@@ -1427,6 +1444,7 @@ static void activeStep() {
 #endif
       if (isShot) {
         lastShotMs = ms;
+        analyseShot();                         // only now: a bump can't set the cant zero
         shotPending = true;                    // stored when the follow-through is measured
       } else {
         followActive = false;
@@ -1467,7 +1485,7 @@ void setup() {
   Serial.begin(115200);
   while (!Serial && millis() < 5000) delay(10);      // give the Serial Monitor time to attach
   uint32_t rr = NRF_POWER->RESETREAS; NRF_POWER->RESETREAS = 0xFFFFFFFF;
-  DBG("\n=== PfeilZaehler3000 DEBUG (v2.0) === reset reason 0x%08lX\n", (unsigned long)rr);
+  DBG("\n=== PfeilZaehler3000 DEBUG (v2.1) === reset reason 0x%08lX\n", (unsigned long)rr);
 
   DBG("[1] Bluetooth\n");
   bleBegin();
