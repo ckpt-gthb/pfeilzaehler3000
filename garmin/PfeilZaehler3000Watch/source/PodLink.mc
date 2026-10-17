@@ -73,6 +73,7 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     var batteryMv = 0;
     var podEndMark = 0;
     var podLastArrow = 0;        // newest "last arrow" time seen: a smaller one means a restored arrow
+    var prevToday = -1;          // today's counter before the latest update
 
     // ---- settings (stored in the pod; kept on the watch too) ----
     var arrowsEnd = 6;           // arrows per end
@@ -131,14 +132,14 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     function setArrowsEnd(n) {
         arrowsEnd = n;
         Storage.setValue("arrowsEnd", n);
-        sendSettings();
+        sendSettings(false);
         WatchUi.requestUpdate();
     }
 
     function setEndGap(sec) {
         endGapS = sec;
         Storage.setValue("endGapS", sec);
-        sendSettings();
+        sendSettings(false);
         WatchUi.requestUpdate();
     }
 
@@ -151,7 +152,7 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     function setMount(m) {
         mount = m;
         Storage.setValue("mount", m);
-        sendSettings();
+        sendSettings(true);
         WatchUi.requestUpdate();
     }
 
@@ -168,15 +169,23 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     }
 
     // to the pod; the phone page takes it over from there
-    function sendSettings() {
-        var b = new [4]b;
+    // withMount: only when the mounting point was changed here; otherwise 3 bytes, so a mounting
+    // point found by the calibration on the phone is never overwritten with an old value
+    function sendSettings(withMount) {
+        for (var i = queue.size() - 1; i >= 0; i--) {   // only the newest settings matter
+            var old = queue[i] as Array;
+            if (old[0] == :set) {
+                if ((old[1] as ByteArray).size() == 4) {
+                    withMount = true;            // a waiting mounting point change is kept
+                }
+                queue.remove(old);
+            }
+        }
+        var b = new [withMount ? 4 : 3]b;
         b[0] = arrowsEnd;
         b.encodeNumber(endGapS, Lang.NUMBER_FORMAT_UINT16, { :offset => 1, :endianness => Lang.ENDIAN_LITTLE });
-        b[3] = mount;
-        for (var i = queue.size() - 1; i >= 0; i--) {   // only the newest settings matter
-            if ((queue[i] as Array)[0] == :set) {
-                queue.remove(queue[i]);
-            }
+        if (withMount) {
+            b[3] = mount;
         }
         queue.add([:set, b]);
         sendNext();
@@ -542,6 +551,8 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
         var mark = v.decodeNumber(Lang.NUMBER_FORMAT_UINT32, opt).toNumber();
         opt[:offset] = 16;
         var lastArrow = v.decodeNumber(Lang.NUMBER_FORMAT_UINT32, opt).toNumber();
+        var todayBefore = prevToday;
+        prevToday = today;
 
         if (podArrows >= 0 && mark != podEndMark && mark > lastShotSec) {
             forceNewEnd = true;                  // "new end" on the phone (or this watch)
@@ -560,25 +571,41 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
         if (lastArrow > podLastArrow) {
             podLastArrow = lastArrow;
         }
+        // arrows deleted or restored on the phone count for this session only if they are from
+        // today (today's counter changed with them); older ones only change week / month
+        var todayChange = (todayBefore >= 0) ? (today - todayBefore).abs() : n.abs();
         if (n > 0 && newShot) {
-            addArrows(n);
+            addArrows(n, lastArrow);
         } else if (n > 0) {
-            restoreArrows(n);                    // deleted by mistake on the phone and restored
+            restoreArrows((n < todayChange) ? n : todayChange);   // deleted by mistake and restored
         } else if (n < 0) {
-            removeArrows(-n);                    // deleted on the phone page
+            removeArrows((-n < todayChange) ? -n : todayChange);  // deleted on the phone page
         }
     }
 
-    function addArrows(n) {
+    // new arrows from the pod; at shot = time of the newest one. Several at once with an older time:
+    // shot while the watch was out of range, they arrive now.
+    function addArrows(n, at) {
         var now = Time.now().value();
-        if (endCount > 0 && (now - lastShotSec > endGapS || forceNewEnd)) {
+        var late = (now - at) > 10;
+        if (!late || at > now) {
+            at = now;
+        }
+        if (isRecording() && at < recStartSec) {
+            return;                              // shot before this recording started
+        }
+        if (endCount > 0 && (at - lastShotSec > endGapS || forceNewEnd)) {
             finishEnd();
         }
         forceNewEnd = false;
         endCount += n;
         sessionCount += n;
-        lastShotSec = now;
+        lastShotSec = at;                        // pause and "time since the last arrow" from the real time
 
+        if (late) {
+            updateFit();                         // no vibration: they were shot a while ago
+            return;
+        }
         if (Attention has :vibrate) {
             if (endCount == arrowsEnd) {        // end complete: double buzz
                 Attention.vibrate([ new Attention.VibeProfile(80, 150), new Attention.VibeProfile(0, 100),

@@ -1,4 +1,4 @@
-# Bluetooth interface (pod firmware 2.0)
+# Bluetooth interface (pod firmware 2.0 and 2.1)
 
 The pod is a Bluetooth Low Energy peripheral named `PfeilZaehler3000-XXXX`, where `XXXX` is the
 pod ID: the two lowest bytes of its Bluetooth address in hex (firmware 1.5 and older: just
@@ -36,7 +36,7 @@ The phone page and the watch write it on every connection.
 | 8 | u16 | battery voltage (mV) |
 | 10 | u8 | memory used (%) |
 | 11 | u8 | flags: bit0 clock set since start, bit1 awake |
-| 12 | u8 | firmware version (20 = 2.0, 120 = debug build of 2.0) |
+| 12 | u8 | firmware version (21 = 2.1, 121 = debug build of 2.1; 20 / 120 = 2.0) |
 | 13 | 7 bytes | reserved, 0 |
 
 Memory used counts records and shot details together. Notified after every record, deletion, end

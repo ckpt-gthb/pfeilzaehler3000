@@ -1,5 +1,36 @@
 # Changelog
 
+## Release 2.1 – 17 October 2026
+
+Bug fixes. All three parts are updated: pod firmware, phone page and watch app are all version 2.1.
+
+**Pod firmware 2.1**
+- The shot details are worked out once a jolt is confirmed as a shot, no longer during the jolt:
+  the peak of the jolt is measured completely, and a bump can no longer set the cant zero (#3).
+- Calibration wakes the sensors from power-saving idle first, so both steps use the full-rate
+  accelerometer (#8).
+- Aim movement uses the measured time between gyro readings (#10).
+
+**Phone page 2.1**
+- The pod's memory is cleared after a sync only if the arrows were really stored on the phone (#4).
+- The page asks the browser to keep its data, and after a sync it reminds you to make a backup when
+  there is none or the last one is more than 30 days old (#4).
+- Arrows take about 60 % less space in the browser (room for well over 100,000), with a warning
+  before the storage is full (#5). Data of earlier versions is taken over and the old copies are
+  removed (#9).
+- The colour of "this end" is also updated when a pause starts a new end (#12).
+
+**Watch app 2.1**
+- Arrows shot while the watch was out of range are counted from the pod's time of the last arrow:
+  no vibration when they arrive, a pause before them starts a new end, arrows from before the
+  recording are not counted, and "time since the last arrow" is right (#6).
+- Arrows deleted or restored on the phone change the session only if they are from today (#7).
+- The time to sunset switches language straight away (#11).
+
+**Phone page and watch app**
+- The mounting point is sent to the pod only when it is changed on that device, so a mounting
+  point found by the calibration is no longer overwritten (#2).
+
 ## Release 2.0 – 16 October 2026
 
 All three parts are updated: pod firmware, phone page and watch app are all version 2.0.
