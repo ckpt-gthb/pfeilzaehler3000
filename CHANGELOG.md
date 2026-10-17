@@ -9,6 +9,15 @@
   accelerometer (#8).
 - Aim movement uses the measured time between gyro readings (#10).
 
+**Phone page 2.1**
+- The pod's memory is cleared after a sync only if the arrows were really stored on the phone (#4).
+- The page asks the browser to keep its data, and after a sync it reminds you to make a backup when
+  there is none or the last one is more than 30 days old (#4).
+- Arrows take about 60 % less space in the browser (room for well over 100,000), with a warning
+  before the storage is full (#5). Data of earlier versions is taken over and the old copies are
+  removed (#9).
+- The colour of "this end" is also updated when a pause starts a new end (#12).
+
 **Phone page and watch app**
 - The mounting point is sent to the pod only when it is changed on that device, so a mounting
   point found by the calibration is no longer overwritten (#2).
