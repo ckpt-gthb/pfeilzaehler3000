@@ -17,6 +17,7 @@ class PfeilView extends WatchUi.View {
     var sunsetAt = null;         // Time.Moment of today's sunset, null = unknown
     var sunsetMsg = "";          // shown instead when there is no sunset time
     var sunsetCheck = 0;         // last calculation (unix seconds)
+    var sunsetLang = -1;         // language of sunsetMsg
 
     function initialize() {
         View.initialize();
@@ -62,10 +63,11 @@ class PfeilView extends WatchUi.View {
     // sunset from the weather position (synced from the phone), else from the last GPS position
     function updateSunset() {
         var now = Time.now().value();
-        if (sunsetCheck != 0 && now - sunsetCheck < 60) {
-            return;
+        if (sunsetCheck != 0 && now - sunsetCheck < 60 && sunsetLang == langIndex()) {
+            return;                              // at most once a minute, or right after a language change
         }
         sunsetCheck = now;
+        sunsetLang = langIndex();
         sunsetAt = null;
         if (DEMO > 0) {                          // example screens: sunset in 1:23
             sunsetAt = new Time.Moment(now + 83 * 60);

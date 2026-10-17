@@ -18,6 +18,13 @@
   removed (#9).
 - The colour of "this end" is also updated when a pause starts a new end (#12).
 
+**Watch app 2.1**
+- Arrows shot while the watch was out of range are counted from the pod's time of the last arrow:
+  no vibration when they arrive, a pause before them starts a new end, arrows from before the
+  recording are not counted, and "time since the last arrow" is right (#6).
+- Arrows deleted or restored on the phone change the session only if they are from today (#7).
+- The time to sunset switches language straight away (#11).
+
 **Phone page and watch app**
 - The mounting point is sent to the pod only when it is changed on that device, so a mounting
   point found by the calibration is no longer overwritten (#2).

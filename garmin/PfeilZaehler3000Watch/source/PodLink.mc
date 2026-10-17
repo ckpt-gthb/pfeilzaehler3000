@@ -73,6 +73,7 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     var batteryMv = 0;
     var podEndMark = 0;
     var podLastArrow = 0;        // newest "last arrow" time seen: a smaller one means a restored arrow
+    var prevToday = -1;          // today's counter before the latest update
 
     // ---- settings (stored in the pod; kept on the watch too) ----
     var arrowsEnd = 6;           // arrows per end
@@ -550,6 +551,8 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
         var mark = v.decodeNumber(Lang.NUMBER_FORMAT_UINT32, opt).toNumber();
         opt[:offset] = 16;
         var lastArrow = v.decodeNumber(Lang.NUMBER_FORMAT_UINT32, opt).toNumber();
+        var todayBefore = prevToday;
+        prevToday = today;
 
         if (podArrows >= 0 && mark != podEndMark && mark > lastShotSec) {
             forceNewEnd = true;                  // "new end" on the phone (or this watch)
@@ -568,25 +571,41 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
         if (lastArrow > podLastArrow) {
             podLastArrow = lastArrow;
         }
+        // arrows deleted or restored on the phone count for this session only if they are from
+        // today (today's counter changed with them); older ones only change week / month
+        var todayChange = (todayBefore >= 0) ? (today - todayBefore).abs() : n.abs();
         if (n > 0 && newShot) {
-            addArrows(n);
+            addArrows(n, lastArrow);
         } else if (n > 0) {
-            restoreArrows(n);                    // deleted by mistake on the phone and restored
+            restoreArrows((n < todayChange) ? n : todayChange);   // deleted by mistake and restored
         } else if (n < 0) {
-            removeArrows(-n);                    // deleted on the phone page
+            removeArrows((-n < todayChange) ? -n : todayChange);  // deleted on the phone page
         }
     }
 
-    function addArrows(n) {
+    // new arrows from the pod; at shot = time of the newest one. Several at once with an older time:
+    // shot while the watch was out of range, they arrive now.
+    function addArrows(n, at) {
         var now = Time.now().value();
-        if (endCount > 0 && (now - lastShotSec > endGapS || forceNewEnd)) {
+        var late = (now - at) > 10;
+        if (!late || at > now) {
+            at = now;
+        }
+        if (isRecording() && at < recStartSec) {
+            return;                              // shot before this recording started
+        }
+        if (endCount > 0 && (at - lastShotSec > endGapS || forceNewEnd)) {
             finishEnd();
         }
         forceNewEnd = false;
         endCount += n;
         sessionCount += n;
-        lastShotSec = now;
+        lastShotSec = at;                        // pause and "time since the last arrow" from the real time
 
+        if (late) {
+            updateFit();                         // no vibration: they were shot a while ago
+            return;
+        }
         if (Attention has :vibrate) {
             if (endCount == arrowsEnd) {        // end complete: double buzz
                 Attention.vibrate([ new Attention.VibeProfile(80, 150), new Attention.VibeProfile(0, 100),
