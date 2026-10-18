@@ -1,0 +1,14 @@
+<svg font-family="Helvetica, Arial, sans-serif" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 210" role="img" aria-label="Sensor trace: aiming stillness, release spike, ringing">
+      <rect x="0" y="0" width="640" height="210" fill="#ffffff"/>
+      <line x1="30" y1="130" x2="620" y2="130" stroke="#d9e0e0" stroke-width="1"/>
+      <line x1="30" y1="62" x2="620" y2="62" stroke="#c2412d" stroke-width="1" stroke-dasharray="4 4"/>
+      <text x="620" y="56" text-anchor="end" font-size="11" fill="#c2412d">SPIKE_G threshold</text>
+      <rect x="160" y="112" width="200" height="36" fill="#1f5f8b" opacity=".10"/>
+      <path d="M30 130 L45 118 L58 141 L70 112 L84 146 L98 121 L112 136 L126 124 L140 133 L160 129 L200 131 L240 129 L280 130 L320 131 L360 130 L364 20 L368 170 L372 50 L377 158 L382 76 L388 146 L395 96 L402 140 L410 110 L419 136 L429 117 L440 134 L452 122 L466 132 L482 126 L500 131 L520 129 L620 130" fill="none" stroke="#1a2226" stroke-width="1.8" stroke-linejoin="round"/>
+      <text x="85" y="178" text-anchor="middle" font-size="12" fill="#5b676d">draw</text>
+      <text x="260" y="178" text-anchor="middle" font-size="12" fill="#1f5f8b">1 · hold still ≥ 0.6 s</text>
+      <text x="362" y="14" text-anchor="middle" font-size="12" fill="#1a2226">2 · release jolt</text>
+      <text x="438" y="178" text-anchor="middle" font-size="12" fill="#1a2226">3 · riser rings</text>
+      <text x="438" y="194" text-anchor="middle" font-size="11" fill="#5b676d">10–150 ms</text>
+      <text x="560" y="178" text-anchor="middle" font-size="12" fill="#5b676d">bow down</text>
+    </svg>

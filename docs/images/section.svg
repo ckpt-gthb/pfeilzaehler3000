@@ -1,0 +1,61 @@
+<svg font-family="Helvetica, Arial, sans-serif" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1008 470" role="img" aria-label="Side section showing the stack of parts">
+<rect width="1008" height="470" fill="#ffffff"/>
+<rect x="71.0" y="150.0" width="70.0" height="80.0" rx="0" fill="#e9c46a" fill-opacity="0.45" stroke="#1a2226" stroke-width="0.5"/>
+<rect x="76.0" y="70.0" width="60.0" height="80.0" rx="0" fill="#e9c46a" fill-opacity="0.45" stroke="#1a2226" stroke-width="0.5"/>
+<rect x="647.0" y="150.0" width="70.0" height="80.0" rx="0" fill="#e9c46a" fill-opacity="0.45" stroke="#1a2226" stroke-width="0.5"/>
+<rect x="652.0" y="70.0" width="60.0" height="80.0" rx="0" fill="#e9c46a" fill-opacity="0.45" stroke="#1a2226" stroke-width="0.5"/>
+<rect x="70.0" y="260.0" width="51.5" height="50.0" rx="0" fill="#e9c46a" fill-opacity="1" stroke="#1a2226" stroke-width="0"/>
+<rect x="205.5" y="260.0" width="512.5" height="50.0" rx="0" fill="#e9c46a" fill-opacity="1" stroke="#1a2226" stroke-width="0"/>
+<rect x="70.0" y="70.0" width="30.0" height="190.0" rx="0" fill="#e9c46a" fill-opacity="1" stroke="#1a2226" stroke-width="0"/>
+<rect x="227.0" y="230.0" width="491.0" height="30.0" rx="0" fill="#e9c46a" fill-opacity="1" stroke="#1a2226" stroke-width="0"/>
+<rect x="227.0" y="70.0" width="16.0" height="160.0" rx="0" fill="#e9c46a" fill-opacity="1" stroke="#1a2226" stroke-width="0"/>
+<rect x="694.0" y="211.7" width="24.0" height="18.3" rx="0" fill="#e9c46a" fill-opacity="1" stroke="#1a2226" stroke-width="0"/>
+<rect x="694.0" y="70.0" width="24.0" height="71.7" rx="0" fill="#e9c46a" fill-opacity="1" stroke="#1a2226" stroke-width="0"/>
+<polyline points="70.0,70.0 70.0,310.0 121.5,310.0 121.5,260.0 100.0,260.0 100.0,70.0" fill="none" stroke="#1a2226" stroke-width="0.8"/>
+<polyline points="205.5,310.0 718.0,310.0 718.0,211.7 694.0,211.7 694.0,230.0 243.0,230.0 243.0,70.0 227.0,70.0 227.0,260.0 205.5,260.0 205.5,310.0" fill="none" stroke="#1a2226" stroke-width="0.8"/>
+<polyline points="694.0,70.0 694.0,141.7 718.0,141.7 718.0,70.0" fill="none" stroke="#1a2226" stroke-width="0.8"/>
+<rect x="104.0" y="180.6" width="119.0" height="79.4" rx="0" fill="#b7bdc4" fill-opacity="1" stroke="#1a2226" stroke-width="0.8"/>
+<rect x="131.5" y="180.6" width="64.0" height="35.4" rx="0" fill="#ffffff" fill-opacity="1" stroke="#1a2226" stroke-width="0.6"/>
+<rect x="124.0" y="260.0" width="79.0" height="159.0" rx="0" fill="#d6dade" fill-opacity="1" stroke="#1a2226" stroke-width="0.8"/>
+<rect x="132.5" y="0.0" width="62.0" height="214.0" rx="0" fill="#1f5f8b" fill-opacity="0.25" stroke="#1f5f8b" stroke-width="0.8" stroke-dasharray="4 3"/>
+<rect x="254.4" y="200.0" width="52.0" height="30.0" rx="0" fill="#e9c46a" fill-opacity="0.45" stroke="#1a2226" stroke-width="0.5"/>
+<rect x="381.4" y="200.0" width="52.0" height="30.0" rx="0" fill="#e9c46a" fill-opacity="0.45" stroke="#1a2226" stroke-width="0.5"/>
+<rect x="255.0" y="184.0" width="177.8" height="16.0" rx="0" fill="#1d2c63" fill-opacity="1" stroke="#1a2226" stroke-width="0.8"/>
+<rect x="328.9" y="174.0" width="30.0" height="10.0" rx="0" fill="#111" fill-opacity="1" stroke="#1a2226" stroke-width="0"/>
+<rect x="471.0" y="205.0" width="30.0" height="25.0" rx="0" fill="#e9c46a" fill-opacity="0.45" stroke="#1a2226" stroke-width="0.5"/>
+<rect x="641.0" y="205.0" width="30.0" height="25.0" rx="0" fill="#e9c46a" fill-opacity="0.45" stroke="#1a2226" stroke-width="0.5"/>
+<rect x="455.0" y="178.0" width="14.0" height="52.0" rx="0" fill="#e9c46a" fill-opacity="1" stroke="#1a2226" stroke-width="0.6"/>
+<rect x="471.0" y="193.0" width="210.0" height="12.0" rx="0" fill="#2f6b4a" fill-opacity="1" stroke="#1a2226" stroke-width="0.8"/>
+<rect x="531.0" y="179.0" width="90.0" height="14.0" rx="0" fill="#b7bdc4" fill-opacity="1" stroke="#1a2226" stroke-width="0.6"/>
+<rect x="618.0" y="161.0" width="73.0" height="32.0" rx="0" fill="#d6dade" fill-opacity="1" stroke="#1a2226" stroke-width="0.7"/>
+<rect x="247.0" y="134.0" width="46.9" height="16.0" rx="0" fill="#1f5f8b" fill-opacity="1" stroke="#1a2226" stroke-width="0.7"/>
+<rect x="393.9" y="134.0" width="296.1" height="16.0" rx="0" fill="#1f5f8b" fill-opacity="1" stroke="#1a2226" stroke-width="0.7"/>
+<rect x="475.0" y="150.0" width="24.0" height="43.0" rx="0" fill="#1f5f8b" fill-opacity="0.45" stroke="#1a2226" stroke-width="0.5"/>
+<rect x="616.0" y="150.0" width="40.0" height="11.0" rx="0" fill="#1f5f8b" fill-opacity="1" stroke="#1a2226" stroke-width="0.6"/>
+<rect x="282.0" y="84.0" width="350.0" height="50.0" rx="0" fill="#c3cad2" fill-opacity="1" stroke="#1a2226" stroke-width="0.8"/>
+<rect x="282.0" y="74.0" width="350.0" height="10.0" rx="0" fill="#f3dcb0" fill-opacity="1" stroke="#1a2226" stroke-width="0.6"/>
+<rect x="70.0" y="40.0" width="51.0" height="30.0" rx="0" fill="#e9c46a" fill-opacity="1" stroke="#1a2226" stroke-width="0.8"/>
+<rect x="206.0" y="40.0" width="512.0" height="30.0" rx="0" fill="#e9c46a" fill-opacity="1" stroke="#1a2226" stroke-width="0.8"/>
+<rect x="267.5" y="70.0" width="12.0" height="64.0" rx="0" fill="#e9c46a" fill-opacity="1" stroke="#1a2226" stroke-width="0.6"/>
+<rect x="634.5" y="70.0" width="12.0" height="64.0" rx="0" fill="#e9c46a" fill-opacity="1" stroke="#1a2226" stroke-width="0.6"/>
+<line x1="721.0" y1="55.0" x2="734.0" y2="55.0" stroke="#d9e0e0" stroke-width="1"/>
+<text x="738.0" y="59.0" text-anchor="start" font-size="12" fill="#1a2226">lid: pocket walls clamp the frame</text>
+<line x1="721.0" y1="79.0" x2="734.0" y2="79.0" stroke="#d9e0e0" stroke-width="1"/>
+<text x="738.0" y="83.0" text-anchor="start" font-size="12" fill="#1a2226">1 mm foam pad</text>
+<line x1="721.0" y1="109.0" x2="734.0" y2="109.0" stroke="#d9e0e0" stroke-width="1"/>
+<text x="738.0" y="113.0" text-anchor="start" font-size="12" fill="#1a2226">LiPo 402535 + pad in lid</text>
+<line x1="721.0" y1="142.0" x2="734.0" y2="142.0" stroke="#d9e0e0" stroke-width="1"/>
+<text x="738.0" y="146.0" text-anchor="start" font-size="12" fill="#1a2226">clamp frame, 1.6 mm</text>
+<line x1="721.0" y1="177.0" x2="734.0" y2="177.0" stroke="#d9e0e0" stroke-width="1"/>
+<text x="738.0" y="181.0" text-anchor="start" font-size="12" fill="#1a2226">USB-C in wall slot</text>
+<line x1="721.0" y1="192.0" x2="734.0" y2="192.0" stroke="#d9e0e0" stroke-width="1"/>
+<text x="738.0" y="196.0" text-anchor="start" font-size="12" fill="#1a2226">XIAO on 2.5 mm pads</text>
+<line x1="721.0" y1="280.0" x2="734.0" y2="280.0" stroke="#d9e0e0" stroke-width="1"/>
+<text x="738.0" y="284.0" text-anchor="start" font-size="12" fill="#1a2226">5 mm floor under the bolt head</text>
+<line x1="721.0" y1="370.0" x2="734.0" y2="370.0" stroke="#d9e0e0" stroke-width="1"/>
+<text x="738.0" y="374.0" text-anchor="start" font-size="12" fill="#1a2226">bolt into riser bushing, ~11 mm</text>
+<text x="223.5" y="396.0" text-anchor="start" font-size="12" fill="#1a2226">1/4" hex key through the lid (dashed) turns the bolt</text>
+<line x1="48.0" y1="310.0" x2="48.0" y2="40.0" stroke="#5b676d" stroke-width="1"/>
+<text transform="rotate(-90 42.0 175.0)" x="42.0" y="175.0" text-anchor="middle" font-size="11" fill="#5b676d">27 mm</text>
+<text x="70.0" y="462.0" text-anchor="start" font-size="11" fill="#5b676d">Section through the middle. Faded parts sit behind the cut.</text>
+</svg>

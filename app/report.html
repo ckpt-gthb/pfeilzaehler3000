@@ -1,0 +1,929 @@
+<!doctype html>
+<!-- PfeilZaehler3000 (c) 2026 ckpt-gthb – free for personal, non-commercial use; PolyForm Strict 1.0.0 with permissions, see LICENSE -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#1f2a24">
+<title>PfeilZaehler3000 report</title>
+<style>
+/* Report: one column of chart panels, a note beside each chart (below it on a phone) */
+:root{
+  --bg:#f5f3ee;--card:#fffdf8;--ink:#1d211e;--ink2:#474d48;--muted:#6b716c;--line:#e2ded4;--grid:#ebe7de;--axis:#c9c4b8;
+  --accent:#2f6b4f;--accent-soft:#dcebe2;--s1:#2f6b4f;--s1l:#9cc5ae;--s2:#c0622a;--band:rgba(47,107,79,.07);
+  --gold:#e6b800;--red:#d23c32;--blue:#2f7fd0;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141715;--card:#1c201d;--ink:#e9ece8;--ink2:#c4cac5;--muted:#9aa29c;--line:#2c322e;--grid:#262b27;--axis:#3a413c;
+  --accent:#7cc39c;--accent-soft:#1f3a2c;--s1:#7cc39c;--s1l:#3f6e56;--s2:#e8945f;--band:rgba(124,195,156,.08);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141715;--card:#1c201d;--ink:#e9ece8;--ink2:#c4cac5;--muted:#9aa29c;--line:#2c322e;--grid:#262b27;--axis:#3a413c;
+  --accent:#7cc39c;--accent-soft:#1f3a2c;--s1:#7cc39c;--s1l:#3f6e56;--s2:#e8945f;--band:rgba(124,195,156,.08);color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:16px max(16px,env(safe-area-inset-right,0px)) 48px max(16px,env(safe-area-inset-left,0px));display:grid;gap:18px}
+button,select,input{font:inherit;color:inherit}
+a{color:var(--accent)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:14px}
+.top select{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:4px 6px}
+h1{font-size:26px;line-height:1.15;margin:4px 0 0;text-wrap:balance}
+.lede{color:var(--ink2);max-width:70ch;margin:6px 0 0}
+.stats{display:flex;flex-wrap:wrap;gap:8px 24px;margin-top:10px}
+.stat{display:grid}
+.stat b{font-size:21px;font-weight:650;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted)}
+.tabs{display:flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;width:max-content;max-width:100%}
+.tabs button{border:0;background:transparent;border-radius:8px;padding:7px 14px;cursor:pointer;color:var(--muted);font-weight:600}
+.tabs button.on{background:var(--accent);color:var(--bg)}
+.ctrl{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:14px}
+.nav{display:flex;align-items:center;gap:6px}
+.nav button,.btn{border:1px solid var(--line);background:var(--card);border-radius:10px;cursor:pointer}
+.nav button{width:38px;height:38px;font-size:18px;line-height:1}
+.nav button:disabled{opacity:.35;cursor:default}
+.nav span{min-width:9em;text-align:center;font-weight:600}
+.ctrl label{display:flex;align-items:center;gap:6px;color:var(--muted)}
+.ctrl input{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:5px 8px}
+.btn{padding:9px 14px;font-weight:600;color:var(--accent);min-height:44px}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.msg{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;color:var(--ink2)}
+h2{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:10px 0 -6px;font-weight:600}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 16px 12px;display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:18px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;min-width:0}
+@media (max-width:760px){.panel{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:520px){.pair{grid-template-columns:minmax(0,1fr)}}
+.chart{min-width:0}
+.chart h3{font-size:15px;margin:0 0 2px}
+.chart .sub{font-size:12px;color:var(--muted);margin:0 0 6px}
+.note{font-size:14px;color:var(--ink2);min-width:0}
+.note p{margin:0 0 8px}
+.note b{color:var(--ink)}
+svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{font-family:inherit;font-variant-numeric:tabular-nums}
+.tk{font-size:11px;fill:var(--muted)}
+.al{font-size:11px;fill:var(--ink2)}
+.an{font-size:11.5px;fill:var(--ink);paint-order:stroke;stroke:var(--card);stroke-width:4px;stroke-linejoin:round}
+.gl{stroke:var(--grid);stroke-width:1}
+.ax{stroke:var(--axis);stroke-width:1}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--ink2);margin:2px 0 4px}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+#tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--card);font-size:12px;line-height:1.4;padding:6px 8px;border-radius:6px;max-width:260px;z-index:20;opacity:0;left:0;top:0}
+[data-tip]{cursor:default}
+details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+summary{cursor:pointer;font-weight:600}
+.tbl{overflow-x:auto;margin-top:10px}
+table{border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+th,td{padding:3px 8px;text-align:right;border-bottom:1px solid var(--grid)}
+th{color:var(--muted);font-weight:500;position:sticky;top:0;background:var(--card)}
+tr.del td{color:var(--muted);text-decoration:line-through}
+footer{font-size:12px;color:var(--muted)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="top">
+      <a href="./" id="back"></a>
+      <select id="lang" aria-label="Language"><option value="">Auto</option><option value="en">English</option><option value="de">Deutsch</option><option value="pl">Polski</option></select>
+    </div>
+    <h1 id="title">PfeilZaehler3000</h1>
+    <p class="lede" id="lede"></p>
+    <div class="stats" id="stats"></div>
+  </header>
+  <nav class="tabs" id="tabs">
+    <button data-v="day" class="on"></button><button data-v="week"></button><button data-v="month"></button><button data-v="all"></button>
+  </nav>
+  <div class="ctrl">
+    <div class="nav" id="nav"><button id="prev" aria-label="previous">‹</button><span id="plabel"></span><button id="next" aria-label="next">›</button></div>
+    <label><span id="from-l"></span> <input type="date" id="from"></label>
+  </div>
+  <div id="out"></div>
+  <div class="actions">
+    <button class="btn" id="open"></button>
+    <button class="btn" id="save"></button>
+    <input type="file" id="file" accept=".json,application/json" hidden>
+  </div>
+  <footer id="foot"></footer>
+</div>
+<div id="tip" role="tooltip"></div>
+<script>
+// ---------- languages: English, Deutsch, Polski ----------
+// Plural entries are arrays: [one, other] in English and German, [one, few, many] in Polish.
+const I18N = {
+en: {
+  backLink: '← Phone page', tabDay: 'Day', tabWeek: 'Week', tabMonth: 'Month', tabAll: 'All time', from: 'From',
+  open: 'Open backup…', save: 'Save report',
+  titleDay: '{date}', titleWeek: 'Week of {date}', titleMonth: '{month}', titleAll: 'Since {date}',
+  srcLocal: 'Arrows stored in this browser.', srcFile: 'Backup file {name}.', srcSaved: 'Report saved on {date}.', srcDemo: 'Example data.',
+  noData: 'No arrows in this browser yet. Sync the pod on the phone page, or open a backup file.',
+  noPeriod: 'No arrows in this period.', noDetails: 'These arrows have no shot details (pod firmware before 2.0, or the pod on a side bushing), so only counts and scores are shown.',
+  badFile: 'That is not a PfeilZaehler3000 backup: ', hoverTip: 'Hover or tap a mark for its values.',
+  arrows: ['1 arrow', '{n} arrows'], ends: ['1 end', '{n} ends'], blocks: ['1 block', '{n} blocks'], days: ['1 day', '{n} days'], weeks: ['1 week', '{n} weeks'],
+  ledeDay: '{arrows} from {t0} to {t1} in {ends} and {blocks} (a new block after a break of 10 minutes or more).',
+  ledePeriod: '{arrows} on {days}, {ends}.',
+  stArrows: 'arrows', stEnds: 'ends', stDays: 'days', stPoints: 'points', stPerArrow: 'per arrow', stAimT: 'at aiming height (median)',
+  stMove: 'aim movement (median)', stStill: 'still before the release', stFalse: 'false counts deleted',
+  hDay: 'This day', hPeriodDay: 'Day by day', hPeriodWeek: 'Week by week',
+  cCant: 'Cant per arrow', cCantSub: 'degrees, + = top limb to the right · in shooting order, one line per end',
+  cMoveEnd: 'Aim movement per end', cMoveSub: 'average wobble in the last second before the release, degrees (1° ≈ {cm} cm at {dist} m)',
+  cPosHold: 'Hold by arrow in the end', cPosMove: 'Aim movement by arrow in the end', cPosSub: 'average', cPosSubP: 'average over the period',
+  cAim: 'Time at aiming height', cAimSub: 'seconds per arrow, draw and hold, in shooting order', lDraw: 'draw', lHold: 'hold',
+  cFt: 'Follow-through', cFtSub: 'how the bow turned in the 0.5 s after the release, degrees · cross: average',
+  ftX: '← turned to the left · to the right →', ftY: 'top limb ↓ back',
+  cPush: 'Bow push', cPushSub: 'how far the bow moved in the first 0.1 s after the release, mm · cross: average',
+  pushX: '← left · right →', pushY: '↓ down · up ↑',
+  cScore: 'Scores per end', cScoreSub: 'points per end · tap a bar for the arrows',
+  pArrows: 'Arrows', pArrowsSub: 'records the pod counted', lArrows: 'arrows', lFalse: 'false counts, deleted by hand',
+  pAim: 'Time at aiming height', pAimSub: 'draw + hold, seconds · dot: average, line: ± one standard deviation',
+  pMove: 'Aim movement', pMoveSub: 'degrees, average of the arrows (1° ≈ {cm} cm at {dist} m)',
+  pCant: 'Cant spread within ends', pCantSub: 'how much the cant varied inside an end (standard deviation), degrees',
+  pFt: 'Follow-through', pFtSub: 'average, degrees · line: ± one standard deviation', lBack: 'top limb back', lLeft: 'turned to the left',
+  pStill: 'Still before the release', pStillSub: 'seconds the bow was still before the shot · dot: average, line: ± one standard deviation',
+  pScore: 'Score per arrow', pScoreSub: 'average of the scored ends, X counts 10',
+  perDay: 'one point per day', perWeek: 'one point per week',
+  nCantDrift: '<b>The cant drifts during the ends.</b> In {p} % of the ends it changed the same way, by {v}° per arrow (median; steepest: end {e}, {s}° per arrow). Check that the pod is tight on its bolt: a serrated or rubber washer stops it turning.',
+  nCantDriftP: '<b>The cant drifts during the ends.</b> In {p} % of the ends it changed the same way, by {v}° per arrow (median). Check that the pod is tight on its bolt.',
+  nCantBlock: '<b>The cant drifts during block {b}:</b> {v} over {n} arrows ({s}° per arrow).',
+  nCantFix: 'The pod is probably turning on its bolt; a serrated or rubber washer stops that.',
+  nCantSpread: 'Within the ends the cant varied by ±{v}° from arrow to arrow; the average was {m}.',
+  nCantOut: ['1 arrow with a cant beyond ±30° is left out (shot before the calibration).', '{n} arrows with a cant beyond ±30° are left out (shot before the calibration).'],
+  nMoveRise: '<b>Aim movement rose during block {b}</b>, from {a} in the first end to {c} in the last ({n} ends).',
+  nMoveFlat: 'Average {v}; lowest in end {lo}, highest in end {hi}.',
+  nPosHold: '<b>The later arrows are held shorter.</b> Arrow 1 is held {a} s on average, the last two {b} s ({d} s less).',
+  nPosHoldEven: 'The hold is about the same for every arrow of the end ({a} s for the first, {b} s for the last two).',
+  nPosMoveUp: 'Aim movement of the last two arrows is {p} % higher than of the first.',
+  nPosMoveDown: 'Aim movement of the last two arrows is {p} % lower than of the first.',
+  nPosMoveEven: 'Aim movement is about the same for every arrow of the end.',
+  nAim: 'Median {v} s at aiming height (draw {d} s + hold {h} s); shortest {min} s, longest {max} s.',
+  nAimShort: ['On 1 arrow the draw was 0.2 s or less: the bow was already still while you finished drawing, so that time counts as hold.', 'On {n} arrows the draw was 0.2 s or less: the bow was already still while you finished drawing, so that time counts as hold.'],
+  nFt: 'On average the top limb tipped {dd} {d}° and the bow turned {s}° {sd}. Spread: ±{a}° and ±{b}°.',
+  nPush: 'On average the bow moved {d} mm {dd} and {r} mm {rr}. Spread: ±{a} mm and ±{b} mm.',
+  nPushFew: 'Bow push is measured from pod firmware 2.2 on, after calibrating with all three steps; {n} of the arrows have it.',
+  nScore: '<b>{sum} points in {ends}</b>, {avg} per arrow. Best end: {best} (end {be}), lowest: {worst} (end {we}).',
+  nUnscored: ['1 end has no score.', '{n} ends have no score.'],
+  nNoScore: 'No end of this day was scored. Scores are entered on the watch or on the phone page.',
+  nFalse: ['<b>1 false count</b> deleted by hand in this period.', '<b>{n} false counts</b> deleted by hand in this period.'],
+  nNoFalse: 'No false counts deleted in this period.',
+  nArrowsP: '{arrows} in total, most on {date} ({m}).',
+  nTrend: 'From {a} ({first}) to {b} ({last}).', nTrendOne: 'Only one {unit} with values: {a}.', unitDay: 'day', unitWeek: 'week',
+  nScoreP: 'Average {v} points per arrow over {n} scored ends; best {unit}: {best} ({date}).',
+  nNoScoreP: 'No ends scored in this period.',
+  tblArrows: 'Table of the arrows', tblDays: 'Table of the days', tblWeeks: 'Table of the weeks',
+  thTime: 'time', thEnd: 'end', thArrow: 'arrow', thRaise: 'raise s', thDraw: 'draw s', thHold: 'hold s', thAimT: 'at aim s', thStill: 'still s',
+  thMove: 'aim °', thAngle: 'angle °', thCant: 'cant °', thFtD: 'follow ↓ °', thFtR: 'follow → °', thPushD: 'push ↓ mm', thPushR: 'push → mm',
+  thPeak: 'peak g', thScore: 'score', thDate: 'date', thArrows: 'arrows', thEnds: 'ends', thFalse: 'false', thPerArrow: 'per arrow',
+  tipArrow: '#{i} · {time} · end {e}, arrow {p}', tipEnd: 'End {e} · {time} · {n}', tipCant: 'cant {v}°', tipFalse: 'false counts',
+  right: 'to the right', left: 'to the left', up: 'up', down: 'down', back: 'back', forward: 'forward', end: 'end', block: 'block {b}',
+  foot: 'PfeilZaehler3000 report · made {date}. Shot details since pod firmware 2.0; angles in 0.1° and bow push since 2.2.',
+  saved: 'Report saved.',
+},
+de: {
+  backLink: '← Handyseite', tabDay: 'Tag', tabWeek: 'Woche', tabMonth: 'Monat', tabAll: 'Gesamt', from: 'Ab',
+  open: 'Sicherung öffnen…', save: 'Bericht speichern',
+  titleDay: '{date}', titleWeek: 'Woche ab {date}', titleMonth: '{month}', titleAll: 'Seit {date}',
+  srcLocal: 'Pfeile aus diesem Browser.', srcFile: 'Sicherungsdatei {name}.', srcSaved: 'Bericht gespeichert am {date}.', srcDemo: 'Beispieldaten.',
+  noData: 'In diesem Browser sind noch keine Pfeile. Synchronisiere den Pod auf der Handyseite oder öffne eine Sicherungsdatei.',
+  noPeriod: 'Keine Pfeile in diesem Zeitraum.', noDetails: 'Diese Pfeile haben keine Schussdetails (Pod-Firmware vor 2.0 oder Pod an einer seitlichen Buchse), daher nur Anzahl und Ergebnisse.',
+  badFile: 'Das ist keine PfeilZaehler3000-Sicherung: ', hoverTip: 'Für die Werte mit der Maus auf eine Markierung zeigen oder sie antippen.',
+  arrows: ['1 Pfeil', '{n} Pfeile'], ends: ['1 Passe', '{n} Passen'], blocks: ['1 Block', '{n} Blöcken'], days: ['1 Tag', '{n} Tagen'], weeks: ['1 Woche', '{n} Wochen'],
+  ledeDay: '{arrows} von {t0} bis {t1} in {ends} und {blocks} (ein neuer Block nach einer Pause ab 10 Minuten).',
+  ledePeriod: '{arrows} an {days}, {ends}.',
+  stArrows: 'Pfeile', stEnds: 'Passen', stDays: 'Tage', stPoints: 'Ringe', stPerArrow: 'pro Pfeil', stAimT: 'auf Zielhöhe (Median)',
+  stMove: 'Zielbewegung (Median)', stStill: 'ruhig vor dem Lösen', stFalse: 'Fehlzählungen gelöscht',
+  hDay: 'Dieser Tag', hPeriodDay: 'Tag für Tag', hPeriodWeek: 'Woche für Woche',
+  cCant: 'Verkantung pro Pfeil', cCantSub: 'Grad, + = oberer Wurfarm nach rechts · in Schussreihenfolge, eine Linie pro Passe',
+  cMoveEnd: 'Zielbewegung pro Passe', cMoveSub: 'mittleres Wackeln in der letzten Sekunde vor dem Lösen, Grad (1° ≈ {cm} cm auf {dist} m)',
+  cPosHold: 'Halten nach Pfeil in der Passe', cPosMove: 'Zielbewegung nach Pfeil in der Passe', cPosSub: 'Mittelwert', cPosSubP: 'Mittelwert über den Zeitraum',
+  cAim: 'Zeit auf Zielhöhe', cAimSub: 'Sekunden pro Pfeil, Ausziehen und Halten, in Schussreihenfolge', lDraw: 'Ausziehen', lHold: 'Halten',
+  cFt: 'Nachhalten', cFtSub: 'wie sich der Bogen in den 0,5 s nach dem Lösen drehte, Grad · Kreuz: Mittelwert',
+  ftX: '← nach links gedreht · nach rechts →', ftY: 'oberer Wurfarm ↓ zurück',
+  cPush: 'Bogenschub', cPushSub: 'wie weit sich der Bogen in den ersten 0,1 s nach dem Lösen bewegte, mm · Kreuz: Mittelwert',
+  pushX: '← links · rechts →', pushY: '↓ unten · oben ↑',
+  cScore: 'Ergebnis pro Passe', cScoreSub: 'Ringe pro Passe · Balken antippen für die Pfeile',
+  pArrows: 'Pfeile', pArrowsSub: 'vom Pod gezählte Einträge', lArrows: 'Pfeile', lFalse: 'Fehlzählungen, von Hand gelöscht',
+  pAim: 'Zeit auf Zielhöhe', pAimSub: 'Ausziehen + Halten, Sekunden · Punkt: Mittelwert, Linie: ± eine Standardabweichung',
+  pMove: 'Zielbewegung', pMoveSub: 'Grad, Mittelwert der Pfeile (1° ≈ {cm} cm auf {dist} m)',
+  pCant: 'Streuung der Verkantung in der Passe', pCantSub: 'wie stark die Verkantung innerhalb einer Passe schwankte (Standardabweichung), Grad',
+  pFt: 'Nachhalten', pFtSub: 'Mittelwert, Grad · Linie: ± eine Standardabweichung', lBack: 'oberer Wurfarm zurück', lLeft: 'nach links gedreht',
+  pStill: 'Ruhig vor dem Lösen', pStillSub: 'Sekunden, die der Bogen vor dem Schuss ruhig war · Punkt: Mittelwert, Linie: ± eine Standardabweichung',
+  pScore: 'Ringe pro Pfeil', pScoreSub: 'Mittelwert der eingetragenen Passen, X zählt 10',
+  perDay: 'ein Punkt pro Tag', perWeek: 'ein Punkt pro Woche',
+  nCantDrift: '<b>Die Verkantung wandert während der Passen.</b> In {p} % der Passen änderte sie sich in dieselbe Richtung, um {v}° pro Pfeil (Median; am stärksten: Passe {e}, {s}° pro Pfeil). Prüfe, ob der Pod fest auf der Schraube sitzt: eine gezahnte oder Gummischeibe verhindert das Verdrehen.',
+  nCantDriftP: '<b>Die Verkantung wandert während der Passen.</b> In {p} % der Passen änderte sie sich in dieselbe Richtung, um {v}° pro Pfeil (Median). Prüfe, ob der Pod fest auf der Schraube sitzt.',
+  nCantBlock: '<b>Die Verkantung wandert in Block {b}:</b> {v} über {n} Pfeile ({s}° pro Pfeil).',
+  nCantFix: 'Vermutlich verdreht sich der Pod auf der Schraube; eine gezahnte oder Gummischeibe verhindert das.',
+  nCantSpread: 'Innerhalb der Passen schwankte die Verkantung um ±{v}° von Pfeil zu Pfeil; im Mittel {m}.',
+  nCantOut: ['1 Pfeil mit einer Verkantung über ±30° ist nicht dabei (vor der Kalibrierung geschossen).', '{n} Pfeile mit einer Verkantung über ±30° sind nicht dabei (vor der Kalibrierung geschossen).'],
+  nMoveRise: '<b>Die Zielbewegung stieg in Block {b}</b>, von {a} in der ersten auf {c} in der letzten Passe ({n} Passen).',
+  nMoveFlat: 'Mittelwert {v}; am ruhigsten in Passe {lo}, am unruhigsten in Passe {hi}.',
+  nPosHold: '<b>Die späteren Pfeile werden kürzer gehalten.</b> Pfeil 1 wird im Mittel {a} s gehalten, die letzten beiden {b} s ({d} s weniger).',
+  nPosHoldEven: 'Das Halten ist bei allen Pfeilen der Passe etwa gleich ({a} s beim ersten, {b} s bei den letzten beiden).',
+  nPosMoveUp: 'Die Zielbewegung der letzten beiden Pfeile ist {p} % höher als beim ersten.',
+  nPosMoveDown: 'Die Zielbewegung der letzten beiden Pfeile ist {p} % niedriger als beim ersten.',
+  nPosMoveEven: 'Die Zielbewegung ist bei allen Pfeilen der Passe etwa gleich.',
+  nAim: 'Median {v} s auf Zielhöhe (Ausziehen {d} s + Halten {h} s); am kürzesten {min} s, am längsten {max} s.',
+  nAimShort: ['Bei 1 Pfeil dauerte das Ausziehen 0,2 s oder weniger: Der Bogen war schon ruhig, während du fertig ausgezogen hast, daher zählt diese Zeit als Halten.', 'Bei {n} Pfeilen dauerte das Ausziehen 0,2 s oder weniger: Der Bogen war schon ruhig, während du fertig ausgezogen hast, daher zählt diese Zeit als Halten.'],
+  nFt: 'Im Mittel kippte der obere Wurfarm {d}° {dd}, und der Bogen drehte sich {s}° {sd}. Streuung: ±{a}° und ±{b}°.',
+  nPush: 'Im Mittel bewegte sich der Bogen {d} mm {dd} und {r} mm {rr}. Streuung: ±{a} mm und ±{b} mm.',
+  nPushFew: 'Der Bogenschub wird ab Pod-Firmware 2.2 gemessen, nach einer Kalibrierung mit allen drei Schritten; {n} der Pfeile haben ihn.',
+  nScore: '<b>{sum} Ringe in {ends}</b>, {avg} pro Pfeil. Beste Passe: {best} (Passe {be}), schwächste: {worst} (Passe {we}).',
+  nUnscored: ['1 Passe hat kein Ergebnis.', '{n} Passen haben kein Ergebnis.'],
+  nNoScore: 'Für diesen Tag ist kein Ergebnis eingetragen. Ergebnisse werden auf der Uhr oder auf der Handyseite eingetragen.',
+  nFalse: ['<b>1 Fehlzählung</b> in diesem Zeitraum von Hand gelöscht.', '<b>{n} Fehlzählungen</b> in diesem Zeitraum von Hand gelöscht.'],
+  nNoFalse: 'Keine Fehlzählungen in diesem Zeitraum gelöscht.',
+  nArrowsP: 'Insgesamt {arrows}, die meisten am {date} ({m}).',
+  nTrend: 'Von {a} ({first}) auf {b} ({last}).', nTrendOne: 'Nur ein {unit} mit Werten: {a}.', unitDay: 'Tag', unitWeek: 'Woche',
+  nScoreP: 'Im Mittel {v} Ringe pro Pfeil in {n} eingetragenen Passen; bester Zeitpunkt: {best} ({date}).',
+  nNoScoreP: 'In diesem Zeitraum sind keine Ergebnisse eingetragen.',
+  tblArrows: 'Tabelle der Pfeile', tblDays: 'Tabelle der Tage', tblWeeks: 'Tabelle der Wochen',
+  thTime: 'Zeit', thEnd: 'Passe', thArrow: 'Pfeil', thRaise: 'Heben s', thDraw: 'Ausz. s', thHold: 'Halten s', thAimT: 'Zielh. s', thStill: 'ruhig s',
+  thMove: 'Ziel °', thAngle: 'Winkel °', thCant: 'Verk. °', thFtD: 'Nachh. ↓ °', thFtR: 'Nachh. → °', thPushD: 'Schub ↓ mm', thPushR: 'Schub → mm',
+  thPeak: 'Spitze g', thScore: 'Ringe', thDate: 'Datum', thArrows: 'Pfeile', thEnds: 'Passen', thFalse: 'Fehlz.', thPerArrow: 'pro Pfeil',
+  tipArrow: '#{i} · {time} · Passe {e}, Pfeil {p}', tipEnd: 'Passe {e} · {time} · {n}', tipCant: 'Verkantung {v}°', tipFalse: 'Fehlzählungen',
+  right: 'nach rechts', left: 'nach links', up: 'nach oben', down: 'nach unten', back: 'zurück', forward: 'nach vorn', end: 'Passe', block: 'Block {b}',
+  foot: 'PfeilZaehler3000-Bericht · erstellt am {date}. Schussdetails ab Pod-Firmware 2.0; Winkel in 0,1° und Bogenschub ab 2.2.',
+  saved: 'Bericht gespeichert.',
+},
+pl: {
+  backLink: '← Strona telefonu', tabDay: 'Dzień', tabWeek: 'Tydzień', tabMonth: 'Miesiąc', tabAll: 'Wszystko', from: 'Od',
+  open: 'Otwórz kopię…', save: 'Zapisz raport',
+  titleDay: '{date}', titleWeek: 'Tydzień od {date}', titleMonth: '{month}', titleAll: 'Od {date}',
+  srcLocal: 'Strzały zapisane w tej przeglądarce.', srcFile: 'Plik kopii {name}.', srcSaved: 'Raport zapisany {date}.', srcDemo: 'Przykładowe dane.',
+  noData: 'W tej przeglądarce nie ma jeszcze strzał. Zsynchronizuj pod na stronie telefonu albo otwórz plik kopii.',
+  noPeriod: 'Brak strzał w tym okresie.', noDetails: 'Te strzały nie mają szczegółów strzału (firmware poda przed 2.0 lub pod na bocznej tulei), więc pokazane są tylko liczby i wyniki.',
+  badFile: 'To nie jest kopia PfeilZaehler3000: ', hoverTip: 'Najedź lub stuknij znacznik, aby zobaczyć wartości.',
+  arrows: ['1 strzała', '{n} strzały', '{n} strzał'], ends: ['1 seria', '{n} serie', '{n} serii'], blocks: ['1 blok', '{n} bloki', '{n} bloków'], days: ['1 dzień', '{n} dni', '{n} dni'], weeks: ['1 tydzień', '{n} tygodnie', '{n} tygodni'],
+  ledeDay: '{arrows} od {t0} do {t1}: {ends}, {blocks} (nowy blok po przerwie od 10 minut).',
+  ledePeriod: '{arrows} w ciągu: {days}, {ends}.',
+  stArrows: 'strzał', stEnds: 'serii', stDays: 'dni', stPoints: 'punktów', stPerArrow: 'na strzałę', stAimT: 'na wysokości celu (mediana)',
+  stMove: 'ruch celowania (mediana)', stStill: 'spokój przed zwolnieniem', stFalse: 'usuniętych fałszywych zliczeń',
+  hDay: 'Ten dzień', hPeriodDay: 'Dzień po dniu', hPeriodWeek: 'Tydzień po tygodniu',
+  cCant: 'Przechył na strzałę', cCantSub: 'stopnie, + = górne ramię w prawo · w kolejności strzałów, jedna linia na serię',
+  cMoveEnd: 'Ruch celowania na serię', cMoveSub: 'średnie drganie w ostatniej sekundzie przed zwolnieniem, stopnie (1° ≈ {cm} cm na {dist} m)',
+  cPosHold: 'Utrzymanie wg strzały w serii', cPosMove: 'Ruch celowania wg strzały w serii', cPosSub: 'średnia', cPosSubP: 'średnia z okresu',
+  cAim: 'Czas na wysokości celu', cAimSub: 'sekundy na strzałę, naciąg i utrzymanie, w kolejności strzałów', lDraw: 'naciąg', lHold: 'utrzymanie',
+  cFt: 'Praca po strzale', cFtSub: 'jak łuk obrócił się w 0,5 s po zwolnieniu, stopnie · krzyżyk: średnia',
+  ftX: '← obrót w lewo · w prawo →', ftY: 'górne ramię ↓ do tyłu',
+  cPush: 'Pchnięcie łuku', cPushSub: 'jak daleko łuk przesunął się w pierwszych 0,1 s po zwolnieniu, mm · krzyżyk: średnia',
+  pushX: '← w lewo · w prawo →', pushY: '↓ dół · góra ↑',
+  cScore: 'Wynik na serię', cScoreSub: 'punkty na serię · stuknij słupek, aby zobaczyć strzały',
+  pArrows: 'Strzały', pArrowsSub: 'zapisy zliczone przez pod', lArrows: 'strzały', lFalse: 'fałszywe zliczenia, usunięte ręcznie',
+  pAim: 'Czas na wysokości celu', pAimSub: 'naciąg + utrzymanie, sekundy · kropka: średnia, linia: ± jedno odchylenie standardowe',
+  pMove: 'Ruch celowania', pMoveSub: 'stopnie, średnia strzał (1° ≈ {cm} cm na {dist} m)',
+  pCant: 'Rozrzut przechyłu w serii', pCantSub: 'jak bardzo przechył zmieniał się w serii (odchylenie standardowe), stopnie',
+  pFt: 'Praca po strzale', pFtSub: 'średnia, stopnie · linia: ± jedno odchylenie standardowe', lBack: 'górne ramię do tyłu', lLeft: 'obrót w lewo',
+  pStill: 'Spokój przed zwolnieniem', pStillSub: 'sekundy spokoju łuku przed strzałem · kropka: średnia, linia: ± jedno odchylenie standardowe',
+  pScore: 'Punkty na strzałę', pScoreSub: 'średnia z serii z wynikiem, X liczy się jako 10',
+  perDay: 'jeden punkt na dzień', perWeek: 'jeden punkt na tydzień',
+  nCantDrift: '<b>Przechył zmienia się w trakcie serii.</b> W {p} % serii zmieniał się w tę samą stronę, o {v}° na strzałę (mediana; najbardziej: seria {e}, {s}° na strzałę). Sprawdź, czy pod jest mocno przykręcony: ząbkowana lub gumowa podkładka zapobiega obracaniu.',
+  nCantDriftP: '<b>Przechył zmienia się w trakcie serii.</b> W {p} % serii zmieniał się w tę samą stronę, o {v}° na strzałę (mediana). Sprawdź, czy pod jest mocno przykręcony.',
+  nCantBlock: '<b>Przechył zmienia się w bloku {b}:</b> {v} w ciągu {n} strzał ({s}° na strzałę).',
+  nCantFix: 'Prawdopodobnie pod obraca się na śrubie; ząbkowana lub gumowa podkładka temu zapobiega.',
+  nCantSpread: 'W seriach przechył zmieniał się o ±{v}° między strzałami; średnio {m}.',
+  nCantOut: ['1 strzała z przechyłem ponad ±30° jest pominięta (oddana przed kalibracją).', '{n} strzały z przechyłem ponad ±30° są pominięte (oddane przed kalibracją).', '{n} strzał z przechyłem ponad ±30° jest pominiętych (oddanych przed kalibracją).'],
+  nMoveRise: '<b>Ruch celowania rósł w bloku {b}</b>, z {a} w pierwszej do {c} w ostatniej serii ({n} serii).',
+  nMoveFlat: 'Średnio {v}; najspokojniej w serii {lo}, najmniej spokojnie w serii {hi}.',
+  nPosHold: '<b>Późniejsze strzały są trzymane krócej.</b> Strzała 1 jest trzymana średnio {a} s, ostatnie dwie {b} s (o {d} s krócej).',
+  nPosHoldEven: 'Utrzymanie jest podobne dla każdej strzały serii ({a} s dla pierwszej, {b} s dla ostatnich dwóch).',
+  nPosMoveUp: 'Ruch celowania ostatnich dwóch strzał jest o {p} % większy niż pierwszej.',
+  nPosMoveDown: 'Ruch celowania ostatnich dwóch strzał jest o {p} % mniejszy niż pierwszej.',
+  nPosMoveEven: 'Ruch celowania jest podobny dla każdej strzały serii.',
+  nAim: 'Mediana {v} s na wysokości celu (naciąg {d} s + utrzymanie {h} s); najkrócej {min} s, najdłużej {max} s.',
+  nAimShort: ['Przy 1 strzale naciąg trwał 0,2 s lub krócej: łuk był już nieruchomy, gdy kończyłeś naciąg, więc ten czas liczy się jako utrzymanie.', 'Przy {n} strzałach naciąg trwał 0,2 s lub krócej: łuk był już nieruchomy, gdy kończyłeś naciąg, więc ten czas liczy się jako utrzymanie.', 'Przy {n} strzałach naciąg trwał 0,2 s lub krócej: łuk był już nieruchomy, gdy kończyłeś naciąg, więc ten czas liczy się jako utrzymanie.'],
+  nFt: 'Średnio górne ramię przechyliło się {dd} o {d}°, a łuk obrócił się {sd} o {s}°. Rozrzut: ±{a}° i ±{b}°.',
+  nPush: 'Średnio łuk przesunął się {dd} o {d} mm i {rr} o {r} mm. Rozrzut: ±{a} mm i ±{b} mm.',
+  nPushFew: 'Pchnięcie łuku jest mierzone od firmware poda 2.2, po kalibracji ze wszystkimi trzema krokami; ma je {n} strzał.',
+  nScore: '<b>{sum} punktów w {ends}</b>, {avg} na strzałę. Najlepsza seria: {best} (seria {be}), najsłabsza: {worst} (seria {we}).',
+  nUnscored: ['1 seria nie ma wyniku.', '{n} serie nie mają wyniku.', '{n} serii nie ma wyniku.'],
+  nNoScore: 'Dla tego dnia nie wpisano wyników. Wyniki wpisuje się na zegarku lub na stronie telefonu.',
+  nFalse: ['<b>1 fałszywe zliczenie</b> usunięte ręcznie w tym okresie.', '<b>{n} fałszywe zliczenia</b> usunięte ręcznie w tym okresie.', '<b>{n} fałszywych zliczeń</b> usuniętych ręcznie w tym okresie.'],
+  nNoFalse: 'W tym okresie nie usunięto fałszywych zliczeń.',
+  nArrowsP: 'Razem {arrows}, najwięcej {date} ({m}).',
+  nTrend: 'Od {a} ({first}) do {b} ({last}).', nTrendOne: 'Tylko jeden {unit} z wartościami: {a}.', unitDay: 'dzień', unitWeek: 'tydzień',
+  nScoreP: 'Średnio {v} punktu na strzałę w {n} seriach z wynikiem; najlepiej: {best} ({date}).',
+  nNoScoreP: 'W tym okresie nie wpisano wyników.',
+  tblArrows: 'Tabela strzał', tblDays: 'Tabela dni', tblWeeks: 'Tabela tygodni',
+  thTime: 'godz.', thEnd: 'seria', thArrow: 'strzała', thRaise: 'unosz. s', thDraw: 'naciąg s', thHold: 'utrzym. s', thAimT: 'cel s', thStill: 'spokój s',
+  thMove: 'ruch °', thAngle: 'kąt °', thCant: 'przech. °', thFtD: 'praca ↓ °', thFtR: 'praca → °', thPushD: 'pchn. ↓ mm', thPushR: 'pchn. → mm',
+  thPeak: 'szczyt g', thScore: 'wynik', thDate: 'data', thArrows: 'strzały', thEnds: 'serie', thFalse: 'fałsz.', thPerArrow: 'na strzałę',
+  tipArrow: '#{i} · {time} · seria {e}, strzała {p}', tipEnd: 'Seria {e} · {time} · {n}', tipCant: 'przechył {v}°', tipFalse: 'fałszywe zliczenia',
+  right: 'w prawo', left: 'w lewo', up: 'w górę', down: 'w dół', back: 'do tyłu', forward: 'do przodu', end: 'seria', block: 'blok {b}',
+  foot: 'Raport PfeilZaehler3000 · utworzony {date}. Szczegóły strzału od firmware poda 2.0; kąty co 0,1° i pchnięcie łuku od 2.2.',
+  saved: 'Raport zapisany.',
+} };
+const LOCALES = { en: 'en-GB', de: 'de-AT', pl: 'pl-PL' };
+let LANG = 'en', LOC = 'en-GB';
+function pluralIndex(n) {
+  if (LANG === 'pl') { if (n === 1) return 0; const m10 = n % 10, m100 = n % 100; return m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? 1 : 2; }
+  return n === 1 ? 0 : 1;
+}
+function t(key, vars = {}) {
+  let s = I18N[LANG][key]; if (s === undefined) s = I18N.en[key]; if (s === undefined) return key;
+  if (Array.isArray(s)) s = s[Math.min(pluralIndex(vars.n), s.length - 1)];
+  return s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
+}
+</script>
+<script>
+// ---------- data ----------
+// The phone page keeps the arrows in this browser under the same address (packed lists, see index.html);
+// a backup file has the same content with named fields. A saved report carries its own data.
+const F_DEL = 0x80, F_REC = 0x70;                  // deleted; end mark / end score / hit positions (not arrows)
+const KEY = 'pfeilzaehler3000.v2', OLD_KEYS = ['pfeilzaehler3000.v1', 'arrowlog.v1'];
+const R_FROM = 'pfeilzaehler3000.report.from', R_LANG = 'pfeilzaehler3000.report.lang';
+const DK = ['raise', 'draw', 'hold', 'move', 'pitch', 'cant', 'drop', 'side', 'pushDown', 'pushRight'];
+const DAY = 86400, BLOCK_GAP = 600;
+function unpack(a) {
+  const x = { i: a[0], t: a[1], peak: a[2], aim: a[3], flags: a[4] };
+  if (a.length > 5) { x.d = {}; DK.forEach((k, j) => { x.d[k] = a[5 + j] === undefined ? null : a[5 + j]; }); }
+  return x;
+}
+const store = {                                    // browser storage can be missing or blocked
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} },
+};
+function normalize(d) {
+  if (!d || typeof d !== 'object') throw new Error('no data');
+  if (Array.isArray(d.packed)) d.shots = d.packed.map(unpack);
+  if (!Array.isArray(d.shots)) throw new Error('no arrows in the file');
+  const s = Object.assign({ arrows: 6, endGap: 100, sessGap: 45, dist: 18 }, d.settings || {});
+  return { shots: d.shots.filter(x => x && typeof x.t === 'number'), scores: d.scores && typeof d.scores === 'object' ? d.scores : {},
+           endMarks: Array.isArray(d.endMarks) ? d.endMarks : [], settings: s,
+           hist: Array.isArray(d.hist) && d.hist.length ? d.hist : [{ from: 0, arrows: s.arrows, endGap: s.endGap }] };
+}
+function loadLocal() {
+  for (const k of [KEY, ...OLD_KEYS]) {
+    try { const d = JSON.parse(store.get(k)); if (d && (d.packed || d.shots)) return normalize(d); } catch (e) {}
+  }
+  return null;
+}
+// example data (?demo): three weeks of morning sessions with a few things for the notes to find
+function demoData() {
+  let seed = 11;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647, between = (a, b) => a + (b - a) * rnd();
+  const r1 = v => Math.round(v * 10) / 10, day0 = new Date(); day0.setHours(0, 0, 0, 0);
+  const shots = [], scores = {};
+  let i = 0;
+  for (let d = 22; d >= 0; d--) {
+    if (d > 0 && d !== 6 && rnd() < 0.55) continue;
+    let t = Math.floor(day0.getTime() / 1000) - d * DAY + Math.round(between(8.5, 10) * 3600);
+    const skill = 1 + d * 0.012, drift = d === 6 ? -0.9 : 0;
+    if (rnd() < 0.5) { shots.push({ i: i++, t: t - 400, peak: r1(between(8, 20)), aim: r1(between(0.2, 1.5)), flags: 1 | F_DEL }); }
+    const blocks = 2 + (rnd() < 0.5 ? 1 : 0);
+    for (let b = 0; b < blocks; b++) {
+      const ends = 3 + Math.floor(between(0, 3));
+      let cant0 = between(-0.5, 1);
+      for (let e = 0; e < ends; e++) {
+        const st = t, vals = [];
+        for (let k = 0; k < 6; k++) {
+          const move = Math.max(0.03, (0.055 + 0.007 * e + 0.006 * k) * skill * between(0.8, 1.2));
+          const draw = r1(between(0.5, 1.2)), hold = r1(Math.max(0.6, 2.9 - 0.13 * k + between(-0.5, 0.5)));
+          const cant = cant0 + drift * (e * 6 + k) * 0.25 + between(-0.6, 0.6);
+          shots.push({ i: i++, t, peak: r1(between(32, 70)), aim: r1(draw + hold + between(1.2, 2.2)), flags: 1,
+            d: { raise: r1(between(0.6, 1.2)), draw, hold, move: Math.round(move * 100) / 100, pitch: r1(between(-2, 1)), cant: r1(cant),
+                 drop: -Math.round(between(8, 14)), side: -Math.round(between(2, 6)), pushDown: Math.round(between(1, 8)), pushRight: -Math.round(between(1, 7)) } });
+          const x = between(0, 1) + move * 4;
+          vals.push(x < 0.33 ? 10 : x < 0.62 ? 9 : x < 0.86 ? 8 : x < 1.0 ? 7 : x < 1.08 ? 6 : 5);
+          t += Math.round(between(24, 40));
+        }
+        if (vals[0] === 10 && rnd() < 0.3) vals[0] = 11;
+        if (!(d === 0 && b === blocks - 1 && e === ends - 1)) scores[st] = { v: vals.sort((a, c) => c - a) };
+        t += Math.round(between(150, 220));
+      }
+      t += Math.round(between(12, 20) * 60);
+    }
+  }
+  return normalize({ shots, scores, settings: { arrows: 6, endGap: 100, sessGap: 45, dist: 18 } });
+}
+
+// ---------- analysis ----------
+const mean = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null;
+const sdev = a => { if (a.length < 2) return null; const m = mean(a); return Math.sqrt(mean(a.map(v => (v - m) ** 2))); };
+const median = a => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y), h = s.length >> 1; return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2; };
+const num = v => typeof v === 'number' && isFinite(v);
+const has = (x, k) => x.d && num(x.d[k]);
+const okCant = x => has(x, 'cant') && Math.abs(x.d.cant) <= 30;
+const aimT = x => has(x, 'draw') && has(x, 'hold') ? x.d.draw + x.d.hold : null;
+const valPoints = v => v === 11 ? 10 : v;
+const valText = v => v === 11 ? 'X' : v === 0 ? 'M' : String(v);
+function slope(ys) {                               // least squares, per step
+  const n = ys.length, xm = (n - 1) / 2, ym = mean(ys);
+  let a = 0, b = 0; ys.forEach((y, k) => { a += (k - xm) * (y - ym); b += (k - xm) ** 2; });
+  return b ? a / b : 0;
+}
+function dayKey(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function weekStart(d) { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x; }
+function monthKey(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+const keyOf = { day: ts => dayKey(new Date(ts * 1000)), week: ts => dayKey(weekStart(new Date(ts * 1000))), month: ts => monthKey(new Date(ts * 1000)) };
+const dateOfKey = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d || 1); };
+
+// sessions and ends exactly like the phone page: each end judged with the settings valid at that time
+function analyse(db) {
+  const setAt = ts => { let r = db.hist[0]; for (const h of db.hist) if (h.from <= ts) r = h; return r; };
+  const all = db.shots.filter(x => !(x.flags & F_REC) && x.t > 1600000000).sort((a, b) => a.t - b.t);
+  const live = all.filter(x => !(x.flags & F_DEL)), deleted = all.filter(x => x.flags & F_DEL);
+  const ends = [];
+  let end = null, prev = null;
+  for (const x of live) {
+    const cfg = setAt(x.t);
+    const marked = prev !== null && db.endMarks.some(m => m > prev && m <= x.t);
+    if (!end || x.t - prev > db.settings.sessGap * 60 || x.t - prev > cfg.endGap || marked) { end = { start: x.t, list: [] }; ends.push(end); }
+    end.list.push(x); x.pos = end.list.length; x.end = end; prev = x.t;
+  }
+  // scores: saved for a start time inside the end (or up to 5 s before it)
+  const keys = Object.keys(db.scores).map(Number).sort((a, b) => a - b);
+  for (const e of ends) {
+    const stop = e.list[e.list.length - 1].t;
+    let best = null;
+    for (const k of keys) if (k >= e.start - 5 && k <= stop + 1 && (best === null || Math.abs(k - e.start) < Math.abs(best - e.start))) best = k;
+    const sc = best === null ? null : db.scores[best];
+    e.score = sc && Array.isArray(sc.v) && sc.v.length ? { v: sc.v, sum: sc.v.reduce((s, v) => s + valPoints(v), 0) } : null;
+  }
+  // numbers and blocks per day
+  let lastDay = null, n = 0, block = 0, lastStop = 0;
+  for (const e of ends) {
+    const k = keyOf.day(e.start);
+    if (k !== lastDay) { lastDay = k; n = 0; block = 0; lastStop = 0; }
+    if (!n || e.start - lastStop >= BLOCK_GAP) block++;
+    e.day = k; e.n = ++n; e.block = block; lastStop = e.list[e.list.length - 1].t;
+  }
+  return { live, deleted, ends };
+}
+
+// ---------- state ----------
+const $ = id => document.getElementById(id);
+const PRISTINE = '<!doctype html>\n' + document.documentElement.outerHTML;   // the page before anything is drawn: base of "Save report"
+const params = new URLSearchParams(location.search);
+let DB = null, A = null, SRC = { kind: 'local' };
+const st = { tab: 'day', key: null, from: null };
+if (window.__pzReport) { DB = normalize(window.__pzReport.db); SRC = { kind: 'saved', at: window.__pzReport.saved }; Object.assign(st, window.__pzReport.state || {}); }
+else if (params.has('demo')) { DB = demoData(); SRC = { kind: 'demo' }; }
+else DB = loadLocal();
+if (DB) A = analyse(DB);
+if (!window.__pzReport) st.from = store.get(R_FROM);
+
+function pickLang() {
+  const pref = $('lang').value || (window.__pzReport && window.__pzReport.lang) || (DB && DB.settings.lang) || '';
+  if (pref && I18N[pref]) return pref;
+  for (const l of (navigator.languages || [navigator.language || 'en'])) { const k = String(l).slice(0, 2).toLowerCase(); if (I18N[k]) return k; }
+  return 'en';
+}
+$('lang').value = store.get(R_LANG) || '';
+
+// ---------- formatting ----------
+const f1 = v => num(v) ? v.toLocaleString(LOC, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '–';
+const f2 = v => num(v) ? v.toLocaleString(LOC, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '–';
+const f0 = v => num(v) ? Math.round(v).toLocaleString(LOC) : '–';
+const sg = v => (v > 0 ? '+' : v < 0 ? '−' : '') + f1(Math.abs(v));
+const cm = deg => Math.tan(deg * Math.PI / 180) * DB.settings.dist * 100;
+const fMove = deg => num(deg) ? `${f2(deg)}° ≈ ${f1(cm(deg))} cm` : '–';
+const fCant = c => !num(c) ? '–' : Math.abs(c) < 0.05 ? '0°' : `${f1(Math.abs(c))}° ${c > 0 ? t('right') : t('left')}`;
+const fTime = ts => new Date(ts * 1000).toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit' });
+const fTimeS = ts => new Date(ts * 1000).toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const fDate = d => d.toLocaleDateString(LOC, { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+const fTitle = d => d.toLocaleDateString(LOC, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });   // fits one line on a phone
+const fDateS = d => d.toLocaleDateString(LOC, { day: 'numeric', month: 'numeric' });
+const fDay = d => d.toLocaleDateString(LOC, { weekday: 'short', day: 'numeric', month: 'numeric' });
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
+// ---------- charts (SVG, drawn for the width of their box) ----------
+function niceTicks(lo, hi, n = 4) {
+  if (!num(lo) || !num(hi)) { lo = 0; hi = 1; }
+  if (lo === hi) { lo -= 1; hi += 1; }
+  const raw = (hi - lo) / n, p = 10 ** Math.floor(Math.log10(raw)), e = raw / p;
+  const step = (e < 1.5 ? 1 : e < 3 ? 2 : e < 7 ? 5 : 10) * p;
+  const out = [];
+  for (let v = Math.floor(lo / step) * step; v <= hi + step * 0.5; v += step) out.push(+v.toFixed(10));
+  if (out[out.length - 1] < hi) out.push(+(out[out.length - 1] + step).toFixed(10));
+  return out;
+}
+const S = (d0, d1, r0, r1) => v => r0 + (v - d0) / ((d1 - d0) || 1) * (r1 - r0);
+function frame(o) {
+  const W = o.W, H = o.H, m = Object.assign({ l: 44, r: 10, t: 12, b: o.xl ? 38 : 26 }, o.m || {});
+  const sx = S(o.x[0], o.x[1], m.l, W - m.r), sy = S(o.y[0], o.y[1], H - m.b, m.t);
+  let g = '';
+  for (const v of o.yt) g += `<line class="gl" x1="${m.l}" x2="${W - m.r}" y1="${sy(v)}" y2="${sy(v)}"/><text class="tk" x="${m.l - 6}" y="${sy(v) + 4}" text-anchor="end">${(o.yf || String)(v)}</text>`;
+  for (const [v, l] of o.xt || []) g += `<text class="tk" x="${sx(v)}" y="${H - m.b + 15}" text-anchor="middle">${esc(l)}</text>`;
+  g += `<line class="ax" x1="${m.l}" x2="${W - m.r}" y1="${H - m.b}" y2="${H - m.b}"/>`;
+  if (o.xl) g += `<text class="al" x="${(m.l + W - m.r) / 2}" y="${H - 4}" text-anchor="middle">${esc(o.xl)}</text>`;
+  if (o.yl) g += `<text class="al" transform="translate(11 ${(m.t + H - m.b) / 2}) rotate(-90)" text-anchor="middle">${esc(o.yl)}</text>`;
+  return { W, H, m, sx, sy, g, open: `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(o.label || '')}">` };
+}
+const dot = (x, y, c, tip, r = 4.5) => `<g data-tip="${esc(tip)}"><circle cx="${x}" cy="${y}" r="11" fill="transparent"/><circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="var(--card)" stroke-width="1.5"/></g>`;
+const thin = (n, W) => Math.max(1, Math.ceil(n / Math.max(2, Math.floor(W / 46))));   // label every k-th category
+const yr = (vals, pad = 0.08, zero = false) => {
+  const v = vals.filter(num); if (!v.length) return [0, 1];
+  let lo = Math.min(...v), hi = Math.max(...v); if (zero) lo = Math.min(0, lo);
+  const p = (hi - lo || Math.abs(hi) || 1) * pad; return [zero && lo === 0 ? 0 : lo - p, hi + p];
+};
+// categories along x: bars (stacked), dots with ± lines, and lines inside groups; bands mark blocks
+function catChart(o, W) {
+  const n = o.cats.length, H = o.H || 230;
+  const all = [];
+  for (const s of o.series) s.values.forEach((v, k) => { if (num(v)) { all.push(s.stack ? o.series.filter(q => q.stack).reduce((a, q) => a + (num(q.values[k]) ? q.values[k] : 0), 0) : v); if (s.sd && num(s.sd[k])) all.push(v - s.sd[k], v + s.sd[k]); } });
+  const [lo, hi] = o.y || yr(all, 0.1, o.series.some(s => s.kind === 'bar'));
+  const yt = niceTicks(lo, hi, o.ticks || 4);
+  const dec = Math.max(0, -Math.floor(Math.log10((yt[1] - yt[0]) || 1) + 1e-9));
+  const yf = o.yu !== undefined ? v => v.toLocaleString(LOC, { minimumFractionDigits: dec, maximumFractionDigits: dec }) + o.yu : o.yf;
+  const f = frame({ W, H, x: [-0.6, n - 0.4], y: [yt[0], yt[yt.length - 1]], yt, yf, xl: o.xl, label: o.label,
+    xt: o.cats.map((c, k) => [k, c]).filter((c, k) => k % thin(n, W - 54) === 0 && !o.noXLabels), m: o.m });
+  let g = f.g;
+  const step = (f.sx(1) - f.sx(0)) || 40;
+  for (const b of o.bands || []) {
+    const x0 = f.sx(b.from - 0.5), x1 = f.sx(b.to + 0.5);
+    g += `<rect x="${x0}" y="${f.m.t}" width="${x1 - x0}" height="${f.H - f.m.b - f.m.t}" fill="var(--band)"/>`;
+    if (x1 - x0 > 44) g += `<text class="tk" x="${(x0 + x1) / 2}" y="${f.m.t + 11}" text-anchor="middle">${esc(b.label)}</text>`;
+  }
+  if (o.zero && yt[0] < 0) g += `<line x1="${f.m.l}" x2="${f.W - f.m.r}" y1="${f.sy(0)}" y2="${f.sy(0)}" stroke="var(--axis)" stroke-width="1.5"/>`;
+  const bw = Math.max(3, Math.min(34, step * 0.66)), base = f.sy(Math.max(yt[0], 0));
+  const stackTop = new Array(n).fill(0);
+  for (const s of o.series.filter(q => q.kind === 'bar')) {
+    s.values.forEach((v, k) => {
+      if (!num(v) || v === 0) return;
+      const y0 = f.sy(stackTop[k]), y1 = f.sy(stackTop[k] + v); stackTop[k] += s.stack ? v : 0;
+      const x = f.sx(k) - bw / 2, r = Math.min(3, bw / 3, (y0 - y1) / 2);
+      g += `<g data-tip="${esc(s.tips ? s.tips[k] : '')}"><rect x="${x - 2}" y="${f.m.t}" width="${bw + 4}" height="${f.H - f.m.b - f.m.t}" fill="transparent"/>` +
+           `<path d="M${x},${y0} V${y1 + r} q0,-${r} ${r},-${r} h${bw - 2 * r} q${r},0 ${r},${r} V${y0} Z" fill="${s.color}"/></g>`;
+      if (s.labels && bw >= 16) g += `<text class="tk" x="${f.sx(k)}" y="${y1 - 5}" text-anchor="middle">${esc(s.labels[k])}</text>`;
+    });
+  }
+  for (const s of o.series.filter(q => q.kind !== 'bar')) {
+    let pts = [];
+    const flush = () => { if (pts.length > 1) g += `<polyline fill="none" stroke="${s.color}" stroke-opacity="${s.lineOpacity || 0.5}" stroke-width="2" points="${pts.join(' ')}"/>`; pts = []; };
+    s.values.forEach((v, k) => {
+      if (!num(v) || (s.group && k && s.group[k] !== s.group[k - 1])) flush();
+      if (num(v) && s.line !== false) pts.push(f.sx(k) + ',' + f.sy(v));
+    });
+    flush();
+    s.values.forEach((v, k) => {
+      if (!num(v)) return;
+      if (s.sd && num(s.sd[k])) g += `<line x1="${f.sx(k)}" x2="${f.sx(k)}" y1="${f.sy(v - s.sd[k])}" y2="${f.sy(v + s.sd[k])}" stroke="${s.color}" stroke-width="2" stroke-opacity=".7"/>`;
+      g += dot(f.sx(k), f.sy(v), s.color, s.tips ? s.tips[k] : '', s.r || (n > 60 ? 3 : 4.5));
+    });
+  }
+  return f.open + g + '</svg>';
+}
+function scatter(o, W) {
+  const H = o.H || 260, pts = o.pts.filter(p => num(p.x) && num(p.y));
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  const xt = niceTicks(...yr(xs.concat(0), 0.1), Math.max(3, Math.floor(W / 90))), yt = niceTicks(...yr(ys.concat(0), 0.1), 4);
+  const f = frame({ W, H, x: [xt[0], xt[xt.length - 1]], y: [yt[0], yt[yt.length - 1]], yt, yf: v => v.toLocaleString(LOC) + o.unit,
+    xt: xt.map(v => [v, v.toLocaleString(LOC) + o.unit]), xl: o.xl, yl: o.yl, m: { l: 52 }, label: o.label });
+  let g = f.g;
+  g += `<line x1="${f.sx(0)}" x2="${f.sx(0)}" y1="${f.m.t}" y2="${f.H - f.m.b}" stroke="var(--axis)" stroke-dasharray="3 3"/>`;
+  g += `<line x1="${f.m.l}" x2="${f.W - f.m.r}" y1="${f.sy(0)}" y2="${f.sy(0)}" stroke="var(--axis)" stroke-dasharray="3 3"/>`;
+  const seen = {};                                 // spread out equal points
+  for (const p of pts) {
+    const k = p.x + '|' + p.y, j = (seen[k] = (seen[k] || 0) + 1) - 1, a = j * 2.4, r = j ? 3 + j * 1.2 : 0;
+    g += dot(f.sx(p.x) + r * Math.cos(a), f.sy(p.y) + r * Math.sin(a), p.color || 'var(--s1)', p.tip, pts.length > 150 ? 3 : 4);
+  }
+  if (pts.length > 1) {
+    const mx = mean(xs), my = mean(ys);
+    g += `<path d="M${f.sx(mx) - 10},${f.sy(my)} h20 M${f.sx(mx)},${f.sy(my) - 10} v20" stroke="var(--ink)" stroke-width="2.5"/>`;
+  }
+  return f.open + g + '</svg>';
+}
+
+// ---------- the report ----------
+let charts = [];                                   // [id, (width) => svg]
+function panel(title, sub, id, draw, notes, legend = '') {
+  charts.push([id, draw]);
+  return `<section class="panel"><div class="chart"><h3>${esc(title)}</h3><p class="sub">${esc(sub)}</p>${legend}<div id="${id}"></div></div>` +
+         `<div class="note">${notes.map(n => `<p>${n}</p>`).join('')}</div></section>`;
+}
+function pairPanel(parts, notes) {
+  let h = '<section class="panel"><div class="pair">';
+  for (const [title, sub, id, draw] of parts) { charts.push([id, draw]); h += `<div class="chart"><h3>${esc(title)}</h3><p class="sub">${esc(sub)}</p><div id="${id}"></div></div>`; }
+  return h + `</div><div class="note">${notes.map(n => `<p>${n}</p>`).join('')}</div></section>`;
+}
+const legend = items => `<div class="legend">${items.map(([c, l]) => `<span><i style="background:${c}"></i>${esc(l)}</span>`).join('')}</div>`;
+const arrowTip = x => t('tipArrow', { i: x.i, time: fTimeS(x.t), e: x.end.n, p: x.pos });
+
+// cant drift: slope inside each end with at least 3 cant values
+function cantDrift(ends) {
+  const sl = [];
+  for (const e of ends) { const c = e.list.filter(okCant).map(x => x.d.cant); if (c.length >= 3) sl.push({ e, s: slope(c) }); }
+  if (sl.length < 3) return null;
+  const pos = sl.filter(x => x.s > 0).length, share = Math.max(pos, sl.length - pos) / sl.length, med = median(sl.map(x => x.s));
+  if (share < 0.6 || Math.abs(med) < 0.4) return null;
+  const steep = sl.reduce((a, b) => Math.abs(b.s) > Math.abs(a.s) ? b : a);
+  return { p: Math.round(share * 100), v: f1(Math.abs(med)), e: steep.e.n, s: f1(Math.abs(steep.s)) };
+}
+function cantSpread(ends) { return mean(ends.map(e => sdev(e.list.filter(okCant).map(x => x.d.cant))).filter(num)); }
+// arrow-in-the-end effect: hold and aim movement by position
+function byPos(list) {
+  const maxP = Math.min(12, Math.max(0, ...list.map(x => x.pos)));
+  const P = [];
+  for (let p = 1; p <= maxP; p++) {
+    const s = list.filter(x => x.pos === p);
+    P.push({ p, n: s.length, hold: mean(s.filter(x => has(x, 'hold')).map(x => x.d.hold)), move: mean(s.filter(x => has(x, 'move')).map(x => x.d.move)) });
+  }
+  while (P.length && P[P.length - 1].n < Math.max(3, P[0].n * 0.3)) P.pop();   // a rare 7th arrow is no position
+  return P;
+}
+function posNotes(P) {
+  const out = [];
+  if (P.length < 3) return out;
+  const last = P.slice(-2), a = P[0].hold, b = mean(last.map(x => x.hold).filter(num));
+  if (num(a) && num(b)) out.push(a - b >= 0.3 ? t('nPosHold', { a: f1(a), b: f1(b), d: f1(a - b) }) : t('nPosHoldEven', { a: f1(a), b: f1(b) }));
+  const m1 = P[0].move, m2 = mean(last.map(x => x.move).filter(num));
+  if (num(m1) && num(m2) && m1 > 0) { const p = Math.round((m2 / m1 - 1) * 100); out.push(Math.abs(p) < 10 ? t('nPosMoveEven') : t(p > 0 ? 'nPosMoveUp' : 'nPosMoveDown', { p: Math.abs(p) })); }
+  return out;
+}
+function posPair(list, sub) {
+  const P = byPos(list);
+  if (P.length < 2 || !P.some(x => num(x.hold))) return '';
+  const mk = (key, fmt, yu) => W => catChart({ cats: P.map(x => String(x.p)), xl: t('thArrow'), H: 200, yu, label: t(key === 'hold' ? 'cPosHold' : 'cPosMove'),
+    series: [{ kind: 'bar', color: 'var(--s1)', values: P.map(x => x[key]), labels: P.map(x => fmt(x[key])), tips: P.map(x => `${t('thArrow')} ${x.p} · ${key === 'hold' ? f2(x.hold) + ' s' : fMove(x.move)} · ${t('arrows', { n: x.n })}`) }] }, W);
+  return pairPanel([[t('cPosHold'), sub, 'c-pos-hold', mk('hold', f1, ' s')], [t('cPosMove'), sub, 'c-pos-move', mk('move', f2, '°')]], posNotes(P));
+}
+function ftPanel(list, id) {
+  const L = list.filter(x => has(x, 'drop') && has(x, 'side'));
+  if (L.length < 2) return '';
+  const md = mean(L.map(x => x.d.drop)), ms = mean(L.map(x => x.d.side));
+  const note = t('nFt', { dd: md < 0 ? t('back') : t('forward'), d: f1(Math.abs(md)), s: f1(Math.abs(ms)), sd: ms < 0 ? t('left') : t('right'),
+                          a: f1(sdev(L.map(x => x.d.drop))), b: f1(sdev(L.map(x => x.d.side))) });
+  return panel(t('cFt'), t('cFtSub'), id, W => scatter({ pts: L.map(x => ({ x: x.d.side, y: x.d.drop, tip: `${x.end ? arrowTip(x) : '#' + x.i} · ${t('lBack')} ${f1(-x.d.drop)}° · ${t('lLeft')} ${f1(-x.d.side)}°` })),
+    unit: '°', xl: t('ftX'), yl: t('ftY'), label: t('cFt') }, W), [note]);
+}
+function pushPanel(list, id) {
+  const L = list.filter(x => has(x, 'pushDown') && has(x, 'pushRight'));
+  if (!L.length) return '';
+  const withD = list.filter(x => x.d).length;
+  const md = mean(L.map(x => x.d.pushDown)), mr = mean(L.map(x => x.d.pushRight));
+  const notes = [t('nPush', { d: f1(Math.abs(md)), dd: md >= 0 ? t('down') : t('up'), r: f1(Math.abs(mr)), rr: mr >= 0 ? t('right') : t('left'),
+                              a: f1(sdev(L.map(x => x.d.pushDown))), b: f1(sdev(L.map(x => x.d.pushRight))) })];
+  if (L.length < withD * 0.8) notes.push(t('nPushFew', { n: `${L.length}/${withD}` }));
+  return panel(t('cPush'), t('cPushSub'), id, W => scatter({ pts: L.map(x => ({ x: x.d.pushRight, y: -x.d.pushDown, tip: `${x.end ? arrowTip(x) : '#' + x.i} · ${Math.abs(x.d.pushDown)} mm ${x.d.pushDown >= 0 ? t('down') : t('up')}, ${Math.abs(x.d.pushRight)} mm ${x.d.pushRight >= 0 ? t('right') : t('left')}` })),
+    unit: ' mm', xl: t('pushX'), yl: t('pushY'), label: t('cPush') }, W), notes);
+}
+
+function renderDay(key) {
+  const fromTs = fromDate().getTime() / 1000;
+  const ends = A.ends.filter(e => e.day === key && e.start >= fromTs), list = ends.flatMap(e => e.list);
+  const del = A.deleted.filter(x => keyOf.day(x.t) === key && x.t >= fromTs);
+  const withD = list.filter(x => x.d);
+  const scored = ends.filter(e => e.score), pts = scored.reduce((s, e) => s + e.score.sum, 0), nSc = scored.reduce((s, e) => s + e.score.v.length, 0);
+  const blocks = ends.length ? ends[ends.length - 1].block : 0;
+  $('title').textContent = t('titleDay', { date: fTitle(dateOfKey(key)) });
+  $('lede').innerHTML = (list.length ? t('ledeDay', { arrows: t('arrows', { n: list.length }), t0: fTime(list[0].t), t1: fTime(list[list.length - 1].t),
+    ends: t('ends', { n: ends.length }), blocks: t('blocks', { n: blocks }) }) + ' ' : '') + srcText() + ' ' + t('hoverTip');
+  const aim = withD.map(aimT).filter(num);
+  stats([[list.length, t('stArrows')], [ends.length, t('stEnds')], nSc ? [pts, t('stPoints')] : null, nSc ? [f2(pts / nSc), t('stPerArrow')] : null,
+         aim.length ? [f1(median(aim)) + ' s', t('stAimT')] : null, withD.some(x => has(x, 'move')) ? [fMove(median(withD.filter(x => has(x, 'move')).map(x => x.d.move))), t('stMove')] : null,
+         [f1(mean(list.map(x => x.aim).filter(num))) + ' s', t('stStill')], del.length ? [del.length, t('stFalse')] : null]);
+  let h = '', hCant = '', hMove = '', hAim = '', hScore = '';
+  if (!withD.length) h += `<div class="msg">${t('noDetails')}</div>`;
+  // block bands over the arrows in shooting order
+  const bandsBy = (items, endOf) => { const b = []; items.forEach((it, k) => { const e = endOf(it); if (!b.length || b[b.length - 1].b !== e.block) b.push({ b: e.block, from: k, to: k }); else b[b.length - 1].to = k; });
+    return b.length > 1 ? b.map(x => ({ from: x.from, to: x.to, label: t('block', { b: x.b }) })) : []; };
+  // cant
+  const C = list.filter(okCant), out = withD.filter(x => has(x, 'cant') && !okCant(x)).length;
+  if (C.length >= 3) {
+    const notes = [], dr = cantDrift(ends);
+    if (dr) notes.push(t('nCantDrift', dr));
+    else for (let b = 1, found = 0; b <= blocks; b++) {   // slow turning over a whole block
+      const s = C.filter(x => x.end.block === b).map(x => x.d.cant);
+      if (s.length < 9) continue;
+      const k = slope(s), tot = k * (s.length - 1);
+      if (Math.abs(tot) >= 3 && Math.abs(k) >= 0.1) { notes.push(t('nCantBlock', { b, v: fCant(tot), n: s.length, s: f2(Math.abs(k)) })); found++; }
+      if (b === blocks && found) notes.push(t('nCantFix'));
+    }
+    const sp = cantSpread(ends); if (num(sp)) notes.push(t('nCantSpread', { v: f1(sp), m: fCant(mean(C.map(x => x.d.cant))) }));
+    if (out) notes.push(t('nCantOut', { n: out }));
+    hCant = panel(t('cCant'), t('cCantSub'), 'c-cant', W => catChart({ cats: C.map(x => fTime(x.t)), noXLabels: true, H: 250, zero: true, yf: v => (v > 0 ? '+' : '') + v + '°', label: t('cCant'),
+      bands: bandsBy(C, x => x.end), series: [{ kind: 'dot', color: 'var(--s1)', values: C.map(x => x.d.cant), group: C.map(x => x.end.n), r: 4,
+      tips: C.map(x => arrowTip(x) + ' · ' + t('tipCant', { v: sg(x.d.cant) })) }] }, W), notes);
+  }
+  // aim movement per end
+  const EM = ends.map(e => ({ e, m: mean(e.list.filter(x => has(x, 'move')).map(x => x.d.move)) })).filter(x => num(x.m));
+  if (EM.length >= 2) {
+    const notes = [];
+    for (let b = 1; b <= blocks; b++) {
+      const s = EM.filter(x => x.e.block === b);
+      if (s.length >= 3 && s[s.length - 1].m > s[0].m * 1.25 && slope(s.map(x => x.m)) > 0) notes.push(t('nMoveRise', { b, a: fMove(s[0].m), c: fMove(s[s.length - 1].m), n: s.length }));
+    }
+    const lo = EM.reduce((a, b) => b.m < a.m ? b : a), hi = EM.reduce((a, b) => b.m > a.m ? b : a);
+    notes.push(t('nMoveFlat', { v: fMove(mean(EM.map(x => x.m))), lo: lo.e.n, hi: hi.e.n }));
+    hMove = panel(t('cMoveEnd'), t('cMoveSub', { cm: f1(cm(1)), dist: DB.settings.dist }), 'c-move', W => catChart({ cats: EM.map(x => String(x.e.n)), xl: t('thEnd'), yu: '°', label: t('cMoveEnd'),
+      bands: bandsBy(EM, x => x.e), series: [{ kind: 'dot', color: 'var(--s1)', values: EM.map(x => x.m), group: EM.map(x => x.e.block), lineOpacity: 0.8,
+      tips: EM.map(x => `${t('tipEnd', { e: x.e.n, time: fTime(x.e.start), n: t('arrows', { n: x.e.list.length }) })} · ${fMove(x.m)}`) }] }, W), notes);
+  }
+  const hPos = posPair(withD, t('cPosSub'));
+  // time at aiming height
+  const AT = withD.filter(x => num(aimT(x)));
+  if (AT.length >= 2) {
+    const notes = [t('nAim', { v: f1(median(AT.map(aimT))), d: f1(median(AT.map(x => x.d.draw))), h: f1(median(AT.map(x => x.d.hold))), min: f1(Math.min(...AT.map(aimT))), max: f1(Math.max(...AT.map(aimT))) })];
+    const short = AT.filter(x => x.d.draw <= 0.2).length; if (short) notes.push(t('nAimShort', { n: short }));
+    const tips = AT.map(x => `${arrowTip(x)} · ${t('lDraw')} ${f1(x.d.draw)} s + ${t('lHold')} ${f1(x.d.hold)} s = ${f1(aimT(x))} s`);
+    hAim = panel(t('cAim'), t('cAimSub'), 'c-aim', W => catChart({ cats: AT.map(x => fTime(x.t)), noXLabels: true, yu: ' s', label: t('cAim'), bands: bandsBy(AT, x => x.end),
+      series: [{ kind: 'bar', stack: true, color: 'var(--s1l)', values: AT.map(x => x.d.draw), tips }, { kind: 'bar', stack: true, color: 'var(--s1)', values: AT.map(x => x.d.hold), tips }] }, W),
+      notes, legend([['var(--s1l)', t('lDraw')], ['var(--s1)', t('lHold')]]));
+  }
+  const hFt = ftPanel(withD, 'c-ft'), hPush = pushPanel(withD, 'c-push');
+  // scores
+  if (scored.length) {
+    const best = scored.reduce((a, b) => b.score.sum > a.score.sum ? b : a), worst = scored.reduce((a, b) => b.score.sum < a.score.sum ? b : a);
+    const notes = [t('nScore', { sum: pts, ends: t('ends', { n: scored.length }), avg: f2(pts / nSc), best: best.score.sum, be: best.n, worst: worst.score.sum, we: worst.n })];
+    if (scored.length < ends.length) notes.push(t('nUnscored', { n: ends.length - scored.length }));
+    hScore = panel(t('cScore'), t('cScoreSub'), 'c-score', W => catChart({ cats: ends.map(e => String(e.n)), xl: t('thEnd'), label: t('cScore'),
+      series: [{ kind: 'bar', color: 'var(--s1)', values: ends.map(e => e.score ? e.score.sum : null), labels: ends.map(e => e.score ? String(e.score.sum) : ''),
+      tips: ends.map(e => `${t('tipEnd', { e: e.n, time: fTime(e.start), n: t('arrows', { n: e.list.length }) })}${e.score ? ' · ' + e.score.v.map(valText).join(' ') + ' = ' + e.score.sum : ''}`) }] }, W), notes);
+  } else hScore = `<div class="msg">${t('nNoScore')}</div>`;
+  // most useful first: scores, time at aiming height, aim movement, by arrow in the end, follow-through, push, cant
+  h += hScore + hAim + hMove + hPos + hFt + hPush + hCant;
+  if (del.length) h += `<div class="msg">${t('nFalse', { n: del.length })}</div>`;
+  // table
+  const cols = ['#', t('thTime'), t('thEnd'), t('thArrow'), t('thRaise'), t('thDraw'), t('thHold'), t('thAimT'), t('thStill'), t('thMove'), t('thAngle'), t('thCant'), t('thFtD'), t('thFtR'), t('thPushD'), t('thPushR'), t('thPeak'), t('thScore')];
+  const v = (x, k, f = f1) => has(x, k) ? f(x.d[k]) : '';
+  let tb = '<thead><tr>' + cols.map(c => `<th>${esc(c)}</th>`).join('') + '</tr></thead><tbody>';
+  for (const x of [...list, ...del].sort((a, b) => a.t - b.t)) {
+    const d = x.flags & F_DEL, sc = !d && x.pos === 1 && x.end.score ? x.end.score.v.map(valText).join(' ') + ' = ' + x.end.score.sum : '';
+    tb += `<tr${d ? ' class="del"' : ''}><td>${x.i}</td><td>${fTimeS(x.t)}</td><td>${d ? '' : x.end.n}</td><td>${d ? '' : x.pos}</td><td>${v(x, 'raise')}</td><td>${v(x, 'draw')}</td><td>${v(x, 'hold')}</td>` +
+          `<td>${num(aimT(x)) ? f1(aimT(x)) : ''}</td><td>${f1(x.aim)}</td><td>${v(x, 'move', f2)}</td><td>${v(x, 'pitch')}</td><td>${v(x, 'cant')}</td><td>${v(x, 'drop', f0)}</td><td>${v(x, 'side', f0)}</td>` +
+          `<td>${v(x, 'pushDown', f0)}</td><td>${v(x, 'pushRight', f0)}</td><td>${f1(x.peak)}</td><td>${sc}</td></tr>`;
+  }
+  h += `<details><summary>${t('tblArrows')}</summary><div class="tbl"><table>${tb}</tbody></table></div></details>`;
+  return h;
+}
+
+// a period: one point per day (week, month) or per week (all time)
+function renderPeriod(kind, key) {
+  const unit = kind === 'all' ? 'week' : 'day';
+  const fromTs = fromDate().getTime() / 1000, inP = ts => ts >= fromTs && (kind === 'all' || keyOf[kind](ts) === key);
+  const ends = A.ends.filter(e => inP(e.start)), list = ends.flatMap(e => e.list), del = A.deleted.filter(x => inP(x.t));
+  const bk = ts => keyOf[unit](ts);
+  const keys = [...new Set([...list.map(x => bk(x.t)), ...del.map(x => bk(x.t))])].sort();
+  const B = keys.map(k => {
+    const E = ends.filter(e => bk(e.start) === k), L = E.flatMap(e => e.list), D = L.filter(x => x.d), sc = E.filter(e => e.score);
+    const aim = D.map(aimT).filter(num), still = L.map(x => x.aim).filter(num), dr = D.filter(x => has(x, 'drop')).map(x => x.d.drop), sd = D.filter(x => has(x, 'side')).map(x => x.d.side);
+    const nSc = sc.reduce((s, e) => s + e.score.v.length, 0);
+    return { k, date: dateOfKey(k), E, L, D, n: L.length, del: del.filter(x => bk(x.t) === k).length, aim: mean(aim), aimSd: sdev(aim),
+             move: mean(D.filter(x => has(x, 'move')).map(x => x.d.move)), cantSd: cantSpread(E), drop: mean(dr), dropSd: sdev(dr), side: mean(sd), sideSd: sdev(sd),
+             still: mean(still), stillSd: sdev(still), pts: sc.reduce((s, e) => s + e.score.sum, 0), nSc, nE: sc.length, perArrow: nSc ? sc.reduce((s, e) => s + e.score.sum, 0) / nSc : null };
+  });
+  const lab = b => unit === 'week' ? fDateS(b.date) : (kind === 'week' ? fDay(b.date) : fDateS(b.date));
+  const cats = B.map(lab), uName = t(unit === 'week' ? 'unitWeek' : 'unitDay');
+  const scored = ends.filter(e => e.score), nSc = scored.reduce((s, e) => s + e.score.v.length, 0), pts = scored.reduce((s, e) => s + e.score.sum, 0);
+  const withD = list.filter(x => x.d);
+  if (kind === 'week') $('title').textContent = t('titleWeek', { date: fTitle(dateOfKey(key)).replace(/^[^ ]+ /, '') });
+  else if (kind === 'month') { const s = dateOfKey(key).toLocaleDateString(LOC, { month: 'long', year: 'numeric' }); $('title').textContent = t('titleMonth', { month: s.charAt(0).toUpperCase() + s.slice(1) }); }
+  else $('title').textContent = t('titleAll', { date: fTitle(fromDate()).replace(/^[^ ]+ /, '') });
+  const nDays = new Set(list.map(x => keyOf.day(x.t))).size;
+  $('lede').innerHTML = (list.length ? t('ledePeriod', { arrows: t('arrows', { n: list.length }), days: t('days', { n: nDays }), ends: t('ends', { n: ends.length }) }) + ' ' : '') + srcText() + ' ' + t('hoverTip');
+  const aimAll = withD.map(aimT).filter(num);
+  stats([[list.length, t('stArrows')], [nDays, t('stDays')], [ends.length, t('stEnds')], nSc ? [pts, t('stPoints')] : null, nSc ? [f2(pts / nSc), t('stPerArrow')] : null,
+         aimAll.length ? [f1(median(aimAll)) + ' s', t('stAimT')] : null, withD.some(x => has(x, 'move')) ? [fMove(median(withD.filter(x => has(x, 'move')).map(x => x.d.move))), t('stMove')] : null,
+         del.length ? [del.length, t('stFalse')] : null]);
+  const per = t(unit === 'week' ? 'perWeek' : 'perDay');
+  const trend = (key, fmt) => {
+    const s = B.filter(b => num(b[key]));
+    if (!s.length) return [];
+    if (s.length === 1) return [t('nTrendOne', { unit: uName, a: fmt(s[0][key]) })];
+    return [t('nTrend', { a: fmt(s[0][key]), first: lab(s[0]), b: fmt(s[s.length - 1][key]), last: lab(s[s.length - 1]) })];
+  };
+  let h = `<h2>${t(unit === 'week' ? 'hPeriodWeek' : 'hPeriodDay')}</h2>`;
+  // arrows and false counts
+  const most = B.reduce((a, b) => (!a || b.n > a.n ? b : a), null);
+  const notesA = [t('nArrowsP', { arrows: t('arrows', { n: list.length }), date: most ? lab(most) : '', m: most ? most.n : 0 }), del.length ? t('nFalse', { n: del.length }) : t('nNoFalse')];
+  const hArrows = panel(t('pArrows'), `${t('pArrowsSub')} · ${per}`, 'p-arrows', W => catChart({ cats, label: t('pArrows'),
+    series: [{ kind: 'bar', stack: true, color: 'var(--s1)', values: B.map(b => b.n), tips: B.map(b => `${lab(b)} · ${t('arrows', { n: b.n })}${b.del ? ' · ' + b.del + ' ' + t('tipFalse') : ''}`) },
+             { kind: 'bar', stack: true, color: 'var(--s2)', values: B.map(b => b.del), tips: B.map(b => `${lab(b)} · ${b.del} ${t('tipFalse')}`) }] }, W), notesA,
+    del.length ? legend([['var(--s1)', t('lArrows')], ['var(--s2)', t('lFalse')]]) : '');
+  const sdChart = (id, title, sub, key, keySd, fmt, unit) => {
+    if (!B.some(b => num(b[key]))) return '';
+    return panel(title, `${sub} · ${per}`, id, W => catChart({ cats, yu: unit, label: title, series: [{ kind: 'dot', color: 'var(--s1)', values: B.map(b => b[key]), sd: keySd ? B.map(b => b[keySd]) : null,
+      tips: B.map(b => `${lab(b)} · ${fmt(b[key])}${keySd && num(b[keySd]) ? ' ± ' + fmt(b[keySd]) : ''} · ${t('arrows', { n: b.n })}`) }] }, W), trend(key, fmt));
+  };
+  let hCant = '', hFtP = '', hScore = '';
+  const hAim = sdChart('p-aim', t('pAim'), t('pAimSub'), 'aim', 'aimSd', v => f1(v) + ' s', ' s');
+  const hMove = sdChart('p-move', t('pMove'), t('pMoveSub', { cm: f1(cm(1)), dist: DB.settings.dist }), 'move', null, fMove, '°');
+  if (B.some(b => num(b.cantSd))) {
+    const dr = cantDrift(ends), extra = dr ? [t('nCantDriftP', dr)] : [];
+    const c = sdChart('p-cant', t('pCant'), t('pCantSub'), 'cantSd', null, v => '±' + f1(v) + '°', '°');
+    hCant = c.replace('<div class="note">', `<div class="note">${extra.map(n => `<p>${n}</p>`).join('')}`);
+  }
+  if (B.some(b => num(b.drop))) {
+    const fd = v => f1(v) + '°';
+    hFtP = panel(t('pFt'), `${t('pFtSub')} · ${per}`, 'p-ft', W => catChart({ cats, yu: '°', label: t('pFt'), zero: true,
+      series: [{ kind: 'dot', color: 'var(--s1)', values: B.map(b => num(b.drop) ? -b.drop : null), sd: B.map(b => b.dropSd), tips: B.map(b => `${lab(b)} · ${t('lBack')} ${fd(-b.drop)} ± ${fd(b.dropSd)}`) },
+                 { kind: 'dot', color: 'var(--s2)', values: B.map(b => num(b.side) ? -b.side : null), sd: B.map(b => b.sideSd), tips: B.map(b => `${lab(b)} · ${t('lLeft')} ${fd(-b.side)} ± ${fd(b.sideSd)}`) }] }, W),
+      [t('lBack') + ': ' + trend('drop', v => fd(-v)).join(''), t('lLeft') + ': ' + trend('side', v => fd(-v)).join('')], legend([['var(--s1)', t('lBack')], ['var(--s2)', t('lLeft')]]));
+  }
+  const hStill = sdChart('p-still', t('pStill'), t('pStillSub'), 'still', 'stillSd', v => f1(v) + ' s', ' s');
+  if (scored.length) {
+    const best = B.filter(b => num(b.perArrow)).reduce((a, b) => (!a || b.perArrow > a.perArrow ? b : a), null);
+    const c = sdChart('p-score', t('pScore'), t('pScoreSub'), 'perArrow', null, f2, '');
+    hScore = c.replace(/<div class="note">.*<\/div><\/section>$/, `<div class="note"><p>${t('nScoreP', { v: f2(pts / nSc), n: scored.length, unit: uName, best: f2(best.perArrow), date: lab(best) })}</p>${trend('perArrow', f2).map(n => `<p>${n}</p>`).join('')}</div></section>`);
+  } else hScore = `<div class="msg">${t('nNoScoreP')}</div>`;
+  // most useful first
+  h += hScore + hArrows + hAim + hMove + hStill + posPair(withD, t('cPosSubP')) + hFtP + ftPanel(withD, 'p-ft2') + pushPanel(withD, 'p-push') + hCant;
+  // table
+  const cols = [t('thDate'), t('thArrows'), t('thFalse'), t('thEnds'), t('thAimT'), t('thMove'), t('pCant') + ' °', t('thFtD'), t('thFtR'), t('thStill'), t('thScore'), t('thPerArrow')];
+  let tb = '<thead><tr>' + cols.map(c => `<th>${esc(c)}</th>`).join('') + '</tr></thead><tbody>';
+  for (const b of B) tb += `<tr><td>${lab(b)}</td><td>${b.n}</td><td>${b.del || ''}</td><td>${b.E.length}</td><td>${f1(b.aim)}</td><td>${f2(b.move)}</td><td>${f1(b.cantSd)}</td><td>${f1(b.drop)}</td><td>${f1(b.side)}</td><td>${f1(b.still)}</td><td>${b.nSc ? b.pts : ''}</td><td>${b.nSc ? f2(b.perArrow) : ''}</td></tr>`;
+  h += `<details><summary>${t(unit === 'week' ? 'tblWeeks' : 'tblDays')}</summary><div class="tbl"><table>${tb}</tbody></table></div></details>`;
+  return h;
+}
+
+function srcText() {
+  if (SRC.kind === 'saved') return t('srcSaved', { date: fDate(new Date(SRC.at)) });
+  if (SRC.kind === 'file') return t('srcFile', { name: esc(SRC.name) });
+  if (SRC.kind === 'demo') return t('srcDemo');
+  return t('srcLocal');
+}
+function stats(items) { $('stats').innerHTML = items.filter(Boolean).map(([b, l]) => `<div class="stat"><b>${esc(b)}</b><span>${esc(l)}</span></div>`).join(''); }
+// "From": the first day with shot details unless set; everything before it is left out
+function firstDetailDay() { const x = A.live.find(y => y.d); return x ? keyOf.day(x.t) : (A.live.length ? keyOf.day(A.live[0].t) : dayKey(new Date())); }
+function fromDate() { return dateOfKey(st.from || firstDetailDay()); }
+function periodKeys() {
+  const f = fromDate().getTime() / 1000;
+  const ts = [...A.live, ...A.deleted].filter(x => x.t >= f).map(x => x.t);
+  if (st.tab === 'all') return ts.length ? ['all'] : [];
+  return [...new Set(ts.map(keyOf[st.tab]))].sort();
+}
+
+function render() {
+  LANG = pickLang(); LOC = LOCALES[LANG]; document.documentElement.lang = LANG;
+  $('back').textContent = t('backLink'); $('back').hidden = SRC.kind === 'saved';
+  [...$('tabs').children].forEach(b => { b.textContent = t('tab' + b.dataset.v.charAt(0).toUpperCase() + b.dataset.v.slice(1)); b.classList.toggle('on', b.dataset.v === st.tab); });
+  $('from-l').textContent = t('from'); $('open').textContent = t('open'); $('save').textContent = t('save');
+  $('foot').textContent = t('foot', { date: fDate(SRC.kind === 'saved' ? new Date(SRC.at) : new Date()) });
+  charts = [];
+  if (!A || !(A.live.length + A.deleted.length)) {
+    $('title').textContent = 'PfeilZaehler3000'; $('lede').textContent = ''; $('stats').innerHTML = '';
+    $('out').innerHTML = `<div class="msg">${t('noData')}</div>`; $('tabs').hidden = true; $('nav').parentNode.hidden = true; $('save').hidden = true;
+    return;
+  }
+  $('tabs').hidden = false; $('nav').parentNode.hidden = false; $('save').hidden = false;
+  $('from').value = dayKey(fromDate());
+  const keys = periodKeys();
+  if (!keys.includes(st.key)) st.key = keys[keys.length - 1] || null;
+  const i = keys.indexOf(st.key);
+  $('prev').disabled = i <= 0; $('next').disabled = i < 0 || i >= keys.length - 1; $('nav').querySelector('span').hidden = false;
+  $('prev').hidden = $('next').hidden = st.tab === 'all';
+  $('plabel').textContent = !st.key ? '' : st.tab === 'day' ? fDay(dateOfKey(st.key)) : st.tab === 'week' ? fDateS(dateOfKey(st.key)) + ' – ' + fDateS(new Date(dateOfKey(st.key).getTime() + 6 * DAY * 1000))
+    : st.tab === 'month' ? dateOfKey(st.key).toLocaleDateString(LOC, { month: 'short', year: 'numeric' }) : '';
+  if (!st.key) {
+    $('title').textContent = 'PfeilZaehler3000'; $('lede').textContent = srcText(); $('stats').innerHTML = '';
+    $('out').innerHTML = `<div class="msg">${t('noPeriod')}</div>`;
+    return;
+  }
+  $('out').innerHTML = st.tab === 'day' ? renderDay(st.key) : renderPeriod(st.tab, st.key);
+  draw();
+}
+function draw() {
+  for (const [id, fn] of charts) { const el = $(id); if (el) el.innerHTML = fn(Math.max(260, Math.round(el.clientWidth))).replace(/ width="\d+" height="\d+"/, ''); }
+}
+let rt = null, lastW = innerWidth;
+addEventListener('resize', () => { if (innerWidth === lastW) return; lastW = innerWidth; clearTimeout(rt); rt = setTimeout(draw, 150); });
+
+$('tabs').onclick = e => { const b = e.target.closest('button'); if (!b) return; st.tab = b.dataset.v; st.key = null; render(); };
+$('prev').onclick = () => { const k = periodKeys(), i = k.indexOf(st.key); if (i > 0) { st.key = k[i - 1]; render(); scrollTo(0, 0); } };
+$('next').onclick = () => { const k = periodKeys(), i = k.indexOf(st.key); if (i >= 0 && i < k.length - 1) { st.key = k[i + 1]; render(); scrollTo(0, 0); } };
+$('from').onchange = e => { st.from = e.target.value || null; if (SRC.kind !== 'saved') store.set(R_FROM, st.from); render(); };
+$('lang').onchange = e => { store.set(R_LANG, e.target.value || null); render(); };
+$('open').onclick = () => $('file').click();
+$('file').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try { DB = normalize(JSON.parse(await f.text())); A = analyse(DB); SRC = { kind: 'file', name: f.name }; st.key = null; render(); }
+  catch (err) { $('out').insertAdjacentHTML('afterbegin', `<div class="msg">${esc(t('badFile') + err.message)}</div>`); }
+  e.target.value = '';
+};
+
+// Save report: this page with the arrows from "From" on built in, opens anywhere without the phone page
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+async function exportText(name, text, type) {
+  try {
+    const file = new File([text], name, { type });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return true; }
+  } catch (e) { if (e.name === 'AbortError') return false; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); return true;
+}
+function reportHtml() {
+  const f = fromDate().getTime() / 1000;
+  const data = { shots: DB.shots.filter(x => x.t >= f).map(x => { const y = { i: x.i, t: x.t, peak: x.peak, aim: x.aim, flags: x.flags }; if (x.d) y.d = x.d; return y; }),
+                 scores: Object.fromEntries(Object.entries(DB.scores).filter(([k]) => +k >= f - 5)), endMarks: DB.endMarks.filter(m => m >= f), settings: DB.settings, hist: DB.hist };
+  const json = JSON.stringify({ db: data, saved: SRC.kind === 'saved' ? SRC.at : Date.now(), lang: LANG, state: { tab: st.tab, key: st.key, from: st.from || firstDetailDay() } }).replace(/</g, '\\u003c');
+  const src = (window.__pzReport ? PRISTINE.replace(/<script id="pz-report">[\s\S]*?<\/script>\n?/, '') : PRISTINE).replace(/ class="on"/, '');
+  return src.replace('<script>', `<script id="pz-report">window.__pzReport = ${json};<\/script>\n<script>`);
+}
+$('save').onclick = async () => {
+  const name = `PfeilZaehler3000-report-${st.key && st.key !== 'all' ? st.key : dayKey(new Date())}.html`;
+  if (await exportText(name, reportHtml(), 'text/html')) $('foot').textContent = t('saved') + ' ' + $('foot').textContent;
+};
+
+// tooltips: hover, or tap on a phone
+{
+  const tip = $('tip');
+  const show = (e, el) => { tip.textContent = el.dataset.tip; if (!tip.textContent) return; tip.style.opacity = 1;
+    const x = Math.max(8, Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8)), y = e.clientY - tip.offsetHeight - 12;
+    tip.style.left = x + 'px'; tip.style.top = (y < 8 ? e.clientY + 18 : y) + 'px'; };
+  document.addEventListener('pointermove', e => { const el = e.target.closest && e.target.closest('[data-tip]'); if (el) show(e, el); else if (e.pointerType === 'mouse') tip.style.opacity = 0; });
+  document.addEventListener('pointerdown', e => { const el = e.target.closest && e.target.closest('[data-tip]'); if (el) show(e, el); else tip.style.opacity = 0; });
+  addEventListener('scroll', () => { tip.style.opacity = 0; }, { passive: true });
+}
+render();
+</script>
+</body>
+</html>

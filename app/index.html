@@ -1,0 +1,1739 @@
+<!doctype html>
+<!-- PfeilZaehler3000 (c) 2026 ckpt-gthb – free for personal, non-commercial use; PolyForm Strict 1.0.0 with permissions, see LICENSE -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#1f2a24">
+<title>PfeilZaehler3000</title>
+<style>
+:root{
+  --bg:#f5f3ee;--card:#fffdf8;--ink:#1d211e;--muted:#6b716c;--line:#e2ded4;
+  --accent:#2f6b4f;--accent-soft:#dcebe2;--warn:#b5542a;--warn-soft:#f6e1d6;--bar:#2f6b4f;
+  --red:#c0392b;--red-soft:#f8e0dc;--amber:#b7791f;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#141715;--card:#1c201d;--ink:#e9ece8;--muted:#9aa29c;--line:#2c322e;
+  --accent:#7cc39c;--accent-soft:#1f3a2c;--warn:#e89a72;--warn-soft:#3b2519;--bar:#7cc39c;
+  --red:#ef7a6c;--red-soft:#3d1f1b;--amber:#e3b25a;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:720px;margin:0 auto;padding:16px 16px 48px}
+h1{font-size:22px;margin:4px 0 2px;letter-spacing:-.01em}
+h2{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:28px 0 10px;font-weight:600}
+.sub{color:var(--muted);font-size:14px}
+button,select,input{font:inherit;color:inherit}
+svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px}
+.btn{background:var(--accent);color:var(--bg);border:0;border-radius:10px;padding:10px 16px;font-weight:600;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
+a.btn{display:flex;align-items:center;justify-content:center;text-decoration:none;text-align:center}
+.btn:disabled{opacity:.5}
+.btn.danger{color:var(--red);border-color:var(--red)}
+.btn.big{width:100%;padding:14px 16px;font-size:17px}
+.btns{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:8px}
+.btns .btn{width:100%;min-height:44px}
+.btns[hidden]{display:none}
+.btns.three{grid-template-columns:repeat(auto-fit,minmax(104px,1fr))}
+.btns .btn{line-height:1.2}
+.btns.two{grid-template-columns:repeat(2,1fr)}
+.btns.three .btn{padding:10px 6px}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:transparent;cursor:pointer;flex:none}
+.icon-btn.del{color:var(--red);border-color:var(--red-soft);background:var(--red-soft)}
+.icon-btn.undo{color:var(--accent)}
+.icon-btn svg.i{width:20px;height:20px}
+.endbox .btn{min-height:44px;min-width:120px}
+.group{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:16px 0 0}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;padding:16px;z-index:10}
+.overlay[hidden]{display:none}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;width:100%;max-width:640px;display:flex;flex-direction:column;gap:10px;max-height:92vh}
+.panel textarea{width:100%;font:12px/1.4 ui-monospace,Menlo,monospace;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--bg);color:var(--ink)}
+.endbox{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.endn{font-size:44px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+.endof{color:var(--muted);font-size:18px;margin-left:6px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.status{margin:12px 0;padding:10px 12px;border-radius:12px;background:var(--card);border:1px solid var(--line);font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.chip.ok{color:var(--accent)}
+.chip.wait{color:var(--amber)}
+.chip.bad{color:var(--red)}
+.chip.off{color:var(--muted)}
+.chip .k{color:var(--muted);font-size:12px}
+.msg{margin-top:6px;color:var(--muted)}
+.msg:empty{display:none}
+.msg b{color:var(--ink);font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media (min-width:560px){.grid{grid-template-columns:repeat(4,1fr)}}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.tile .n{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.tile .l{color:var(--muted);font-size:13px}
+.tabs{display:flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:3px;width:max-content}
+.tabs button{border:0;background:transparent;padding:6px 12px;border-radius:8px;cursor:pointer;color:var(--muted)}
+.tabs button.on{background:var(--accent-soft);color:var(--ink);font-weight:600}
+.chart{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 8px 6px;margin-top:10px}
+.chart svg{display:block;width:100%;height:auto}
+.chart text{fill:var(--muted);font-size:10px}
+.sess{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px}
+.sess .top{display:flex;justify-content:space-between;gap:8px}
+.sess .big{font-weight:700;font-size:22px;font-variant-numeric:tabular-nums}
+.ends{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.end{min-width:32px;text-align:center;padding:2px 6px;border-radius:6px;background:var(--accent-soft);font-size:13px;font-variant-numeric:tabular-nums}
+.end.off{background:var(--warn-soft);color:var(--warn);font-weight:600}
+button.end{border:0;font:inherit;color:inherit;cursor:pointer;min-height:32px}
+.avg{font-size:13px;color:var(--muted);margin-top:8px}
+.arrows{display:flex;flex-direction:column;gap:6px;overflow:auto;min-height:0}
+.arow{border:1px solid var(--line);border-radius:10px;font-variant-numeric:tabular-nums}
+.arow.gone .line{opacity:.45;text-decoration:line-through}
+.arow .line{display:flex;align-items:center;gap:10px;padding:6px 6px 6px 10px}
+.arow .no{color:var(--muted);width:22px}
+.arow .tm{flex:1;cursor:pointer;display:flex;align-items:center;gap:6px}
+.arow .tm .chev{color:var(--muted);transition:transform .15s}
+.arow.open .tm .chev{transform:rotate(90deg)}
+.arow .det{display:none;grid-template-columns:1fr 1fr;gap:4px 12px;padding:0 10px 10px 42px;font-size:13px}
+.arow.open .det{display:grid}
+.det .k{color:var(--muted)}
+.det .full{grid-column:1/-1}
+.small{font-size:13px;color:var(--muted)}
+details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+summary{cursor:pointer;font-weight:600}
+label{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 0}
+label.stack{flex-wrap:wrap}
+label select{max-width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+label input{width:90px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.hint{font-size:12px;color:var(--muted);margin:-2px 0 6px}
+.empty{color:var(--muted);padding:12px 0}
+.demo{background:var(--warn-soft);color:var(--ink);border-radius:10px;padding:8px 12px;margin:10px 0 0;font-size:14px}
+.demo a,.small a{color:var(--accent);font-weight:600}
+.end small{display:block;font-size:11px;color:var(--muted);line-height:1.1}
+.scorebox{border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.scorebox .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.scorebox .tot{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.vals{display:flex;flex-wrap:wrap;gap:4px;min-height:34px}
+.val{min-width:34px;height:34px;border-radius:8px;border:0;font:inherit;font-weight:700;display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;cursor:pointer}
+.val.empty{background:transparent;border:1px dashed var(--line);cursor:default}
+.pad{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.scorebox .btns{grid-template-columns:repeat(3,1fr)}
+.scorebox .btns .btn{padding:10px 4px}
+.face{display:block;width:100%;max-width:320px;margin:0 auto;touch-action:manipulation;cursor:crosshair}
+.face.small{width:120px;cursor:default;margin:0}
+.scorebox .shown{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:6px 12px;font:inherit;font-size:14px;color:var(--muted);cursor:pointer}
+.seg button.on{background:var(--accent);color:var(--bg)}
+.facem{display:flex;justify-content:center}
+.facem button{min-width:120px}
+.pad button{height:46px;border-radius:10px;border:0;font:inherit;font-weight:700;font-size:18px;cursor:pointer}
+.v-gold{background:#ffe552;color:#1d1d1d}.v-red{background:#f65058;color:#fff}.v-blue{background:#00b4e4;color:#0d2230}
+.v-black{background:#1a1a1a;color:#fff;box-shadow:inset 0 0 0 1px #888}.v-white{background:#f2f2f2;color:#1d1d1d;box-shadow:inset 0 0 0 1px #bbb}.v-miss{background:#3a3a3a;color:#fff}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-bt" viewBox="0 0 24 24"><path d="M7 7l10 10-5 5V2l5 5L7 17"/></symbol>
+  <symbol id="i-mem" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+  <symbol id="i-sync" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 15h10l1-15"/><path d="M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+</svg>
+<main>
+  <h1>PfeilZaehler3000</h1>
+  <div class="demo" id="demo" data-i18n-html="exampleBanner" hidden></div>
+  <div class="sub" data-i18n="sub"></div>
+
+  <div class="status">
+    <div class="chips" id="chips"></div>
+    <div class="msg" id="status"></div>
+  </div>
+  <button class="btn big" id="connect"></button>
+  <div class="btns two" id="podbtns" hidden>
+    <button class="btn ghost" id="choose" data-i18n="choosePod" hidden></button>
+    <button class="btn ghost" id="disconnect" data-i18n="disconnect" hidden></button>
+  </div>
+
+  <h2 data-i18n="thisEnd"></h2>
+  <div class="endbox">
+    <div><span class="endn" id="t-end">0</span><span class="endof" id="t-endof">/ 6</span></div>
+    <button class="btn ghost" id="newend" data-i18n="newEnd"></button>
+  </div>
+
+  <h2 data-i18n="totals"></h2>
+  <div class="grid">
+    <div class="tile"><div class="n" id="t-today">0</div><div class="l" data-i18n="today"></div></div>
+    <div class="tile"><div class="n" id="t-week">0</div><div class="l" data-i18n="thisWeek"></div></div>
+    <div class="tile"><div class="n" id="t-month">0</div><div class="l" data-i18n="thisMonth"></div></div>
+    <div class="tile"><div class="n" id="t-all">0</div><div class="l" data-i18n="allTime"></div></div>
+  </div>
+
+  <h2 data-i18n="history"></h2>
+  <div class="tabs" id="tabs">
+    <button data-v="day" class="on" data-i18n="days"></button>
+    <button data-v="week" data-i18n="weeks"></button>
+    <button data-v="month" data-i18n="months"></button>
+  </div>
+  <div class="chart" id="chart"></div>
+
+  <h2 data-i18n="sessions"></h2>
+  <div id="sessions"></div>
+
+  <h2 data-i18n="settingsData"></h2>
+  <details>
+    <summary data-i18n="settings"></summary>
+    <label><span data-i18n="language"></span> <select id="s-lang"><option value="" data-i18n="langAuto"></option><option value="en">English</option><option value="de">Deutsch</option><option value="pl">Polski</option></select></label>
+    <label><span data-i18n="sArrows"></span> <input type="number" id="s-arrows" min="1" max="24"></label>
+    <label><span data-i18n="sEndgap"></span> <input type="number" id="s-endgap" min="20" max="900"></label>
+    <p class="hint" data-i18n="hintShared"></p>
+    <label><span data-i18n="sSessgap"></span> <input type="number" id="s-sessgap" min="5" max="600"></label>
+    <label><span data-i18n="sDist"></span> <input type="number" id="s-dist" min="5" max="90"></label>
+    <label><span data-i18n="sClear"></span> <input type="number" id="s-clear" min="0" max="100"></label>
+    <div class="group" data-i18n="grpScoring"></div>
+    <label class="stack"><span data-i18n="sFace"></span> <select id="s-face"><option value="0" data-i18n="face0"></option><option value="1" data-i18n="face1"></option></select></label>
+    <p class="hint" data-i18n="faceSetHint"></p>
+    <div class="group" data-i18n="grpMount"></div>
+    <label class="stack"><span data-i18n="sMount"></span> <select id="s-mount"><option value="0" data-i18n="mount0"></option><option value="1" data-i18n="mount1"></option><option value="2" data-i18n="mount2"></option></select></label>
+    <p class="hint" data-i18n="mountHint"></p>
+    <p class="hint" id="cant-state">Not calibrated yet.</p>
+    <button class="btn ghost" id="setlevel" data-i18n="calibrate"></button>
+    <div class="group" data-i18n="grpLock"></div>
+    <p class="hint" id="lock-state"></p>
+    <div class="btns three" id="lock-btns">
+      <button class="btn ghost" id="lock-add" data-i18n="lockAdd"></button>
+      <button class="btn ghost" id="lock-only" data-i18n="lockOnly"></button>
+      <button class="btn ghost" id="lock-off" data-i18n="lockOff"></button>
+    </div>
+  </details>
+  <div class="group" data-i18n="grpExport"></div>
+  <div class="btns two">
+    <a class="btn ghost" id="report" href="report.html" data-i18n="report"></a>
+    <button class="btn ghost" id="csv" data-i18n="csv"></button>
+    <button class="btn ghost" id="backup" data-i18n="backup"></button>
+    <button class="btn ghost" id="restore" data-i18n="restore"></button>
+  </div>
+  <input type="file" id="file" accept=".json" hidden>
+  <div class="group" data-i18n="grpReset"></div>
+  <div class="btns two">
+    <button class="btn ghost danger" id="resetday" data-i18n="resetToday"></button>
+    <button class="btn ghost danger" id="reset" data-i18n="resetAll"></button>
+  </div>
+  <p class="small" data-i18n-html="footer"></p>
+</main>
+
+<div class="overlay" id="box" hidden>
+  <div class="panel">
+    <div class="row" style="justify-content:space-between"><b id="box-title">Export</b><button class="btn ghost" id="box-close" data-i18n="close"></button></div>
+    <p class="small" id="box-hint"></p>
+    <textarea id="box-text" rows="10"></textarea>
+    <div class="row">
+      <button class="btn" id="box-copy" data-i18n="copy"></button>
+      <button class="btn" id="box-restore" data-i18n="restore" hidden></button>
+      <button class="btn ghost" id="box-file" data-i18n="chooseFile"></button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="cal" hidden>
+  <div class="panel">
+    <b data-i18n="calTitle"></b>
+    <p id="cal-text"></p>
+    <p class="small" id="cal-msg"></p>
+    <div class="btns two">
+      <button class="btn ghost" id="cal-cancel" data-i18n="cancel"></button>
+      <button class="btn" id="cal-next">Next</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="sheet" hidden>
+  <div class="panel">
+    <div><b id="sheet-title">End</b><div class="small" id="sheet-sub"></div></div>
+    <div class="avg" id="sheet-avg"></div>
+    <div class="scorebox" id="sheet-score"></div>
+    <div class="arrows" id="sheet-list"></div>
+    <p class="small" data-i18n="sheetHint"></p>
+    <div class="btns two">
+      <button class="btn ghost danger" id="sheet-delend"><svg class="i"><use href="#i-trash"/></svg> <span data-i18n="deleteEnd"></span></button>
+      <button class="btn ghost" id="sheet-done" data-i18n="done"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- demo mode (page opened with ?demo) ----------
+// Example history and an example pod: everything works, nothing is saved, no Bluetooth is used.
+if (new URLSearchParams(location.search).has('demo')) (() => {
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const between = (a, b) => a + (b - a) * rnd();
+  const now = Math.floor(Date.now() / 1000);
+  const day0 = new Date(); day0.setHours(0, 0, 0, 0);
+  const detail = () => ({
+    raise: +between(0.7, 1.3).toFixed(1), draw: +between(0.6, 1.3).toFixed(1), hold: +between(1.8, 3.0).toFixed(1),
+    move: +between(0.05, 0.14).toFixed(2), pitch: +between(0.5, 2.5).toFixed(1), cant: +between(-1.5, 2).toFixed(1),
+    drop: -Math.round(between(6, 16)), side: -Math.round(between(1, 7)),
+    pushDown: Math.round(between(-2, 9)), pushRight: Math.round(between(-9, 2)) });
+  const scoreEnd = n => { const v = []; for (let k = 0; k < n; k++) { const x = between(0, 1); v.push(x < 0.08 ? 11 : x < 0.3 ? 10 : x < 0.62 ? 9 : x < 0.85 ? 8 : x < 0.96 ? 7 : 6); } return v.sort((a, b) => b - a); };
+  // a hit inside the ring of its value, a little low and left on average (x, y: -127…127 of the face radius)
+  const hitFor = v => { const r0 = v === 11 ? 0 : v === 10 ? 0.05 : (10 - v) / 10, r1 = v === 11 ? 0.05 : (11 - v) / 10;
+    for (;;) { const r = between(r0, r1), a = between(0, 2 * Math.PI), x = r * Math.cos(a) - 0.03, y = r * Math.sin(a) - 0.04, d = Math.hypot(x, y);
+      if (d >= r0 && d < r1) return [Math.round(x * 127), Math.round(y * 127)]; } };
+  const scores = {};
+  // one session: ends of 6 (now and then 5 or 7), ~35 s between arrows, ~3 min between ends
+  function session(start, ends, list) {
+    let t = start;
+    for (let e = 0; e < ends; e++) {
+      const n = rnd() < 0.08 ? 5 : rnd() < 0.06 ? 7 : 6;
+      const st = t;
+      for (let k = 0; k < n; k++) { list.push({ t, peak: +between(32, 58).toFixed(1), aim: +between(4, 7).toFixed(1), flags: 1, d: detail() }); t += Math.round(between(26, 46)); }
+      const sv = scoreEnd(n);
+      scores[st] = { v: sv, pos: n <= 6 && rnd() < 0.6 ? sv.map(hitFor) : null };
+      t += Math.round(between(140, 230));
+    }
+    return t;
+  }
+  // past 6 weeks: 3–4 sessions a week, in the evening
+  const past = [];
+  for (let d = 42; d >= 1; d--) {
+    if (rnd() < 0.45) continue;
+    const start = Math.floor(day0.getTime() / 1000) - d * 86400 + Math.round(between(16.5, 18.5) * 3600);
+    session(start, Math.round(between(6, 14)), past);
+  }
+  past.forEach((x, i) => { x.i = i; });
+  // today: 3 complete ends and 4 arrows of the 4th, still on the pod (not synced yet)
+  const today = [];
+  session(now - 15 * 60, 3, today);
+  const t4 = today[today.length - 1].t + 200;
+  for (let k = 0, tk = t4; k < 4; k++, tk += Math.round(between(27, 44))) today.push({ t: tk, peak: +between(32, 58).toFixed(1), aim: +between(4, 7).toFixed(1), flags: 1, d: detail() });
+  const shift = now - 40 - today[today.length - 1].t;         // last arrow 40 s ago
+  today.forEach(x => { x.t += shift; });
+  for (const k of Object.keys(scores)) if (+k >= now - 15 * 60 - 60) delete scores[k];   // today's ends: not scored yet
+  const pod = today.map((x, k) => Object.assign(x, { i: past.length + k }));
+  const base = past.length;
+  let settings = [0x5E, 6, 100, 0, 1, 4, 0, 0, 0, 0, 0];     // 6 arrows, 100 s, calibrated (all 3 steps), back of the riser, training
+
+  const listeners = {}, notifyOn = {};
+  const dv = a => new DataView(Uint8Array.from(a).buffer);
+  const u32 = v => [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255];
+  const u16 = v => [v & 255, (v >> 8) & 255];
+  const emit = (n, bytes) => { if (notifyOn[n]) setTimeout(() => (listeners[n] || []).forEach(f => f({ target: { value: dv(bytes) } })), 30); };
+  const live = () => pod.filter(r => !(r.flags & 0xC0));
+  let keys = [], authed = false;                             // owner lock (2.3); the example pod is always on USB
+  const info = () => [...u32(base + pod.length), ...u32(base), ...u16(3940), 4, 1 | (keys.length ? 8 : 0) | 16, 23, authed ? 1 : 0, keys.length, 0, 0, 0, 0, 0];
+  const stats = () => { const n = live().length, l = live(); return [...u32(base + n), ...u16(n), ...u16(n + 61), ...u16(n + 340), ...u16(3940), ...u32(0), ...u32(l.length ? l[l.length - 1].t : 0)]; };
+  const detBytes = d => d ? [Math.round(d.raise * 10), Math.round(d.draw * 10), Math.round(d.hold * 10), Math.round(d.move * 100), ...u16(Math.round(d.pitch * 10) & 0xFFFF), ...u16(Math.round(d.cant * 10) & 0xFFFF), d.drop & 255, d.side & 255, d.pushDown & 255, d.pushRight & 255] : new Array(12).fill(0);
+  function ch(n) {
+    return {
+      async readValue() { return dv(n === 2 ? info() : n === 5 ? stats() : n === 6 ? settings : [0]); },
+      async writeValue(buf) {
+        const b = [...new Uint8Array(buf.buffer || buf)];
+        const v = (b[1] | b[2] << 8 | b[3] << 16 | b[4] << 24) >>> 0;
+        if (n === 3 && b[0] >= 0x10 && b[0] <= 0x13) {        // owner lock: log in / add / only this / unlock
+          const k = b.slice(1, 9).join(',');
+          if (b[0] === 0x10) authed = keys.includes(k);
+          else if (b[0] === 0x11) { if (b[9] === 1) keys = []; if (!keys.includes(k)) keys = [...keys, k].slice(-4); authed = true; }
+          else if (b[0] === 0x12 && authed) keys = [k];
+          else if (b[0] === 0x13 && authed) keys = [];
+          emit(2, info()); return;
+        }
+        if (n === 3 && b[0] === 1) {                          // dump records + details
+          setTimeout(() => {
+            for (let i = Math.max(v, base); i < base + pod.length; i += 2) {
+              const pk = [...u32(i)], dps = [];
+              for (let k = i; k < Math.min(i + 2, base + pod.length); k++) {
+                const r = pod[k - base];
+                pk.push(...(r.raw || [...u32(r.t), ...u16(Math.round(r.peak * 10)), Math.round(r.aim * 10), r.flags]));
+                dps.push([...u32(k), ...detBytes(r.flags & 0x70 ? null : r.d)]);
+              }
+              (listeners[4] || []).forEach(f => f({ target: { value: dv(pk) } }));
+              for (const dp of dps) (listeners[8] || []).forEach(f => f({ target: { value: dv(dp) } }));
+            }
+            (listeners[4] || []).forEach(f => f({ target: { value: dv([255, 255, 255, 255, ...u32(base + pod.length)]) } }));
+          }, 150);
+        } else if (n === 3 && b[0] === 4) {                   // delete / restore
+          const cnt = b[5] | b[6] << 8;
+          for (let i = v; i < v + cnt; i++) { const r = pod[i - base]; if (r) r.flags = b[7] ? r.flags | 0x80 : r.flags & ~0x80; }
+          emit(5, stats()); emit(2, info());
+        } else if (n === 3 && b[0] === 7) {                   // end mark
+          pod.push({ i: base + pod.length, t: v, peak: 0, aim: 0, flags: 0x41 }); emit(5, stats()); emit(2, info());
+        } else if (n === 3 && b[0] === 9) { settings[4] = (settings[4] & 0x0C) | 1; settings[5] = 1; emit(6, settings); }
+        else if (n === 3 && b[0] === 10) { settings[5] = 2; emit(6, settings); }
+        else if (n === 3 && b[0] === 14) { settings[5] = 4; emit(6, settings); }
+        else if (n === 3 && b[0] === 11) {                    // end score: stored as a record (+ 2 records of hit positions)
+          const full = b.length >= 20;
+          pod.push({ i: base + pod.length, raw: [...b.slice(1, 5), b[5], b[6], b[7], 0x20 | (full ? 0 : b[8] & 3)], flags: 0x20 });
+          if (full) for (let h = 0; h < 2; h++) { const pb = b.slice(8 + h * 7, 15 + h * 7); while (pb.length < 7) pb.push(0); pod.push({ i: base + pod.length, raw: [...pb, 0x10 | h], flags: 0x10 }); }
+          emit(2, info());
+        }
+        else if (n === 6) {
+          const f = b.length >= 4 && b[3] <= 2 ? (settings[4] & ~0x0C) | ((b[3] & 3) << 2) : settings[4];
+          const rd = b.length >= 5 && b[4] <= 1 ? b[4] : settings[10];
+          settings = [0x5E, b[0], b[1], b[2], f, settings[5], 0, 0, 0, 0, rd]; emit(6, settings);
+        }
+      },
+      async startNotifications() { notifyOn[n] = true; },
+      addEventListener(ev, f) { (listeners[n] = listeners[n] || []).push(f); },
+    };
+  }
+  let timer = null;
+  const dev = { id: 'demo', name: 'PfeilZaehler3000-A3F2', addEventListener() {},
+    gatt: { connected: false,
+      async connect() {
+        await new Promise(r => setTimeout(r, 400));
+        this.connected = true;
+        if (!timer) timer = setInterval(() => {                // a new arrow every 30 s while connected
+          if (!dev.gatt.connected) return;
+          const last = live().length ? live()[live().length - 1].t : now;
+          const t = Math.max(Math.floor(Date.now() / 1000), last + 1);
+          pod.push({ i: base + pod.length, t, peak: +between(32, 58).toFixed(1), aim: +between(4, 7).toFixed(1), flags: 1, d: detail() });
+          emit(2, info()); emit(5, stats());
+        }, 30000);
+        return { async getPrimaryService() { return { async getCharacteristic(u) { return ch(+u[7]); } }; } };
+      },
+      disconnect() { this.connected = false; } } };
+  window.__pzDemo = {
+    db: () => ({ shots: past, nextIndex: base, endMarks: [], ops: [], lastSync: Date.now() - 2 * 86400000, podName: dev.name, scores,
+                 settings: { arrows: 6, endGap: 100, sessGap: 45, clearAt: 50, dist: 18, face: 0 } }),
+    bluetooth: { async requestDevice() { return dev; } },
+  };
+})();
+</script>
+<script>
+// ---------- languages: English, Deutsch, Polski ----------
+// Plural entries are arrays: [one, other] in English and German, [one, few, many] in Polish.
+const I18N = {
+en: {
+  sub: 'Arrows counted automatically · version 2.3',
+  exampleBanner: 'Example data, nothing is saved. <a href="./">Back to my data</a>',
+  connect: 'Connect pod & sync', updateNow: 'Update now', reconnect: 'Reconnect & update', choosePod: 'Choose pod', disconnect: 'Disconnect',
+  thisEnd: 'This end', newEnd: 'New end', totals: 'Totals', today: 'Today', thisWeek: 'This week', thisMonth: 'This month', allTime: 'All time',
+  history: 'History', days: 'Days', weeks: 'Weeks', months: 'Months', sessions: 'Sessions', settingsData: 'Settings & data', settings: 'Settings',
+  language: 'Language', langAuto: 'Automatic',
+  sArrows: 'Arrows per end', sEndgap: 'New end after a pause of (seconds)',
+  hintShared: 'These two are stored in the pod and shared with the watch. The last change counts.',
+  sSessgap: 'New session after a pause of (minutes)', sDist: 'Shooting distance for the aim movement (m)',
+  sClear: 'Clear pod memory after sync when it is fuller than (%)',
+  grpMount: 'Mounting point and calibration', sMount: 'Pod mounted on',
+  mount0: "the back of the riser (archer's side)", mount1: 'the front of the riser (target side)', mount2: 'a side bushing (e.g. V-bar)',
+  mountHint: 'Back or front: bow angle, cant and follow-through are measured; side: arrows and phase times only. The calibration finds it.',
+  calibrate: 'Calibrate…', grpExport: 'Export & backup', report: 'Report', csv: 'Export CSV', backup: 'Backup', restore: 'Restore', restoreArrowTip: 'Restore',
+  grpReset: 'Reset', resetToday: 'Reset today', resetAll: 'Reset all stats',
+  footer: 'Data is kept in this browser. Make a backup now and then. Bluetooth needs Chrome or Edge on Android, Windows, macOS or ChromeOS, or the Bluefy browser on iPhone. <a href="?demo">Try it with example data</a>, no pod needed.',
+  close: 'Close', copy: 'Copy', chooseFile: 'Choose file…', cancel: 'Cancel', next: 'Next', finish: 'Finish', done: 'Done', undo: 'Undo',
+  boxRestoreHint: 'Paste the backup text here, then tap Restore.', boxCopyHint: 'Copy this text and paste it into Notes, Mail or a file.',
+  selected: 'Selected – tap Copy in the iPhone menu.', copied: 'Copied.', restoreTitle: 'Restore backup', backupRestored: 'Backup restored.',
+  invalidBackup: 'That is not a valid backup: ', restoreFailed: 'Restore failed: ',
+  calTitle: 'Calibrate the pod',
+  calConnect: 'Connect the pod first.', measuring: 'Measuring…',
+  calDone: 'Done: pod on {mount}.',
+  calDoneSide: 'Done: pod on {mount}, arrows and phase times only.',
+  calFail: 'The bow did not tilt far enough. Start again with step 1.', podNoAnswer: 'the pod did not answer',
+  calState: 'Calibrated, pod on {mount}.',
+  calStateSide: 'Calibrated, pod on {mount}: arrows and phase times.',
+  connectToSee: 'Connect the pod to see its calibration.',
+  notCal: 'Not calibrated yet. Once after mounting: 15 s with the pod connected and the bow in your hands (a bubble level helps).',
+  couldNotReach: 'Could not reach the pod: ', saveFail: 'Could not save in this browser – export a backup.',
+  storeFull: 'The storage of this browser is nearly full – make a backup.',
+  backupNever: 'No backup yet: tap Backup to keep a copy outside this browser.',
+  backupOld: 'Last backup: {date}. Tap Backup to keep a copy outside this browser.',
+  notConnected: 'Not connected', chipNotConn: '{pod} · not connected', chipConnecting: '{pod} · connecting…', chipReconnecting: '{pod} · reconnecting…',
+  tipBt: 'Bluetooth connection', tipBatt: 'Pod battery, measured {t}', tipMem: 'Pod memory used (cleared after a sync when fuller than {p} %)', tipSync: 'Last sync with the pod',
+  retrying: 'Pod not reachable – retrying…',
+  synced: ['<b>1 new arrow</b> synced.', '<b>{n} new arrows</b> synced.'],
+  syncProblem: 'Sync problem: ',
+  noBt: 'This browser has no Web Bluetooth. Use Chrome/Edge (Android, desktop) or Bluefy (iPhone), over https. Or <a href="?demo">try it with example data</a>.',
+  noPodSel: 'No pod selected.', couldNotConnect: 'Could not connect: ', updating: 'Updating…',
+  pickUp: 'Pod not reachable. Pick up the bow and try again.', tapConnect: 'Tap Connect to sync.', notInRange: 'Pod not in range. Tap Connect when it is.',
+  newEndStarted: 'New end started.',
+  confirmResetToday: "Delete today's arrows ({n})? They are removed on the pod and the watch too.", todayDeleted: "Today's arrows deleted ({n}).",
+  endDeleted: 'End deleted ({n}).', restoredN: 'Arrows restored ({n}).',
+  confirmResetAll: 'Delete the whole history on this phone ({n} arrows)? This cannot be undone. Tip: make a backup first.',
+  allReset: 'All stats reset.', podCleared: ' Pod memory cleared too.',
+  ends: ['1 end', '{n} ends'], arrows: ['1 arrow', '{n} arrows'], offN: '{n} incomplete or extra',
+  endAria: 'End {e}: {n} of {a} arrows', undated: 'Arrows without a date: {n} (the pod clock was never set). They count in "All time".',
+  noArrows: 'No arrows yet. Shoot, then connect to sync.',
+  avg: 'Average: ', avgHold: 'hold {v} s', avgMove: 'aim movement {d}° ({c} cm)', avgCant: 'cant ±{v}°',
+  right: 'right', left: 'left', down: 'down', up: 'up', chartAria: 'Arrows',
+  monthNames: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+  sheetTitle: 'End {e} · {arrows}', perEnd: '{n} per end',
+  sheetHint: 'Tap an arrow for its details. Deleted arrows are removed from all stats, on the pod and the watch too.',
+  deleteEnd: 'Delete end', dRaise: 'Raise', dDraw: 'Draw & set', dHold: 'Hold', dMove: 'Aim movement', dAngle: 'Bow angle', dCant: 'Cant',
+  dFollow: 'Follow-through', dJolt: 'Jolt', dStill: 'Still before release',
+  noDetails: 'No phase details: shot with pod firmware older than 2.0.', dTime: 'Time {t}',
+  grpScoring: 'Scoring', sFace: 'Target face', face0: 'Full face (rings 1–10)', face1: '3-spot (rings 6–10)',
+  faceSetHint: '3-spot: only X, 10–6 and M are offered. Shared with the watch.',
+  score: 'Score', enterScore: 'Enter score', editScore: 'Change', saveScore: 'Save', clearScore: 'Clear', deleteScore: 'Delete score',
+  scoreHint: 'Tap the value of each arrow, in any order. Tap an entered value to remove it.',
+  inPad: 'Numpad', inFace: 'Target face', faceHint: 'Tap where each arrow hit. Tap an entered value to remove it.', miss: 'Miss',
+  scoreOf: '{s} of {m}', noScore: 'No score yet.', sessScore: 'score {s} · Ø {a} per arrow',
+  unscored: ['1 end without a score.', '{n} ends without a score.'], scoreNow: 'Enter scores', scoreSaved: 'Score saved.',
+  dAimTime: 'At aiming height', aimTimeV: '{v} s (hold {h} s)', dPush: 'Bow push', avgAim: 'at aiming height {v} s',
+  cal1: 'Step 1 of 3: hold the bow upright as when aiming, without cant and with the arrow level (horizontal), and keep it still. A bubble level helps. Then tap Next.',
+  cal2: 'Step 2 of 3: point the arrow at the ground, about 45° down, keep the bow upright and still. Then tap Next.',
+  cal2old: 'Step 2 of 2: point the arrow at the ground, about 45° down, keep the bow upright and still. Then tap Finish.',
+  cal3: 'Step 3 of 3: tilt the bow far to one side (at least 45°, as if laying it down) and keep it still. Then tap Finish.',
+  calFail3: 'Not tilted far enough to the side: everything except the bow push is calibrated.',
+  calStatePush: ' Bow push is measured.', calNeed3: ' Calibrate again for the bow push.',
+  restoreArrow: 'Restore arrow {n}', deleteArrow: 'Delete arrow {n}', del: 'Delete',
+  grpLock: 'Owner lock', lockAdd: 'Lock to this phone', lockOnly: 'Only this phone', lockOff: 'Unlock',
+  lockOpen: 'Not locked: any phone nearby can change this pod. To lock it, plug the pod into USB (charger or computer) and tap Lock to this phone. Open the watch app while it is still plugged in, and the watch is added too.',
+  lockMine: ['Locked to 1 device: this phone.', 'Locked to {n} devices, including this phone.'],
+  lockOther: 'Locked to other devices: this phone can only see the counts. To add it, plug the pod into USB and tap Lock to this phone.',
+  lockNeedUsb: ' Plug the pod into USB to add a device.', lockConnect: 'Connect the pod to see its lock.', lockOld: 'The owner lock needs pod firmware 2.3.',
+  lockedOut: 'This pod is locked to other devices. Counts only; nothing is synced or changed.', lockDone: 'Pod locked to this phone.', unlockDone: 'Pod unlocked.',
+},
+de: {
+  sub: 'Pfeile automatisch gezählt · Version 2.3',
+  exampleBanner: 'Beispieldaten, es wird nichts gespeichert. <a href="./">Zurück zu meinen Daten</a>',
+  connect: 'Pod verbinden & synchronisieren', updateNow: 'Jetzt aktualisieren', reconnect: 'Neu verbinden & aktualisieren', choosePod: 'Pod wählen', disconnect: 'Trennen',
+  thisEnd: 'Diese Passe', newEnd: 'Neue Passe', totals: 'Summen', today: 'Heute', thisWeek: 'Diese Woche', thisMonth: 'Dieser Monat', allTime: 'Gesamt',
+  history: 'Verlauf', days: 'Tage', weeks: 'Wochen', months: 'Monate', sessions: 'Trainings', settingsData: 'Einstellungen & Daten', settings: 'Einstellungen',
+  language: 'Sprache', langAuto: 'Automatisch',
+  sArrows: 'Pfeile pro Passe', sEndgap: 'Neue Passe nach einer Pause von (Sekunden)',
+  hintShared: 'Diese beiden werden im Pod gespeichert und mit der Uhr geteilt. Die letzte Änderung gilt.',
+  sSessgap: 'Neues Training nach einer Pause von (Minuten)', sDist: 'Schussdistanz für die Zielbewegung (m)',
+  sClear: 'Pod-Speicher nach der Synchronisation leeren, wenn voller als (%)',
+  grpMount: 'Montageort und Kalibrierung', sMount: 'Pod montiert',
+  mount0: 'hinten am Mittelteil (Schützenseite)', mount1: 'vorne am Mittelteil (Zielseite)', mount2: 'seitlich (z. B. V-Bar-Gewinde)',
+  mountHint: 'Hinten oder vorne: Bogenwinkel, Verkantung und Nachhalten werden gemessen; seitlich nur Pfeile und Phasenzeiten. Die Kalibrierung erkennt den Montageort.',
+  calibrate: 'Kalibrieren …', grpExport: 'Export & Sicherung', report: 'Bericht', csv: 'CSV-Export', backup: 'Sichern', restore: 'Einlesen', restoreArrowTip: 'Wiederherstellen',
+  grpReset: 'Zurücksetzen', resetToday: 'Heute zurücksetzen', resetAll: 'Alle Statistiken zurücksetzen',
+  footer: 'Die Daten bleiben in diesem Browser. Ab und zu eine Sicherung machen. Bluetooth braucht Chrome oder Edge auf Android, Windows, macOS oder ChromeOS oder den Bluefy-Browser auf dem iPhone. <a href="?demo">Mit Beispieldaten ausprobieren</a>, ohne Pod.',
+  close: 'Schließen', copy: 'Kopieren', chooseFile: 'Datei wählen …', cancel: 'Abbrechen', next: 'Weiter', finish: 'Fertig', done: 'Fertig', undo: 'Rückgängig',
+  boxRestoreHint: 'Sicherungstext hier einfügen, dann auf Einlesen tippen.', boxCopyHint: 'Diesen Text kopieren und in Notizen, Mail oder eine Datei einfügen.',
+  selected: 'Markiert – im iPhone-Menü auf Kopieren tippen.', copied: 'Kopiert.', restoreTitle: 'Sicherung wiederherstellen', backupRestored: 'Sicherung wiederhergestellt.',
+  invalidBackup: 'Das ist keine gültige Sicherung: ', restoreFailed: 'Wiederherstellen fehlgeschlagen: ',
+  calTitle: 'Pod kalibrieren',
+  calConnect: 'Zuerst den Pod verbinden.', measuring: 'Messe …',
+  calDone: 'Fertig: Pod {mount}.',
+  calDoneSide: 'Fertig: Pod {mount}, nur Pfeile und Phasenzeiten.',
+  calFail: 'Der Bogen wurde nicht weit genug geneigt. Noch einmal mit Schritt 1 beginnen.', podNoAnswer: 'der Pod hat nicht geantwortet',
+  calState: 'Kalibriert, Pod {mount}.',
+  calStateSide: 'Kalibriert, Pod {mount}: Pfeile und Phasenzeiten.',
+  connectToSee: 'Den Pod verbinden, um die Kalibrierung zu sehen.',
+  notCal: 'Noch nicht kalibriert. Einmal nach dem Montieren: 15 s, Pod verbunden, Bogen in der Hand (eine Libelle hilft).',
+  couldNotReach: 'Pod nicht erreichbar: ', saveFail: 'Speichern in diesem Browser nicht möglich – Sicherung exportieren.',
+  storeFull: 'Der Speicher dieses Browsers ist fast voll – Sicherung machen.',
+  backupNever: 'Noch keine Sicherung: auf „Sichern“ tippen, um eine Kopie außerhalb dieses Browsers zu haben.',
+  backupOld: 'Letzte Sicherung: {date}. Auf „Sichern“ tippen, um eine Kopie außerhalb dieses Browsers zu haben.',
+  notConnected: 'Nicht verbunden', chipNotConn: '{pod} · nicht verbunden', chipConnecting: '{pod} · verbinde …', chipReconnecting: '{pod} · verbinde neu …',
+  tipBt: 'Bluetooth-Verbindung', tipBatt: 'Pod-Akku, gemessen {t}', tipMem: 'Belegter Pod-Speicher (wird nach der Synchronisation geleert, wenn voller als {p} %)', tipSync: 'Letzte Synchronisation mit dem Pod',
+  retrying: 'Pod nicht erreichbar – neuer Versuch …',
+  synced: ['<b>1 neuer Pfeil</b> synchronisiert.', '<b>{n} neue Pfeile</b> synchronisiert.'],
+  syncProblem: 'Synchronisationsproblem: ',
+  noBt: 'Dieser Browser hat kein Web Bluetooth. Chrome/Edge (Android, Computer) oder Bluefy (iPhone) über https verwenden. Oder <a href="?demo">mit Beispieldaten ausprobieren</a>.',
+  noPodSel: 'Kein Pod gewählt.', couldNotConnect: 'Verbindung fehlgeschlagen: ', updating: 'Aktualisiere …',
+  pickUp: 'Pod nicht erreichbar. Bogen aufnehmen und erneut versuchen.', tapConnect: 'Zum Synchronisieren auf Verbinden tippen.', notInRange: 'Pod nicht in Reichweite. Auf Verbinden tippen, sobald er da ist.',
+  newEndStarted: 'Neue Passe begonnen.',
+  confirmResetToday: 'Die heutigen Pfeile ({n}) löschen? Sie werden auch im Pod und auf der Uhr gelöscht.', todayDeleted: 'Heutige Pfeile gelöscht ({n}).',
+  endDeleted: 'Passe gelöscht ({n}).', restoredN: 'Pfeile wiederhergestellt ({n}).',
+  confirmResetAll: 'Den gesamten Verlauf auf diesem Handy löschen ({n} Pfeile)? Das kann nicht rückgängig gemacht werden. Tipp: vorher eine Sicherung machen.',
+  allReset: 'Alle Statistiken zurückgesetzt.', podCleared: ' Pod-Speicher ebenfalls geleert.',
+  ends: ['1 Passe', '{n} Passen'], arrows: ['1 Pfeil', '{n} Pfeile'], offN: '{n} unvollständig oder zu viel',
+  endAria: 'Passe {e}: {n} von {a} Pfeilen', undated: 'Pfeile ohne Datum: {n} (die Pod-Uhr wurde nie gestellt). Sie zählen bei „Gesamt“.',
+  noArrows: 'Noch keine Pfeile. Schießen, dann zum Synchronisieren verbinden.',
+  avg: 'Durchschnitt: ', avgHold: 'Halten {v} s', avgMove: 'Zielbewegung {d}° ({c} cm)', avgCant: 'Verkantung ±{v}°',
+  right: 'rechts', left: 'links', down: 'nach unten', up: 'nach oben', chartAria: 'Pfeile',
+  monthNames: ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'],
+  sheetTitle: 'Passe {e} · {arrows}', perEnd: '{n} pro Passe',
+  sheetHint: 'Für Details auf einen Pfeil tippen. Gelöschte Pfeile werden aus allen Statistiken entfernt, auch im Pod und auf der Uhr.',
+  deleteEnd: 'Passe löschen', dRaise: 'Anheben', dDraw: 'Auszug & Ankern', dHold: 'Halten', dMove: 'Zielbewegung', dAngle: 'Bogenwinkel', dCant: 'Verkantung',
+  dFollow: 'Nachhalten', dJolt: 'Stoß', dStill: 'Ruhig vor dem Lösen',
+  noDetails: 'Keine Phasendetails: Schuss mit Pod-Firmware älter als 2.0.', dTime: 'Zeit {t}',
+  grpScoring: 'Wertung', sFace: 'Auflage',
+  face0: 'Ganze Auflage (Ringe 1–10)', face1: 'Dreifach-Spot (Ringe 6–10)',
+  faceSetHint: 'Dreifach-Spot: nur X, 10–6 und M. Mit der Uhr geteilt.',
+  score: 'Ergebnis', enterScore: 'Ergebnis eingeben', editScore: 'Ändern', saveScore: 'Speichern', clearScore: 'Leeren', deleteScore: 'Ergebnis löschen',
+  scoreHint: 'Den Wert jedes Pfeils antippen, in beliebiger Reihenfolge. Einen eingegebenen Wert antippen, um ihn zu entfernen.',
+  inPad: 'Ziffernblock', inFace: 'Auflage', faceHint: 'Antippen, wo jeder Pfeil steckt. Einen eingegebenen Wert antippen, um ihn zu entfernen.', miss: 'Fehlschuss',
+  scoreOf: '{s} von {m}', noScore: 'Noch kein Ergebnis.', sessScore: 'Ergebnis {s} · Ø {a} pro Pfeil',
+  unscored: ['1 Passe ohne Ergebnis.', '{n} Passen ohne Ergebnis.'], scoreNow: 'Ergebnisse eingeben', scoreSaved: 'Ergebnis gespeichert.',
+  dAimTime: 'Auf Zielhöhe', aimTimeV: '{v} s (Halten {h} s)', dPush: 'Bogenschub', avgAim: 'auf Zielhöhe {v} s',
+  cal1: 'Schritt 1 von 3: Den Bogen aufrecht wie beim Zielen halten, ohne Verkantung und mit waagrechtem Pfeil, und ruhig halten. Eine Libelle hilft. Dann auf Weiter tippen.',
+  cal2: 'Schritt 2 von 3: Mit dem Pfeil etwa 45° nach unten auf den Boden zeigen, den Bogen aufrecht und ruhig halten. Dann auf Weiter tippen.',
+  cal2old: 'Schritt 2 von 2: Mit dem Pfeil etwa 45° nach unten auf den Boden zeigen, den Bogen aufrecht und ruhig halten. Dann auf Fertig tippen.',
+  cal3: 'Schritt 3 von 3: Den Bogen weit zur Seite kippen (mindestens 45°, als würde man ihn hinlegen) und ruhig halten. Dann auf Fertig tippen.',
+  calFail3: 'Nicht weit genug zur Seite gekippt: alles außer dem Bogenschub ist kalibriert.',
+  calStatePush: ' Der Bogenschub wird gemessen.', calNeed3: ' Für den Bogenschub noch einmal kalibrieren.',
+  restoreArrow: 'Pfeil {n} wiederherstellen', deleteArrow: 'Pfeil {n} löschen', del: 'Löschen',
+  grpLock: 'Besitzersperre', lockAdd: 'Für dieses Handy sperren', lockOnly: 'Nur dieses Handy', lockOff: 'Entsperren',
+  lockOpen: 'Nicht gesperrt: Jedes Handy in der Nähe kann diesen Pod ändern. Zum Sperren den Pod an USB anschließen (Ladegerät oder Computer) und auf „Für dieses Handy sperren“ tippen. Die Uhr-App öffnen, solange er noch angeschlossen ist, dann kommt die Uhr dazu.',
+  lockMine: ['Gesperrt für 1 Gerät: dieses Handy.', 'Gesperrt für {n} Geräte, darunter dieses Handy.'],
+  lockOther: 'Für andere Geräte gesperrt: Dieses Handy sieht nur die Zähler. Zum Hinzufügen den Pod an USB anschließen und auf „Für dieses Handy sperren“ tippen.',
+  lockNeedUsb: ' Zum Hinzufügen eines Geräts den Pod an USB anschließen.', lockConnect: 'Den Pod verbinden, um die Sperre zu sehen.', lockOld: 'Die Besitzersperre braucht Pod-Firmware 2.3.',
+  lockedOut: 'Dieser Pod ist für andere Geräte gesperrt. Nur die Zähler; nichts wird synchronisiert oder geändert.', lockDone: 'Pod für dieses Handy gesperrt.', unlockDone: 'Pod entsperrt.',
+},
+pl: {
+  sub: 'Strzały liczone automatycznie · wersja 2.3',
+  exampleBanner: 'Dane przykładowe, nic nie jest zapisywane. <a href="./">Powrót do moich danych</a>',
+  connect: 'Połącz czujnik i synchronizuj', updateNow: 'Aktualizuj teraz', reconnect: 'Połącz ponownie i aktualizuj', choosePod: 'Wybierz czujnik', disconnect: 'Rozłącz',
+  thisEnd: 'Ta seria', newEnd: 'Nowa seria', totals: 'Podsumowanie', today: 'Dziś', thisWeek: 'Ten tydzień', thisMonth: 'Ten miesiąc', allTime: 'Łącznie',
+  history: 'Historia', days: 'Dni', weeks: 'Tygodnie', months: 'Miesiące', sessions: 'Treningi', settingsData: 'Ustawienia i dane', settings: 'Ustawienia',
+  language: 'Język', langAuto: 'Automatycznie',
+  sArrows: 'Strzał w serii', sEndgap: 'Nowa seria po przerwie (sekundy)',
+  hintShared: 'Te dwa ustawienia są zapisane w czujniku i wspólne z zegarkiem. Obowiązuje ostatnia zmiana.',
+  sSessgap: 'Nowy trening po przerwie (minuty)', sDist: 'Odległość strzelania dla ruchu celowania (m)',
+  sClear: 'Czyść pamięć czujnika po synchronizacji, gdy zajęta ponad (%)',
+  grpMount: 'Miejsce montażu i kalibracja', sMount: 'Czujnik zamontowany',
+  mount0: 'z tyłu majdanu (od strony łucznika)', mount1: 'z przodu majdanu (od strony tarczy)', mount2: 'z boku (np. gwint V-bar)',
+  mountHint: 'Z tyłu lub z przodu: mierzone są kąt łuku, przechył i praca po strzale; z boku tylko strzały i czasy faz. Kalibracja sama to rozpozna.',
+  calibrate: 'Kalibruj…', grpExport: 'Eksport i kopia', report: 'Raport', csv: 'Eksport CSV', backup: 'Kopia', restore: 'Przywróć', restoreArrowTip: 'Przywróć',
+  grpReset: 'Resetowanie', resetToday: 'Resetuj dzisiaj', resetAll: 'Resetuj wszystkie statystyki',
+  footer: 'Dane są przechowywane w tej przeglądarce. Co jakiś czas zrób kopię. Bluetooth wymaga Chrome lub Edge na Androidzie, Windows, macOS lub ChromeOS albo przeglądarki Bluefy na iPhonie. <a href="?demo">Wypróbuj na danych przykładowych</a>, bez czujnika.',
+  close: 'Zamknij', copy: 'Kopiuj', chooseFile: 'Wybierz plik…', cancel: 'Anuluj', next: 'Dalej', finish: 'Zakończ', done: 'Gotowe', undo: 'Cofnij',
+  boxRestoreHint: 'Wklej tutaj tekst kopii, a potem stuknij Przywróć.', boxCopyHint: 'Skopiuj ten tekst i wklej go do Notatek, poczty lub pliku.',
+  selected: 'Zaznaczono – stuknij Kopiuj w menu iPhone’a.', copied: 'Skopiowano.', restoreTitle: 'Przywróć kopię', backupRestored: 'Kopia przywrócona.',
+  invalidBackup: 'To nie jest prawidłowa kopia: ', restoreFailed: 'Przywracanie nie powiodło się: ',
+  calTitle: 'Kalibracja czujnika',
+  calConnect: 'Najpierw połącz czujnik.', measuring: 'Pomiar…',
+  calDone: 'Gotowe: czujnik {mount}.',
+  calDoneSide: 'Gotowe: czujnik {mount}, tylko strzały i czasy faz.',
+  calFail: 'Łuk nie został wystarczająco pochylony. Zacznij ponownie od kroku 1.', podNoAnswer: 'czujnik nie odpowiedział',
+  calState: 'Skalibrowano, czujnik {mount}.',
+  calStateSide: 'Skalibrowano, czujnik {mount}: strzały i czasy faz.',
+  connectToSee: 'Połącz czujnik, aby zobaczyć kalibrację.',
+  notCal: 'Jeszcze nie skalibrowano. Raz po zamontowaniu: 15 s, czujnik połączony, łuk w rękach (poziomica pomaga).',
+  couldNotReach: 'Brak połączenia z czujnikiem: ', saveFail: 'Nie można zapisać w tej przeglądarce – wyeksportuj kopię.',
+  storeFull: 'Pamięć tej przeglądarki jest prawie pełna – zrób kopię.',
+  backupNever: 'Brak kopii: stuknij „Kopia”, aby mieć kopię poza tą przeglądarką.',
+  backupOld: 'Ostatnia kopia: {date}. Stuknij „Kopia”, aby mieć kopię poza tą przeglądarką.',
+  notConnected: 'Nie połączono', chipNotConn: '{pod} · nie połączono', chipConnecting: '{pod} · łączenie…', chipReconnecting: '{pod} · ponowne łączenie…',
+  tipBt: 'Połączenie Bluetooth', tipBatt: 'Akumulator czujnika, pomiar {t}', tipMem: 'Zajęta pamięć czujnika (czyszczona po synchronizacji, gdy ponad {p} %)', tipSync: 'Ostatnia synchronizacja z czujnikiem',
+  retrying: 'Czujnik nieosiągalny – ponawiam…',
+  synced: ['<b>1 nowa strzała</b> zsynchronizowana.', '<b>{n} nowe strzały</b> zsynchronizowane.', '<b>{n} nowych strzał</b> zsynchronizowanych.'],
+  syncProblem: 'Problem z synchronizacją: ',
+  noBt: 'Ta przeglądarka nie obsługuje Web Bluetooth. Użyj Chrome/Edge (Android, komputer) lub Bluefy (iPhone) przez https. Albo <a href="?demo">wypróbuj na danych przykładowych</a>.',
+  noPodSel: 'Nie wybrano czujnika.', couldNotConnect: 'Nie można połączyć: ', updating: 'Aktualizacja…',
+  pickUp: 'Czujnik nieosiągalny. Podnieś łuk i spróbuj ponownie.', tapConnect: 'Stuknij Połącz, aby zsynchronizować.', notInRange: 'Czujnik poza zasięgiem. Stuknij Połącz, gdy będzie w pobliżu.',
+  newEndStarted: 'Rozpoczęto nową serię.',
+  confirmResetToday: 'Usunąć dzisiejsze strzały ({n})? Zostaną usunięte także w czujniku i na zegarku.', todayDeleted: 'Usunięto dzisiejsze strzały ({n}).',
+  endDeleted: 'Usunięto serię ({n}).', restoredN: 'Przywrócono strzały ({n}).',
+  confirmResetAll: 'Usunąć całą historię na tym telefonie (strzały: {n})? Tego nie można cofnąć. Wskazówka: najpierw zrób kopię.',
+  allReset: 'Wszystkie statystyki zresetowane.', podCleared: ' Pamięć czujnika też wyczyszczona.',
+  ends: ['1 seria', '{n} serie', '{n} serii'], arrows: ['1 strzała', '{n} strzały', '{n} strzał'], offN: 'niepełne lub nadmiarowe: {n}',
+  endAria: 'Seria {e}: {n} z {a} strzał', undated: 'Strzały bez daty: {n} (zegar czujnika nie był ustawiony). Liczą się w „Łącznie”.',
+  noArrows: 'Brak strzał. Strzelaj, a potem połącz, aby zsynchronizować.',
+  avg: 'Średnio: ', avgHold: 'utrzymanie {v} s', avgMove: 'ruch celowania {d}° ({c} cm)', avgCant: 'przechył ±{v}°',
+  right: 'w prawo', left: 'w lewo', down: 'w dół', up: 'w górę', chartAria: 'Strzały',
+  monthNames: ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'],
+  sheetTitle: 'Seria {e} · {arrows}', perEnd: '{n} w serii',
+  sheetHint: 'Stuknij strzałę, aby zobaczyć szczegóły. Usunięte strzały znikają ze wszystkich statystyk, także w czujniku i na zegarku.',
+  deleteEnd: 'Usuń serię', dRaise: 'Podniesienie', dDraw: 'Naciąg i zakotwiczenie', dHold: 'Utrzymanie', dMove: 'Ruch celowania', dAngle: 'Kąt łuku', dCant: 'Przechył',
+  dFollow: 'Praca po strzale', dJolt: 'Wstrząs', dStill: 'Bez ruchu przed zwolnieniem',
+  noDetails: 'Brak szczegółów faz: strzał z oprogramowaniem czujnika starszym niż 2.0.', dTime: 'Czas {t}',
+  grpScoring: 'Punktacja', sFace: 'Tarcza',
+  face0: 'Cała tarcza (pierścienie 1–10)', face1: 'Tarcza potrójna (pierścienie 6–10)',
+  faceSetHint: 'Tarcza potrójna: tylko X, 10–6 i M. Wspólne z zegarkiem.',
+  score: 'Wynik', enterScore: 'Wpisz wynik', editScore: 'Zmień', saveScore: 'Zapisz', clearScore: 'Wyczyść', deleteScore: 'Usuń wynik',
+  scoreHint: 'Stuknij wartość każdej strzały, w dowolnej kolejności. Stuknij wpisaną wartość, aby ją usunąć.',
+  inPad: 'Klawiatura', inFace: 'Tarcza', faceHint: 'Stuknij miejsce trafienia każdej strzały. Stuknij wpisaną wartość, aby ją usunąć.', miss: 'Pudło',
+  scoreOf: '{s} z {m}', noScore: 'Brak wyniku.', sessScore: 'wynik {s} · Ø {a} na strzałę',
+  unscored: ['1 seria bez wyniku.', '{n} serie bez wyniku.', '{n} serii bez wyniku.'], scoreNow: 'Wpisz wyniki', scoreSaved: 'Wynik zapisany.',
+  dAimTime: 'Na wysokości celu', aimTimeV: '{v} s (utrzymanie {h} s)', dPush: 'Pchnięcie łuku', avgAim: 'na wysokości celu {v} s',
+  cal1: 'Krok 1 z 3: trzymaj łuk pionowo jak przy celowaniu, bez przechyłu i ze strzałą w poziomie, i nie ruszaj nim. Pomoże poziomica. Potem stuknij Dalej.',
+  cal2: 'Krok 2 z 3: skieruj strzałę w ziemię, ok. 45° w dół, łuk trzymaj pionowo i nieruchomo. Potem stuknij Dalej.',
+  cal2old: 'Krok 2 z 2: skieruj strzałę w ziemię, ok. 45° w dół, łuk trzymaj pionowo i nieruchomo. Potem stuknij Zakończ.',
+  cal3: 'Krok 3 z 3: przechyl łuk mocno na bok (co najmniej 45°, jakby go kłaść) i trzymaj nieruchomo. Potem stuknij Zakończ.',
+  calFail3: 'Za mało przechylony na bok: wszystko poza pchnięciem łuku jest skalibrowane.',
+  calStatePush: ' Mierzone jest pchnięcie łuku.', calNeed3: ' Skalibruj ponownie, aby mierzyć pchnięcie łuku.',
+  restoreArrow: 'Przywróć strzałę {n}', deleteArrow: 'Usuń strzałę {n}', del: 'Usuń',
+  grpLock: 'Blokada właściciela', lockAdd: 'Zablokuj dla tego telefonu', lockOnly: 'Tylko ten telefon', lockOff: 'Odblokuj',
+  lockOpen: 'Bez blokady: każdy telefon w pobliżu może zmieniać ten czujnik. Aby go zablokować, podłącz czujnik do USB (ładowarka lub komputer) i stuknij „Zablokuj dla tego telefonu”. Otwórz aplikację na zegarku, póki czujnik jest podłączony, a zegarek też zostanie dodany.',
+  lockMine: ['Zablokowany dla 1 urządzenia: tego telefonu.', 'Zablokowany dla {n} urządzeń, w tym tego telefonu.', 'Zablokowany dla {n} urządzeń, w tym tego telefonu.'],
+  lockOther: 'Zablokowany dla innych urządzeń: ten telefon widzi tylko liczniki. Aby go dodać, podłącz czujnik do USB i stuknij „Zablokuj dla tego telefonu”.',
+  lockNeedUsb: ' Aby dodać urządzenie, podłącz czujnik do USB.', lockConnect: 'Połącz czujnik, aby zobaczyć blokadę.', lockOld: 'Blokada właściciela wymaga oprogramowania czujnika 2.3.',
+  lockedOut: 'Ten czujnik jest zablokowany dla innych urządzeń. Tylko liczniki; nic nie jest synchronizowane ani zmieniane.', lockDone: 'Czujnik zablokowany dla tego telefonu.', unlockDone: 'Czujnik odblokowany.',
+} };
+const LOCALES = { en: 'en-GB', de: 'de-AT', pl: 'pl-PL' };
+function pickLang(pref) {
+  if (pref && I18N[pref]) return pref;
+  for (const l of (navigator.languages || [navigator.language || 'en'])) { const k = String(l).slice(0, 2).toLowerCase(); if (I18N[k]) return k; }
+  return 'en';
+}
+let LANG = 'en', LOC = 'en-GB';
+function pluralIndex(n) {
+  if (LANG === 'pl') { if (n === 1) return 0; const m10 = n % 10, m100 = n % 100; return m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? 1 : 2; }
+  return n === 1 ? 0 : 1;
+}
+// t('key', {var: value}) – with a number n, plural entries pick the right form
+function t(key, vars = {}) {
+  let s = I18N[LANG][key]; if (s === undefined) s = I18N.en[key]; if (s === undefined) return key;
+  if (Array.isArray(s) && typeof s[0] === 'string' && 'n' in vars && !key.endsWith('Names')) s = s[Math.min(pluralIndex(vars.n), s.length - 1)];
+  return typeof s === 'string' ? s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m)) : s;
+}
+</script>
+<script>
+const SVC  = 'a7c10000-5b1e-4c5a-9d1e-3b7a0c0f0ee0';
+const U = n => 'a7c1000' + n + '-5b1e-4c5a-9d1e-3b7a0c0f0ee0';
+const UUID_TIME = U(1), UUID_INFO = U(2), UUID_CTRL = U(3), UUID_DATA = U(4), UUID_STATS = U(5),
+      UUID_SETTINGS = U(6), UUID_DETAIL = U(7), UUID_DETAIL2 = U(8);
+const F_END = 0x40, F_DEL = 0x80, F_SCORE = 0x20, F_POS = 0x10;   // record flags: end mark, deleted, end score, hit positions
+const icon = (id, cls = 'i') => `<svg class="${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+
+// ---------- storage ----------
+const KEY = 'pfeilzaehler3000.v2';                 // compact arrows (2.1)
+const OLD_KEYS = ['pfeilzaehler3000.v1', 'arrowlog.v1'];   // earlier versions: taken over once, then removed
+const DEMO = !!window.__pzDemo;                    // ?demo: example data, example pod, nothing saved
+const BT = DEMO ? window.__pzDemo.bluetooth : navigator.bluetooth;   // Web Bluetooth, or the example pod
+if (DEMO) { document.getElementById('demo').hidden = false; document.getElementById('report').href = 'report.html?demo'; }
+// In the browser each arrow is kept as a short list instead of named fields (about a third of the
+// space): [index, time, peak, still, flags] and, with details, raise, draw, hold, aim movement,
+// angle, cant, follow-through down and right. Backups keep the named fields.
+const DK = ['raise', 'draw', 'hold', 'move', 'pitch', 'cant', 'drop', 'side', 'pushDown', 'pushRight'];
+function pack(x) {
+  const a = [x.i, x.t, x.peak, x.aim, x.flags];
+  if (x.d) for (const k of DK) a.push(x.d[k] === undefined ? null : x.d[k]);
+  return a;
+}
+function unpack(a) {
+  const x = { i: a[0], t: a[1], peak: a[2], aim: a[3], flags: a[4] };
+  if (a.length > 5) { x.d = {}; DK.forEach((k, j) => { x.d[k] = a[5 + j] === undefined ? null : a[5 + j]; }); }
+  return x;
+}
+const STORE_WARN = 4000000;                        // characters; browsers allow about 5 million
+let storeWarned = false;
+function load() {
+  if (DEMO) return window.__pzDemo.db();
+  for (const k of [KEY, ...OLD_KEYS]) {
+    try {
+      const d = JSON.parse(localStorage.getItem(k));
+      if (d && Array.isArray(d.packed)) { d.shots = d.packed.map(unpack); delete d.packed; }
+      if (d && d.shots) return d;
+    } catch (e) {}
+  }
+  return { shots: [], nextIndex: 0, endMarks: [], settings: { arrows: 6, endGap: 100, sessGap: 45, clearAt: 50, dist: 18 } };
+}
+let db = load();
+if (!Array.isArray(db.endMarks)) db.endMarks = [];
+if (!Array.isArray(db.ops)) db.ops = [];        // changes waiting to be sent to the pod (deletes, end marks, settings)
+if (!db.settings.dist) db.settings.dist = 18;
+if (!db.scores || typeof db.scores !== 'object') db.scores = {};   // end scores: start of the end (unix s) -> { v: values, pos }
+if (db.settings.face === undefined) db.settings.face = db.settings.round === 2 ? 1 : 0;   // 3-spot or full face
+delete db.settings.round;
+const live = () => db.shots.filter(x => !(x.flags & F_DEL));
+// history of "arrows per end" / "new end after pause": each end is judged with the values valid at that time
+if (!Array.isArray(db.hist) || !db.hist.length) db.hist = [{ from: 0, arrows: db.settings.arrows, endGap: db.settings.endGap }];
+function setAt(t) { let r = db.hist[0]; for (const h of db.hist) if (h.from <= t) r = h; return r; }
+function save() {                                 // true = stored in this browser
+  if (DEMO) return true;
+  try {
+    const text = JSON.stringify(Object.assign({}, db, { shots: undefined, packed: db.shots.map(pack) }));
+    localStorage.setItem(KEY, text);
+    if (text.length > STORE_WARN && !storeWarned) { storeWarned = true; setStatus(t('storeFull')); }
+    return true;
+  } catch (e) { setStatus(t('saveFail')); return false; }
+}
+if (!DEMO) {
+  try {                                            // data of earlier versions: keep it under the new key only
+    const old = OLD_KEYS.filter(k => localStorage.getItem(k) !== null);
+    if (old.length && save() && localStorage.getItem(KEY) !== null) old.forEach(k => localStorage.removeItem(k));
+  } catch (e) {}
+  // ask the browser not to delete this page's data when space runs low (iOS may otherwise do so)
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persisted().then(p => p || navigator.storage.persist()).catch(() => {}); } catch (e) {}
+}
+// reminder after a sync: arrows that are only in this browser and the last backup over 30 days ago
+function backupNote() {
+  if (DEMO || db.shots.length <= (db.backupShots || 0)) return '';
+  if (!db.lastBackup) return ' ' + t('backupNever');
+  if (Date.now() - db.lastBackup < 30 * 86400000) return '';
+  return ' ' + t('backupOld', { date: fmtDate(db.lastBackup / 1000) });
+}
+
+// ---------- analysis (exposed for testing) ----------
+function groupSessions(shots, s, marks = [], at = null) {
+  const dated = shots.filter(x => x.t > 1600000000).sort((a, b) => a.t - b.t);
+  const sessions = [];
+  let cur = null, end = null, prev = null;
+  for (const x of dated) {
+    if (!cur || x.t - prev > s.sessGap * 60) {
+      cur = { start: x.t, stop: x.t, ends: [], shots: 0 }; sessions.push(cur); end = null;
+    }
+    const marked = prev !== null && marks.some(m => m > prev && m <= x.t);   // "New end" pressed in between
+    const cfg = at ? at(x.t) : s;
+    if (!end || x.t - prev > cfg.endGap || marked) { end = { start: x.t, n: 0, arrows: cfg.arrows, list: [] }; cur.ends.push(end); }
+    end.n++; end.list.push(x); cur.shots++; cur.stop = x.t; prev = x.t;
+  }
+  return sessions;
+}
+function dayKey(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function weekStart(d) { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); const wd = (x.getDay() + 6) % 7; x.setDate(x.getDate() - wd); return x; }
+function monthKey(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+function totals(shots, now = new Date()) {
+  const today = dayKey(now), wk = weekStart(now).getTime(), mo = monthKey(now);
+  let t = 0, w = 0, m = 0;
+  for (const x of shots) {
+    if (x.t < 1600000000) continue;
+    const d = new Date(x.t * 1000);
+    if (dayKey(d) === today) t++;
+    if (weekStart(d).getTime() === wk) w++;
+    if (monthKey(d) === mo) m++;
+  }
+  return { today: t, week: w, month: m, all: shots.length };
+}
+function buckets(shots, mode, now = new Date()) {
+  const out = [];
+  if (mode === 'day') {
+    for (let i = 29; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i); out.push({ key: dayKey(d), label: i % 7 === 0 ? d.getDate() + '.' + (d.getMonth() + 1) + '.' : '', n: 0 }); }
+    const idx = Object.fromEntries(out.map((b, i) => [b.key, i]));
+    for (const x of shots) { const k = dayKey(new Date(x.t * 1000)); if (k in idx) out[idx[k]].n++; }
+  } else if (mode === 'week') {
+    const w0 = weekStart(now);
+    for (let i = 11; i >= 0; i--) { const d = new Date(w0); d.setDate(d.getDate() - 7 * i); out.push({ key: d.getTime(), label: i % 2 === 0 ? d.getDate() + '.' + (d.getMonth() + 1) + '.' : '', n: 0 }); }
+    const idx = Object.fromEntries(out.map((b, i) => [b.key, i]));
+    for (const x of shots) { const k = weekStart(new Date(x.t * 1000)).getTime(); if (k in idx) out[idx[k]].n++; }
+  } else {
+    const names = t('monthNames');
+    for (let i = 11; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); out.push({ key: monthKey(d), label: names[d.getMonth()], n: 0 }); }
+    const idx = Object.fromEntries(out.map((b, i) => [b.key, i]));
+    for (const x of shots) { const k = monthKey(new Date(x.t * 1000)); if (k in idx) out[idx[k]].n++; }
+  }
+  return out;
+}
+
+// shot details from the pod (firmware 2.0+): times in s, angles in degrees; null = not measured
+function parseDetailBytes(dv, o) {
+  const u = k => dv.getUint8(o + k), s = k => dv.getInt8(o + k);
+  let any = false;
+  for (let k = 0; k < 8; k++) if (u(k)) any = true;
+  if (!any) return null;
+  const tm = v => v ? v / 10 : null;
+  return { raise: tm(u(0)), draw: tm(u(1)), hold: tm(u(2)), move: u(3) ? u(3) / 100 : null,
+           pitch: s(4) === -128 ? null : s(4) / 2, cant: s(5) === -128 ? null : s(5) / 2,      // -128: side mount, not measured
+           drop: s(6) === -128 ? null : s(6), side: s(7) === -128 ? null : s(7) };
+}
+function parseDetail(dv) {
+  const first = dv.getUint32(0, true), out = [];
+  for (let o = 4, i = 0; o + 8 <= dv.byteLength; o += 8, i++) out.push({ i: first + i, d: parseDetailBytes(dv, o) });
+  return out;
+}
+// pod firmware 2.2: [u32 index][12 bytes] – angles in 0.1°, bow push in mm
+function parseDetail2(dv) {
+  if (dv.byteLength < 16) return [];
+  const u = k => dv.getUint8(4 + k), s = k => dv.getInt8(4 + k), s16 = k => dv.getInt16(4 + k, true);
+  let any = false;
+  for (let k = 0; k < 12; k++) if (u(k)) any = true;
+  if (!any) return [{ i: dv.getUint32(0, true), d: null }];
+  const tm = v => v ? v / 10 : null, na = v => v === -128 ? null : v, na16 = v => v === -32768 ? null : v / 10;
+  return [{ i: dv.getUint32(0, true), d: { raise: tm(u(0)), draw: tm(u(1)), hold: tm(u(2)), move: u(3) ? u(3) / 100 : null,
+    pitch: na16(s16(4)), cant: na16(s16(6)), drop: na(s(8)), side: na(s(9)), pushDown: na(s(10)), pushRight: na(s(11)) } }];
+}
+// averages of a list of arrows: hold, aim movement, cant spread, raise
+function summary(list) {
+  const d = list.map(x => x.d).filter(Boolean);
+  if (!d.length) return null;
+  const mean = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null;
+  const pick = k => d.map(x => x[k]).filter(v => v !== null && v !== undefined);
+  const cants = pick('cant'), cm = mean(cants);
+  const sd = cants.length > 1 ? Math.sqrt(mean(cants.map(v => (v - cm) ** 2))) : null;
+  const aimT = d.filter(x => x.draw !== null && x.hold !== null).map(x => x.draw + x.hold);
+  return { n: d.length, hold: mean(pick('hold')), move: mean(pick('move')), raise: mean(pick('raise')), draw: mean(pick('draw')), cantSd: sd, cant: cm,
+           aimTime: mean(aimT) };
+}
+
+// ---------- end scores ----------
+// values: 11 = X (counts 10), 10…1, 0 = M (miss). Rounds (templates) set the face and the arrows per end.
+const faceOf = b => b === 1 ? 1 : 0;              // pod byte 10: 0 full face, 1 3-spot
+const valText = v => v === 11 ? 'X' : v === 0 ? 'M' : String(v);
+const valPoints = v => v === 11 ? 10 : v;
+const valClass = v => v >= 9 ? 'v-gold' : v >= 7 ? 'v-red' : v >= 5 ? 'v-blue' : v >= 3 ? 'v-black' : v >= 1 ? 'v-white' : 'v-miss';
+const padValues = () => db.settings.face === 1 ? [11, 10, 9, 8, 7, 6, 0] : [11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0];
+const sortVals = v => [...v].sort((a, b) => b - a);
+// the score of an end: a score saved for a start time inside the end (or up to 5 s before it)
+function scoreFor(end) {
+  let best = null;
+  const stop = end.list.length ? end.list[end.list.length - 1].t : end.start;
+  for (const [k, sc] of Object.entries(db.scores)) {
+    const t0 = +k;
+    if (t0 >= end.start - 5 && t0 <= stop + 1 && (!best || Math.abs(t0 - end.start) < Math.abs(best.k - end.start))) best = { k: t0, sc };
+  }
+  return best ? best.sc : null;
+}
+function scoreSum(v) { return v.reduce((s, x) => s + valPoints(x), 0); }
+function sessionScore(sess) {
+  let sum = 0, n = 0, ends = 0;
+  for (const e of sess.ends) { const sc = scoreFor(e); if (sc && sc.v.length) { sum += scoreSum(sc.v); n += sc.v.length; ends++; } }
+  return ends ? { sum, n, ends } : null;
+}
+// values to and from the pod: 6 values of 4 bits per record (15 = no arrow)
+function packVals(v) {
+  const b = new Uint8Array(3);
+  for (let k = 0; k < 6; k++) { const x = k < v.length ? v[k] : 15; b[k >> 1] |= (k & 1) ? x << 4 : x; }
+  return b;
+}
+function unpackVals(b) {
+  const out = [];
+  for (let k = 0; k < 6; k++) { const x = (k & 1) ? b[k >> 1] >> 4 : b[k >> 1] & 15; if (x <= 11) out.push(x); }
+  return out;
+}
+// ---------- target face (PiMalDaumen, as on the watch) ----------
+// Hit positions are stored as x, y = -127…127 of the face radius (+ = right / up) on the real face, whose
+// rings all have the same width. For tapping, the inner rings are drawn wider (same drawing as the watch).
+const FACE = {
+  full: { real: [1, .9, .8, .7, .6, .5, .4, .3, .2, .1, .05], drawn: [1, .913, .827, .74, .654, .567, .471, .375, .279, .183, .087], v0: 1 },
+  spot: { real: [1, .8, .6, .4, .2, .1], drawn: [1, .82, .64, .46, .28, .12], v0: 6 } };
+const RING_COL = v => v >= 9 ? '#ffe552' : v >= 7 ? '#f65058' : v >= 5 ? '#00b4e4' : v >= 3 ? '#1a1a1a' : '#f2f2f2';
+const faceDef = () => db.settings.face === 1 ? FACE.spot : FACE.full;
+function mapR(r, from, to) {                       // piecewise linear between two sets of ring edges
+  for (let k = 0; k < from.length - 1; k++) if (r >= from[k + 1]) return to[k + 1] + (r - from[k + 1]) / (from[k] - from[k + 1]) * (to[k] - to[k + 1]);
+  return r / from[from.length - 1] * to[to.length - 1];
+}
+function faceSvg(hits, { widened = true, cls = 'face', id = '' } = {}) {
+  const F = faceDef(), e = widened ? F.drawn : F.real, R = 100;
+  let g = '';
+  e.forEach((r, k) => {
+    const v = k < e.length - 1 ? F.v0 + k : 10, col = RING_COL(v);
+    g += `<circle r="${(r * R).toFixed(1)}" fill="${k < e.length - 1 ? col : 'none'}" stroke="${v === 3 || v === 4 ? '#888' : '#333'}" stroke-width="${k === e.length - 1 ? .6 : .4}"/>`;
+  });
+  for (const h of hits || []) {
+    if (!h) continue;
+    let x = h[0] / 127, y = h[1] / 127; const r = Math.hypot(x, y);
+    if (widened && r > 0) { const f = mapR(r, F.real, F.drawn) / r; x *= f; y *= f; }
+    g += `<circle cx="${(x * R).toFixed(1)}" cy="${(-y * R).toFixed(1)}" r="${widened ? 5.5 : 4}" fill="#00e676" stroke="#0b0b0b" stroke-width="1.2"/>`;
+  }
+  return `<svg class="${cls}" ${id ? `id="${id}"` : ''} viewBox="-102 -102 204 204" role="img" aria-label="${t('inFace')}">${g}</svg>`;
+}
+// tap on the drawn face -> [value, [x, y]] or null outside
+function faceHit(svg, ev) {
+  const b = svg.getBoundingClientRect(), F = faceDef();
+  const dx = ((ev.clientX - b.left) / b.width * 204 - 102) / 100, dy = -((ev.clientY - b.top) / b.height * 204 - 102) / 100, d = Math.hypot(dx, dy);
+  if (d > 1) return null;
+  let v = 0;
+  F.drawn.forEach((r, k) => { if (d <= r) v = F.v0 + k; });
+  if (v > 10) v = 11;
+  const rr = mapR(d, F.drawn, F.real), f = d > 0 ? rr / d : 0;
+  return [v, [Math.round(dx * f * 127), Math.round(dy * f * 127)]];
+}
+
+// ---------- formatting ----------
+let chartMode = 'day';
+const $ = id => document.getElementById(id);
+function setStatus(html) { $('status').innerHTML = html; }
+function fmtTime(ts) { return new Date(ts * 1000).toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit' }); }
+function fmtDate(ts) { return new Date(ts * 1000).toLocaleDateString(LOC, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); }
+function fmtSplit(sec) { sec = Math.max(0, Math.round(sec)); return '+' + Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
+const f1 = v => v === null || v === undefined ? '–' : v.toFixed(1);
+function cm(deg) { return Math.tan(deg * Math.PI / 180) * db.settings.dist * 100; }
+function fmtMove(deg) { return deg === null || deg === undefined ? '–' : `${deg.toFixed(2)}° ≈ ${cm(deg).toFixed(1)} cm`; }
+function fmtCant(c) { if (c === null || c === undefined) return '–'; if (Math.abs(c) < 0.25) return '0°'; return `${Math.abs(c).toFixed(1)}° ${c > 0 ? t('right') : t('left')}`; }
+function fmtPush(d) {
+  if (d.pushDown === null || d.pushDown === undefined) return '–';
+  return `${Math.abs(d.pushDown)} mm ${d.pushDown >= 0 ? t('down') : t('up')}, ${Math.abs(d.pushRight)} mm ${d.pushRight >= 0 ? t('right') : t('left')}`;
+}
+function fmtFollow(d) {
+  const a = [];
+  if (d.drop === null) return '–';
+  a.push(d.drop >= 0 ? `${d.drop}° ${t('down')}` : `${-d.drop}° ${t('up')}`);
+  if (d.side) a.push(`${Math.abs(d.side)}° ${d.side > 0 ? t('right') : t('left')}`);
+  return a.join(', ');
+}
+
+// ---------- rendering ----------
+function renderChart() {
+  const b = buckets(live(), chartMode);
+  const W = 340, H = 150, pad = 18, top = 16;
+  const max = Math.max(6, ...b.map(x => x.n));
+  const bw = (W - 8) / b.length;
+  let s = `<svg viewBox="0 0 ${W} ${H + pad}" role="img" aria-label="${t('chartAria')}">`;
+  s += `<line x1="0" x2="${W}" y1="${H}" y2="${H}" stroke="var(--line)"/>`;
+  b.forEach((x, i) => {
+    const h = x.n ? Math.max(2, (x.n / max) * (H - top)) : 0;
+    const X = 4 + i * bw + bw * 0.15, w = bw * 0.7;
+    if (h) s += `<rect x="${X}" y="${H - h}" width="${w}" height="${h}" rx="2" fill="var(--bar)"><title>${t('arrows', { n: x.n })}</title></rect>`;
+    if (x.n && (b.length <= 12 || x.n === max)) s += `<text x="${X + w / 2}" y="${H - h - 3}" text-anchor="middle">${x.n}</text>`;
+    if (x.label) s += `<text x="${X + w / 2}" y="${H + 13}" text-anchor="middle">${x.label}</text>`;
+  });
+  $('chart').innerHTML = s + '</svg>';
+}
+
+function avgLine(sm) {
+  if (!sm) return '';
+  const p = [];
+  if (sm.aimTime !== null) p.push(t('avgAim', { v: f1(sm.aimTime) }));
+  if (sm.move !== null) p.push(t('avgMove', { d: sm.move.toFixed(2), c: cm(sm.move).toFixed(1) }));
+  if (sm.cantSd !== null) p.push(t('avgCant', { v: sm.cantSd.toFixed(1) }));
+  return p.length ? t('avg') + p.join(' · ') : '';
+}
+
+let shownSessions = [];
+function renderSessions() {
+  const s = db.settings;
+  const sess = groupSessions(live(), s, db.endMarks, setAt).reverse().slice(0, 40);
+  shownSessions = sess;
+  const undated = live().filter(x => x.t <= 1600000000).length;
+  if (!sess.length && !undated) { $('sessions').innerHTML = `<div class="empty">${t('noArrows')}</div>`; return; }
+  let h = '';
+  for (const [si, x] of sess.entries()) {
+    const off = x.ends.filter(e => e.n !== e.arrows).length;
+    const all = x.ends.flatMap(e => e.list);
+    const av = avgLine(summary(all)), ss = sessionScore(x);
+    const sc = ss ? ` · ${t('sessScore', { s: ss.sum, a: (ss.sum / ss.n).toFixed(1) })}` : '';
+    h += `<div class="sess"><div class="top"><div><div>${fmtDate(x.start)}</div><div class="small">${fmtTime(x.start)}–${fmtTime(x.stop)} · ${t('ends', { n: x.ends.length })}${off ? ` · ${t('offN', { n: off })}` : ''}${sc}</div></div><div class="big">${x.shots}</div></div><div class="ends">`;
+    x.ends.forEach((e, ei) => { const es = scoreFor(e); h += `<button class="end${e.n !== e.arrows ? ' off' : ''}" data-s="${si}" data-e="${ei}" aria-label="${t('endAria', { e: ei + 1, n: e.n, a: e.arrows })}">${e.n}${es && es.v.length ? `<small>${scoreSum(es.v)}</small>` : ''}</button>`; });
+    h += '</div>' + (av ? `<div class="avg">${av}</div>` : '') + '</div>';
+  }
+  if (undated) h += `<div class="small">${t('undated', { n: undated })}</div>`;
+  $('sessions').innerHTML = h;
+}
+
+// arrows in the end that is still open: last end, if its last arrow is recent and "New end" wasn't pressed since
+function currentEnd(nowSec = Date.now() / 1000) {
+  const sess = groupSessions(live(), db.settings, db.endMarks, setAt);
+  if (!sess.length) return 0;
+  const last = sess[sess.length - 1], end = last.ends[last.ends.length - 1];
+  if (nowSec - last.stop > setAt(nowSec).endGap) return 0;
+  if (db.endMarks.some(m => m > last.stop)) return 0;
+  return end.n;
+}
+
+function renderEnd() {                            // also every 10 s: a pause starts a new end
+  const e = currentEnd();
+  $('t-end').textContent = e;
+  $('t-endof').textContent = '/ ' + db.settings.arrows;
+  $('t-end').style.color = e === db.settings.arrows ? 'var(--accent)' : (e > db.settings.arrows ? 'var(--warn)' : '');
+}
+function render() {
+  renderEnd();
+  const tot = totals(live());
+  $('t-today').textContent = tot.today; $('t-week').textContent = tot.week;
+  $('t-month').textContent = tot.month; $('t-all').textContent = tot.all;
+  renderChart(); renderSessions(); renderChips(); renderCantState(); renderLock();
+}
+
+// ---------- status line: connection, battery, pod memory, last sync ----------
+let conn = 'off';                                  // off | wait | ok | lost
+function battIcon(mv) {
+  const f = Math.max(0, Math.min(1, (mv - 3500) / (4150 - 3500)));
+  return `<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2"/>` +
+    `<rect x="4" y="9" width="${(13 * f).toFixed(1)}" height="6" rx="1" fill="currentColor" stroke="none"/></svg>`;
+}
+function renderChips() {
+  const name = (dev && dev.name) || db.podName || '';
+  const short = name.replace('PfeilZaehler3000-', 'Pod ') || 'Pod';
+  const cText = { off: dev || db.podName ? t('chipNotConn', { pod: short }) : t('notConnected'), wait: t('chipConnecting', { pod: short }), ok: short, lost: t('chipReconnecting', { pod: short }) }[conn];
+  const cCls = { off: 'off', wait: 'wait', ok: 'ok', lost: 'bad' }[conn];
+  let h = `<span class="chip ${cCls}" title="${t('tipBt')}">${icon('bt')}${cText}</span>`;
+  if (info) {
+    const v = info.mv / 1000, bc = !info.mv ? 'off' : v < 3.6 ? 'bad' : v < 3.7 ? 'wait' : '';
+    h += `<span class="chip ${bc}" title="${t('tipBatt', { t: fmtClock(info.at) })}">${battIcon(info.mv)}${info.mv ? v.toFixed(2) + ' V' : '–'}</span>`;
+    h += `<span class="chip${info.storage >= 80 ? ' bad' : ''}" title="${t('tipMem', { p: db.settings.clearAt })}">${icon('mem')}${info.storage} %</span>`;
+  }
+  if (db.lastSync) h += `<span class="chip" title="${t('tipSync')}">${icon('sync')}${fmtClock(db.lastSync)}</span>`;
+  $('chips').innerHTML = h;
+}
+function fmtClock(ms) {
+  const d = new Date(ms), today = dayKey(new Date()) === dayKey(d);
+  return today ? d.toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit' })
+               : d.toLocaleDateString(LOC, { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit' });
+}
+
+// ---------- Bluetooth ----------
+let dev = null, chars = {}, info = null, dumpResolve = null, incoming = [], incomingDetails = new Map();
+// owner lock (pod firmware 2.3): this browser's own random key; logged in = podAuth (from INFO notifications)
+let podAuth = false, authWait = null;
+function podKey() {
+  if (!db.podKey) { db.podKey = [...crypto.getRandomValues(new Uint8Array(8))].map(x => x.toString(16).padStart(2, '0')).join(''); save(); }
+  return Uint8Array.from(db.podKey.match(/../g).map(h => parseInt(h, 16)));
+}
+const lockedOut = () => !!(info && info.locked && !podAuth);
+async function lockCmd(cmd, mode) {                // 0x10 log in, 0x11 add (mode 1 = only this), 0x12 only this, 0x13 unlock
+  const c = new Uint8Array(cmd === 0x13 ? 5 : cmd === 0x11 ? 10 : 9);
+  c[0] = cmd; if (cmd !== 0x13) c.set(podKey(), 1); if (cmd === 0x11) c[9] = mode || 0;
+  const w = new Promise(r => { authWait = r; setTimeout(r, 2500); });
+  await chars.ctrl.writeValue(c);
+  await w;
+}
+async function writeClock() {                      // pod clock + local time offset (the pod counts "today" / "week" / "month")
+  const now = new Uint8Array(8), nv = new DataView(now.buffer);
+  nv.setUint32(0, Math.floor(Date.now() / 1000), true);
+  nv.setInt32(4, -new Date().getTimezoneOffset() * 60, true);
+  try { await chars.time.writeValue(now); } catch (e) { await chars.time.writeValue(now.slice(0, 4)); }   // older firmware: 4 bytes
+}
+function renderLock() {
+  const c = !!(dev && dev.gatt.connected) && !!info, new23 = c && info.fw % 100 >= 23;
+  let txt = !c ? t('lockConnect') : !new23 ? t('lockOld') : !info.locked ? t('lockOpen') : podAuth ? t('lockMine', { n: info.owners }) : t('lockOther');
+  if (new23 && info.locked && !info.usb) txt += t('lockNeedUsb');
+  $('lock-state').textContent = txt;
+  $('lock-btns').hidden = !new23;
+  if (!new23) return;
+  $('lock-add').disabled = !info.usb;
+  $('lock-only').hidden = !(info.locked && podAuth && info.owners > 1);
+  $('lock-off').hidden = !(info.locked && podAuth);
+}
+
+function parseInfo(dv) {
+  return { total: dv.getUint32(0, true), base: dv.getUint32(4, true), mv: dv.getUint16(8, true),
+           storage: dv.getUint8(10), at: Date.now(), exact: !!(dv.getUint8(11) & 1), fw: dv.getUint8(12),
+           locked: !!(dv.getUint8(11) & 8), usb: !!(dv.getUint8(11) & 16),        // 2.3: owners, on USB power
+           auth: dv.byteLength > 13 && dv.getUint8(13) === 1, owners: dv.byteLength > 14 ? dv.getUint8(14) : 0 };
+}
+function parseData(dv) {
+  const first = dv.getUint32(0, true);
+  if (first === 0xFFFFFFFF) return { end: true, total: dv.getUint32(4, true) };
+  const recs = [];
+  for (let o = 4, i = 0; o + 8 <= dv.byteLength; o += 8, i++) {
+    const r = { i: first + i, t: dv.getUint32(o, true), peak: dv.getUint16(o + 4, true) / 10, aim: dv.getUint8(o + 6) / 10, flags: dv.getUint8(o + 7) };
+    if (r.flags & (F_SCORE | F_POS)) r.raw = [0, 1, 2, 3, 4, 5, 6].map(k => dv.getUint8(o + k));   // end score / hit positions
+    recs.push(r);
+  }
+  return { recs };
+}
+function parseSettings(dv) {
+  return { arrows: dv.getUint8(1), endGap: dv.getUint16(2, true), flags: dv.getUint8(4), cal: dv.getUint8(5), cantRef: dv.getInt16(6, true) / 10,
+           face: dv.byteLength >= 11 ? faceOf(dv.getUint8(10)) : null };
+}
+
+function showInfo() { renderChips(); }
+
+let userDisconnect = false, retryTimer = null, retryUntil = 0;
+function updateButtons() {
+  const connected = !!(dev && dev.gatt.connected);
+  if (!connected && conn === 'ok') conn = 'off';
+  $('connect').textContent = dev ? (connected ? t('updateNow') : t('reconnect')) : t('connect');
+  $('disconnect').hidden = !connected;
+  $('choose').hidden = !dev;
+  $('podbtns').hidden = !dev;
+  $('setlevel').disabled = !connected || !chars.settings || lockedOut();
+  renderLock();
+  renderChips();
+}
+// keep trying to reconnect for a while (pod out of range, phone screen was off, ...)
+function scheduleReconnect(seconds = 60) {
+  retryUntil = Date.now() + seconds * 1000;
+  if (retryTimer) return;
+  const tryOnce = async () => {
+    retryTimer = null;
+    if (!dev || dev.gatt.connected || userDisconnect || document.hidden || Date.now() > retryUntil) { if (!dev || !dev.gatt.connected) conn = 'off'; updateButtons(); return; }
+    try { await attach(dev); }
+    catch (e) { conn = 'lost'; setStatus(t('retrying')); renderChips(); retryTimer = setTimeout(tryOnce, 5000); }
+  };
+  retryTimer = setTimeout(tryOnce, 1000);
+}
+let knownDevice = null;
+async function attach(device) {
+  dev = device;
+  if (knownDevice !== device) {                    // add the disconnect handler only once per device
+    knownDevice = device;
+    dev.addEventListener('gattserverdisconnected', () => {
+      if (userDisconnect) { conn = 'off'; setStatus(''); updateButtons(); return; }
+      conn = 'lost'; setStatus('');
+      updateButtons();
+      scheduleReconnect(60);
+    });
+  }
+  userDisconnect = false;
+  conn = 'wait'; setStatus(''); renderChips();
+  const server = await dev.gatt.connect();
+  db.podId = dev.id; db.podName = dev.name || ''; save();     // the pod this phone uses from now on
+  const svc = await server.getPrimaryService(SVC);
+  for (const [k, u] of [['time', UUID_TIME], ['info', UUID_INFO], ['ctrl', UUID_CTRL], ['data', UUID_DATA]]) chars[k] = await svc.getCharacteristic(u);
+  for (const [k, u] of [['stats', UUID_STATS], ['settings', UUID_SETTINGS], ['detail2', UUID_DETAIL2], ['detail', UUID_DETAIL]]) {
+    try { chars[k] = await svc.getCharacteristic(u); } catch (e) { chars[k] = null; }   // newer pod firmware only
+  }
+
+  // INFO first: with an owner lock (2.3) this phone logs in before it changes anything
+  podAuth = false;
+  info = parseInfo(await chars.info.readValue());
+  chars.info.addEventListener('characteristicvaluechanged', async e => {
+    const prev = info ? info.total : 0;
+    info = parseInfo(e.target.value); podAuth = info.auth;
+    if (authWait) { authWait(); authWait = null; }
+    showInfo(); renderLock();
+    if (info.total > prev) await sync(false);     // live: new arrow shot while connected
+  });
+  await chars.info.startNotifications();
+  if (info.fw % 100 >= 23 && info.locked) await lockCmd(0x10);
+  if (!lockedOut()) await writeClock();
+
+  chars.data.addEventListener('characteristicvaluechanged', e => {
+    const p = parseData(e.target.value);
+    if (p.end) { if (dumpResolve) dumpResolve(p.total); dumpResolve = null; } else incoming.push(...p.recs);
+  });
+  await chars.data.startNotifications();
+  if (chars.detail2) {                             // shot details arrive together with the records (2.2: finer)
+    chars.detail2.addEventListener('characteristicvaluechanged', e => { for (const r of parseDetail2(e.target.value)) incomingDetails.set(r.i, r.d); });
+    await chars.detail2.startNotifications();
+  } else if (chars.detail) {
+    chars.detail.addEventListener('characteristicvaluechanged', e => { for (const r of parseDetail(e.target.value)) incomingDetails.set(r.i, r.d); });
+    await chars.detail.startNotifications();
+  }
+  if (chars.stats) {
+    // the watch deleted an arrow or started a new end: fetch today's records again
+    chars.stats.addEventListener('characteristicvaluechanged', async e => {
+      const st = parseStats(e.target.value);
+      const prev = podStats; podStats = st;
+      if (prev && (st.arrows < prev.arrows || st.endMark !== prev.endMark)) await sync(true);
+    });
+    await chars.stats.startNotifications();
+    podStats = parseStats(await chars.stats.readValue());
+  }
+  info = parseInfo(await chars.info.readValue());
+  conn = 'ok';
+  updateButtons();
+  if (lockedOut()) setStatus(t('lockedOut'));
+  await flushOps();                                // settings changed here while offline go first
+  if (chars.settings) {
+    chars.settings.addEventListener('characteristicvaluechanged', e => adoptSettings(parseSettings(e.target.value)));
+    await chars.settings.startNotifications();
+    adoptSettings(parseSettings(await chars.settings.readValue()));
+  }
+  await sync(true);
+}
+
+// settings from the pod (changed on the watch or another phone): take them over
+function adoptSettings(p) {
+  db.podSettings = { flags: p.flags, cal: p.cal, cantRef: p.cantRef };
+  if (calWait) calWait(p);
+  db.settings.mount = (p.flags >> 2) & 3; $('s-mount').value = db.settings.mount;
+  if (p.face !== null) { db.settings.face = p.face; $('s-face').value = p.face; }
+  if (p.arrows >= 1 && p.endGap >= 20 && (p.arrows !== db.settings.arrows || p.endGap !== db.settings.endGap)) {
+    db.settings.arrows = p.arrows; db.settings.endGap = p.endGap;
+    db.hist.push({ from: Math.floor(Date.now() / 1000), arrows: p.arrows, endGap: p.endGap });
+    $('s-arrows').value = p.arrows; $('s-endgap').value = p.endGap;
+  }
+  save(); render();
+}
+function renderCantState() {
+  const ps = db.podSettings || { flags: 0, cal: 0 };
+  const m = (ps.flags >> 2) & 3, where = t('mount' + m);
+  const fw = info ? info.fw % 100 : 0;
+  const push = m === 2 ? '' : ps.cal === 4 ? t('calStatePush') : fw >= 22 ? t('calNeed3') : '';
+  $('cant-state').textContent = [2, 4, 5].includes(ps.cal) ? t(m === 2 ? 'calStateSide' : 'calState', { mount: where }) + push
+    : !db.podSettings ? t('connectToSee') : t('notCal');
+}
+
+// ---------- calibration: 1. bow upright and level, 2. arrow pointed at the ground ----------
+let calWait = null, calStep = 0;
+const calSteps = () => (info && info.fw % 100 >= 22) ? 3 : 2;      // step 3 (bow push) from pod firmware 2.2
+const CAL_TEXT = () => [t('cal1'), calSteps() === 3 ? t('cal2') : t('cal2old'), t('cal3')];
+function openCal() {
+  calStep = 0; $('cal-text').textContent = CAL_TEXT()[0]; $('cal-msg').textContent = '';
+  $('cal-next').textContent = t('next'); $('cal-next').disabled = false; $('cal').hidden = false;
+}
+// send a calibration step and wait for the pod's answer (its settings notification)
+function calSend(cmd, want) {
+  return new Promise(async (resolve, reject) => {
+    const timer = setTimeout(() => { calWait = null; reject(new Error(t('podNoAnswer'))); }, 5000);
+    calWait = p => { if (want.includes(p.cal)) { clearTimeout(timer); calWait = null; resolve(p); } };
+    try { const c = new Uint8Array(5); c[0] = cmd; await chars.ctrl.writeValue(c); }
+    catch (e) { clearTimeout(timer); calWait = null; reject(e); }
+  });
+}
+$('setlevel').onclick = openCal;
+$('lock-add').onclick = async () => {
+  try { await lockCmd(0x11, 0); } catch (e) { setStatus(t('couldNotReach') + e.message); return; }
+  renderLock();
+  if (podAuth) { setStatus(t('lockDone')); await writeClock(); await sync(true); }
+};
+$('lock-only').onclick = async () => { try { await lockCmd(0x12); } catch (e) { setStatus(t('couldNotReach') + e.message); } renderLock(); };
+$('lock-off').onclick = async () => {
+  try { await lockCmd(0x13); setStatus(t('unlockDone')); } catch (e) { setStatus(t('couldNotReach') + e.message); }
+  renderLock();
+};
+$('cal-cancel').onclick = () => { calWait = null; $('cal').hidden = true; };
+$('cal-next').onclick = async () => {
+  if (calStep === 9) { $('cal').hidden = true; return; }
+  if (!dev || !dev.gatt.connected || !chars.settings) { $('cal-msg').textContent = t('calConnect'); return; }
+  $('cal-next').disabled = true; $('cal-msg').textContent = t('measuring');
+  try {
+    if (calStep === 0) {
+      await calSend(9, [1]);
+      calStep = 1; $('cal-text').textContent = CAL_TEXT()[1]; $('cal-next').textContent = calSteps() === 3 ? t('next') : t('finish'); $('cal-msg').textContent = '';
+    } else if (calStep === 1) {
+      const p = await calSend(10, [2, 3]);
+      const m = (p.flags >> 2) & 3;
+      if (p.cal === 2 && calSteps() === 3 && m !== 2) {          // on to step 3 (not for a side bushing)
+        calStep = 2; $('cal-text').textContent = CAL_TEXT()[2]; $('cal-next').textContent = t('finish'); $('cal-msg').textContent = '';
+      } else if (p.cal === 2) {
+        $('cal-text').textContent = t(m === 2 ? 'calDoneSide' : 'calDone', { mount: t('mount' + m) });
+        $('cal-msg').textContent = ''; $('cal-next').textContent = t('close'); calStep = 9;
+      } else {
+        calStep = 0; $('cal-text').textContent = CAL_TEXT()[0]; $('cal-next').textContent = t('next');
+        $('cal-msg').textContent = t('calFail');
+      }
+    } else {
+      const p = await calSend(14, [4, 5]);
+      const m = (p.flags >> 2) & 3;
+      $('cal-text').textContent = t('calDone', { mount: t('mount' + m) }) + (p.cal === 4 ? t('calStatePush') : '');
+      $('cal-msg').textContent = p.cal === 4 ? '' : t('calFail3');
+      $('cal-next').textContent = t('close'); calStep = 9;
+    }
+  } catch (e) { $('cal-msg').textContent = t('couldNotReach') + e.message; }
+  $('cal-next').disabled = false;
+};
+
+let podStats = null;
+function parseStats(dv) {
+  return { arrows: dv.getUint32(0, true), today: dv.getUint16(4, true), week: dv.getUint16(6, true), month: dv.getUint16(8, true),
+           mv: dv.getUint16(10, true), endMark: dv.getUint32(12, true), lastShot: dv.getUint32(16, true) };
+}
+
+// changes made on this phone, sent to the pod at the next sync
+function queueDelete(indices, del) {
+  const ix = [...new Set(indices)].sort((a, b) => a - b);
+  for (let k = 0; k < ix.length;) {                // group into ranges of consecutive indices
+    let n = 1;
+    while (k + n < ix.length && ix[k + n] === ix[k] + n && n < 60000) n++;
+    db.ops.push({ k: 'del', i: ix[k], n, d: del ? 1 : 0 });
+    k += n;
+  }
+}
+// one waiting settings write; a waiting change of the mounting point or target face is kept
+function queueSettings(mount, face = false) {
+  const had = db.ops.some(o => o.k === 'set' && o.mount), hadF = db.ops.some(o => o.k === 'set' && (o.face || o.round));
+  db.ops = db.ops.filter(o => o.k !== 'set'); db.ops.push({ k: 'set', mount: mount || had, face: face || hadF });
+}
+// an end score entered here, to the pod (the watch shows it too); one waiting write per end
+function queueScore(start) {
+  db.ops = db.ops.filter(o => !(o.k === 'score' && o.t === start)); db.ops.push({ k: 'score', t: start });
+}
+let flushing = null;                               // one sender at a time (a pod notification may start a sync meanwhile)
+function flushOps() {
+  if (!flushing) flushing = sendOps().finally(() => { flushing = null; });
+  return flushing;
+}
+async function sendOps() {
+  if (!chars.ctrl || !chars.stats || !dev || !dev.gatt.connected || lockedOut()) return;   // older than 1.5: no ops; locked: kept for later
+  while (db.ops.length) {
+    const op = db.ops[0], c = new Uint8Array(8), v = new DataView(c.buffer);
+    if (op.k === 'set') {
+      if (chars.settings) {                     // mounting point and target face only if changed here (op.mount, op.face)
+        const b = new Uint8Array(op.face ? 5 : op.mount ? 4 : 3); b[0] = db.settings.arrows; new DataView(b.buffer).setUint16(1, db.settings.endGap, true);
+        if (b.length >= 4) b[3] = op.mount ? db.settings.mount || 0 : 0xFF;
+        if (op.face) b[4] = db.settings.face || 0;
+        await chars.settings.writeValue(b);
+      }
+      db.ops.shift(); save(); continue;
+    }
+    if (op.k === 'score') {                     // [0x0B][u32 start][3 bytes values][u8 part], 6 values per part
+      const sc = db.scores[op.t], v = sc ? sc.v : [];
+      if (info && info.fw % 100 >= 22) {
+        const parts = Math.max(1, Math.ceil(v.length / 6));
+        if (sc && sc.pos && v.length <= 6) {     // 20 bytes: the hit positions take the place of the part byte
+          const b = new Uint8Array(20), w = new DataView(b.buffer);
+          b[0] = 11; w.setUint32(1, op.t, true); b.set(packVals(v), 5);
+          sc.pos.forEach((h, k) => { w.setInt8(8 + 2 * k, h[0]); w.setInt8(9 + 2 * k, h[1]); });
+          await chars.ctrl.writeValue(b);
+        } else for (let pt = 0; pt < parts; pt++) {
+          const b = new Uint8Array(9), w = new DataView(b.buffer);
+          b[0] = 11; w.setUint32(1, op.t, true); b.set(packVals(v.slice(pt * 6, pt * 6 + 6)), 5); b[8] = pt;
+          await chars.ctrl.writeValue(b);
+        }
+      }
+      if (sc) delete sc.pending;
+      db.ops.shift(); save(); continue;
+    }
+    if (op.k === 'del') { c[0] = 4; v.setUint32(1, op.i, true); v.setUint16(5, op.n, true); c[7] = op.d; }
+    else if (op.k === 'end') { c[0] = 7; v.setUint32(1, op.t, true); }
+    else if (op.k === 'resetdays') { c[0] = 6; }
+    await chars.ctrl.writeValue(op.k === 'del' ? c : c.slice(0, 5));
+    db.ops.shift(); save();
+  }
+}
+function firstIndexToday() {
+  const today = dayKey(new Date());
+  let m = Infinity;
+  for (const x of db.shots) if (x.t > 1600000000 && dayKey(new Date(x.t * 1000)) === today && x.i < m) m = x.i;
+  return m;
+}
+
+let syncing = false;
+async function sync(mayClear) {
+  if (syncing || !chars.ctrl || lockedOut()) return; syncing = true;
+  try {
+    await flushOps();
+    incoming = []; incomingDetails = new Map();
+    // full update: read today's records again too, so deletions / end marks from the watch arrive
+    const from = Math.max(mayClear && chars.stats ? Math.min(db.nextIndex, firstIndexToday()) : db.nextIndex, info.base);
+    const done = new Promise(r => { dumpResolve = r; setTimeout(() => r(null), 30000); });
+    const cmd = new Uint8Array(5); cmd[0] = 1; new DataView(cmd.buffer).setUint32(1, from, true);
+    await chars.ctrl.writeValue(cmd);
+    const total = await done;
+    const known = new Map(db.shots.map(x => [x.i, x]));
+    const fresh = [];
+    const inc = [...incoming].sort((a, b) => a.i - b.i);
+    for (let n = 0; n < inc.length; n++) {         // end scores (with hit positions in the next records)
+      const r = inc[n];
+      if (!(r.flags & F_SCORE) || (r.flags & F_POS)) continue;
+      const part = r.flags & 3, vals = unpackVals(r.raw.slice(4, 7));
+      let pos = null;
+      if (n + 2 < inc.length && (inc[n + 1].flags & F_POS) && (inc[n + 2].flags & F_POS)) {
+        const pb = [...inc[n + 1].raw, ...inc[n + 2].raw].slice(0, 12).map(x => x > 127 ? x - 256 : x);
+        pos = []; for (let k = 0; k < vals.length; k++) pos.push([pb[2 * k], pb[2 * k + 1]]);
+      }
+      const key = r.t, old = db.scores[key];
+      if (old && old.pending) continue;              // entered here, not sent yet: this phone's is newer
+      if (old && old.idx > r.i && !(old.idx === r.i)) continue;
+      const v = part === 0 ? vals : [...((old && old.v) || []).slice(0, part * 6), ...vals];
+      if (!v.length) delete db.scores[key]; else db.scores[key] = { v: sortVals(v), pos, idx: r.i };
+    }
+    for (const r of incoming) {
+      if (r.flags & (F_SCORE | F_POS)) continue;     // not arrows
+      if (r.flags & F_END) {                         // end mark from the watch or this phone
+        if (r.t > 1600000000 && !db.endMarks.includes(r.t)) { db.endMarks.push(r.t); db.endMarks.sort((a, b) => a - b); }
+        continue;
+      }
+      const det = incomingDetails.get(r.i);
+      const k = known.get(r.i);
+      if (k) { k.flags = r.flags; if (det && !k.d) k.d = det; }   // deleted / restored on the pod
+      else { if (det) r.d = det; fresh.push(r); known.set(r.i, r); }
+    }
+    db.shots.push(...fresh);
+    if (total !== null) { db.nextIndex = Math.max(db.nextIndex, total); db.lastSync = Date.now(); }
+    const stored = save(); render();
+    info = parseInfo(await chars.info.readValue()); showInfo();
+    if (!stored) setStatus(t('saveFail'));             // the pod keeps its arrows
+    else if (fresh.length) setStatus(t('synced', { n: fresh.length }) + backupNote() + unscoredNote());
+    else if ($('status').textContent === t('updating')) setStatus('');   // keep other messages (e.g. Undo)
+    if (stored && mayClear && total !== null && db.nextIndex >= info.total && info.storage >= db.settings.clearAt && info.total > info.base) {
+      const c = new Uint8Array(5); c[0] = 2; new DataView(c.buffer).setUint32(1, info.total, true);
+      await chars.ctrl.writeValue(c);
+    }
+  } catch (e) { setStatus(t('syncProblem') + e.message); }
+  syncing = false;
+}
+
+async function choosePod() {
+  if (!BT) { setStatus(t('noBt')); return; }
+  try { await attach(await BT.requestDevice({ filters: [{ services: [SVC] }] })); }
+  catch (e) { conn = dev && dev.gatt.connected ? 'ok' : 'off'; renderChips(); setStatus(e.name === 'NotFoundError' ? t('noPodSel') : t('couldNotConnect') + e.message); }
+}
+// one tap: already connected -> sync, known pod -> reconnect without the list, otherwise choose it once
+$('connect').onclick = async () => {
+  if (dev && dev.gatt.connected) { setStatus(t('updating')); await sync(true); return; }
+  if (dev) { try { await attach(dev); } catch (e) { conn = 'off'; renderChips(); setStatus(t('pickUp')); } return; }
+  await choosePod();
+};
+$('choose').onclick = choosePod;
+$('disconnect').onclick = () => { userDisconnect = true; if (dev && dev.gatt.connected) dev.gatt.disconnect(); conn = 'off'; updateButtons(); };
+// back to the page (phone unlocked, app switched): update automatically
+document.addEventListener('visibilitychange', async () => {
+  if (document.hidden || !dev || userDisconnect) return;
+  if (dev.gatt.connected) await sync(true); else scheduleReconnect(60);
+});
+
+// Reconnect without the chooser when the browser supports remembered devices
+(async () => {
+  if (DEMO || !navigator.bluetooth || !navigator.bluetooth.getDevices) return;
+  try {
+    const list = await navigator.bluetooth.getDevices();
+    // the pod chosen last time; other pods nearby are ignored
+    const d = list.find(x => x.id === db.podId) || list.find(x => (x.name || '').startsWith('PfeilZaehler3000')); if (!d) return;
+    conn = 'wait'; renderChips();
+    if (d.watchAdvertisements) {
+      const ac = new AbortController();
+      d.addEventListener('advertisementreceived', async () => { ac.abort(); try { await attach(d); } catch (e) { conn = 'off'; renderChips(); setStatus(t('tapConnect')); } }, { once: true });
+      await d.watchAdvertisements({ signal: ac.signal });
+      setTimeout(() => { if (!d.gatt.connected) { ac.abort(); conn = 'off'; renderChips(); setStatus(t('notInRange')); } }, 15000);
+    } else await attach(d);
+  } catch (e) { conn = 'off'; renderChips(); }
+})();
+
+// ---------- settings & data ----------
+const S = { arrows: 's-arrows', endGap: 's-endgap', sessGap: 's-sessgap', clearAt: 's-clear', dist: 's-dist' };
+for (const [k, id] of Object.entries(S)) {
+  $(id).value = db.settings[k];
+  $(id).onchange = async e => {
+    const el = e.target, v = Math.round(Number(el.value));
+    if (!(v >= Number(el.min) && v <= Number(el.max))) { el.value = db.settings[k]; return; }
+    db.settings[k] = v;
+    if (k === 'arrows' || k === 'endGap') {        // applies from now on, earlier ends keep their values
+      db.hist.push({ from: Math.floor(Date.now() / 1000), arrows: db.settings.arrows, endGap: db.settings.endGap });
+      queueSettings(false);                         // to the pod, the watch follows
+    }
+    save(); render();
+    if (dev && dev.gatt.connected) { try { await flushOps(); } catch (err) {} }
+  };
+}
+$('s-mount').value = db.settings.mount || 0;
+$('s-mount').onchange = async e => {
+  db.settings.mount = Number(e.target.value);
+  queueSettings(true);
+  save();
+  if (dev && dev.gatt.connected) { try { await flushOps(); } catch (err) {} }
+};
+$('s-face').value = db.settings.face || 0;
+$('s-face').onchange = async e => {
+  db.settings.face = Number(e.target.value);
+  queueSettings(false, true);
+  save(); render();
+  if (dev && dev.gatt.connected) { try { await flushOps(); } catch (err) {} }
+};
+$('s-lang').value = db.settings.lang || '';
+$('s-lang').onchange = e => { db.settings.lang = e.target.value; save(); applyLang(); };
+$('tabs').onclick = e => { const b = e.target.closest('button'); if (!b) return; chartMode = b.dataset.v; [...$('tabs').children].forEach(x => x.classList.toggle('on', x === b)); renderChart(); };
+
+// iPhone browsers like Bluefy ignore normal downloads: use the share sheet (save to Files, AirDrop,
+// mail…), and if that is not available either, show the text to copy.
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+async function exportText(name, text, type) {    // false = cancelled
+  try {
+    const file = new File([text], name, { type });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return true; }
+  } catch (e) { if (e.name === 'AbortError') return false; }
+  if (!isIOS) {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); return true;
+  }
+  try { if (navigator.share) { await navigator.share({ title: name, text }); return true; } } catch (e) { if (e.name === 'AbortError') return false; }
+  showText(name, text);
+  return true;
+}
+function showText(title, text, restore = false) {
+  $('box-title').textContent = title;
+  $('box-text').value = text;
+  $('box-text').readOnly = !restore;
+  $('box-copy').hidden = restore;
+  $('box-restore').hidden = !restore;
+  $('box-file').hidden = !restore;
+  $('box-hint').textContent = restore ? t('boxRestoreHint') : t('boxCopyHint');
+  $('box').hidden = false;
+}
+$('box-close').onclick = () => { $('box').hidden = true; };
+$('box-copy').onclick = async () => {
+  const ta = $('box-text');
+  try { await navigator.clipboard.writeText(ta.value); setStatus(t('copied')); $('box').hidden = true; }
+  catch (e) { ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length); $('box-hint').textContent = t('selected'); }
+};
+function restoreFrom(text) {
+  const d = JSON.parse(text);
+  if (!Array.isArray(d.shots)) throw new Error('not a PfeilZaehler3000 backup');
+  const known = new Set(db.shots.map(x => x.i));
+  db.shots.push(...d.shots.filter(x => !known.has(x.i)));
+  db.nextIndex = Math.max(db.nextIndex, d.nextIndex || 0);
+  if (Array.isArray(d.endMarks)) db.endMarks = [...new Set([...db.endMarks, ...d.endMarks])].sort((a, b) => a - b);
+  if (Array.isArray(d.hist) && d.hist.length) db.hist = d.hist;
+  if (d.scores && typeof d.scores === 'object') for (const [k, v] of Object.entries(d.scores)) if (!(k in db.scores)) db.scores[k] = v;   // end scores of 2.2
+  save(); render();
+}
+$('box-restore').onclick = () => {
+  try { restoreFrom($('box-text').value); $('box').hidden = true; setStatus(t('backupRestored')); }
+  catch (err) { $('box-hint').textContent = t('invalidBackup') + err.message; }
+};
+$('csv').onclick = () => {
+  const rows = ['index,datetime_local,unix,peak_g,still_before_release_s,raise_s,draw_s,hold_s,aim_movement_deg,angle_deg,cant_deg,follow_down_deg,follow_right_deg,push_down_mm,push_right_mm,clock_exact,deleted,end_start_unix,end_score,end_values'];
+  const v = x => x === null || x === undefined ? '' : x;
+  const endOf = new Map();                         // arrow -> its end (with the end's score)
+  for (const sess of groupSessions(live(), db.settings, db.endMarks, setAt)) for (const e of sess.ends) for (const x of e.list) endOf.set(x, e);
+  for (const x of [...db.shots].sort((a, b) => a.t - b.t)) {
+    const d = x.d || {}, e = endOf.get(x), sc = e ? scoreFor(e) : null;
+    rows.push([x.i, x.t > 1600000000 ? new Date(x.t * 1000).toLocaleString('sv') : '', x.t, x.peak, x.aim,
+      v(d.raise), v(d.draw), v(d.hold), v(d.move), v(d.pitch), v(d.cant), v(d.drop), v(d.side), v(d.pushDown), v(d.pushRight),
+      x.flags & 1, x.flags & F_DEL ? 1 : 0, e ? e.start : '', sc ? scoreSum(sc.v) : '', sc ? sc.v.map(valText).join(' ') : ''].join(','));
+  }
+  exportText('PfeilZaehler3000.csv', rows.join('\n'), 'text/csv');
+};
+$('backup').onclick = async () => {
+  if (await exportText('PfeilZaehler3000-backup.json', JSON.stringify(db), 'application/json')) {
+    db.lastBackup = Date.now(); db.backupShots = db.shots.length; save();
+  }
+};
+$('restore').onclick = () => showText(t('restoreTitle'), '', true);
+$('box-file').onclick = () => $('file').click();
+$('file').onchange = async e => {
+  try { restoreFrom(await e.target.files[0].text()); $('box').hidden = true; setStatus(t('backupRestored')); }
+  catch (err) { setStatus(t('restoreFailed') + err.message); }
+  e.target.value = '';
+};
+
+// New end: no confirmation. The next arrow starts a new end.
+$('newend').onclick = async () => {
+  const now = Math.floor(Date.now() / 1000);
+  db.endMarks.push(now);
+  if (db.endMarks.length > 500) db.endMarks = db.endMarks.slice(-500);
+  db.ops.push({ k: 'end', t: now });                // tell the pod, so the watch starts a new end too
+  save(); render();
+  setStatus(t('newEndStarted'));
+  if (dev && dev.gatt.connected) { try { await flushOps(); } catch (e) {} }
+};
+
+// Reset today: delete today's arrows on this phone (with confirmation).
+$('resetday').onclick = async () => {
+  const today = dayKey(new Date());
+  const list = live().filter(x => x.t > 1600000000 && dayKey(new Date(x.t * 1000)) === today);
+  if (!confirm(t('confirmResetToday', { n: list.length }))) return;
+  await deleteArrows(list, true);
+  const now = Math.floor(Date.now() / 1000);
+  db.endMarks.push(now); db.ops.push({ k: 'end', t: now });
+  save(); render();
+  setStatus(t('todayDeleted', { n: list.length }));
+};
+
+// ---------- the arrows of one end: delete, restore, details ----------
+let lastDeleted = null;
+async function deleteArrows(list, del) {
+  for (const x of list) x.flags = del ? (x.flags | F_DEL) : (x.flags & ~F_DEL);
+  queueDelete(list.map(x => x.i), del);
+  save(); render();
+  if (dev && dev.gatt.connected) { try { await flushOps(); } catch (e) {} }
+}
+let sheetEnd = null, sheetNo = 0, openRows = new Set();
+function openSheet(end, no, editScore = false) {
+  sheetEnd = end; sheetNo = no; openRows = new Set();
+  scoreEdit = editScore ? ((scoreFor(end) || { v: [] }).v.slice()) : null;
+  $('sheet-title').textContent = t('sheetTitle', { e: no, arrows: t('arrows', { n: end.n }) });
+  $('sheet-sub').textContent = `${fmtDate(end.start)}, ${fmtTime(end.start)} · ${t('perEnd', { n: end.arrows })}`;
+  renderSheet();
+  $('sheet').hidden = false;
+}
+function detailHtml(x) {
+  const d = x.d, rows = [];
+  if (d) {
+    const esc = v => v.replace(/&/g, '&amp;');
+    const aimT = d.draw !== null && d.hold !== null ? t('aimTimeV', { v: f1(d.draw + d.hold), h: f1(d.hold) }) : d.hold !== null ? f1(d.hold) + ' s' : '–';
+    rows.push([esc(t('dRaise')), d.raise !== null ? f1(d.raise) + ' s' : '–'], [esc(t('dAimTime')), aimT]);
+    rows.push([t('dMove'), fmtMove(d.move)], [t('dAngle'), d.pitch === null ? '–' : (d.pitch >= 0 ? '+' : '') + d.pitch.toFixed(1) + '°']);
+    rows.push([t('dCant'), fmtCant(d.cant)], [t('dFollow'), fmtFollow(d)]);
+    rows.push([t('dPush'), fmtPush(d)], [t('dJolt'), x.peak + ' g']);
+  } else {
+    rows.push([t('dStill'), x.aim + ' s'], [t('dJolt'), x.peak + ' g']);
+    rows.push([t('noDetails'), null]);
+  }
+  rows.push([t('dTime', { t: new Date(x.t * 1000).toLocaleTimeString(LOC, { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }), null]);
+  return rows.map(([k, v]) => v === null ? `<div class="full small">${k}</div>` : `<div><span class="k">${k}</span><br>${v}</div>`).join('');
+}
+let scoreEdit = null;                               // values being entered for the open end, null = not editing
+function renderScore() {
+  const box = $('sheet-score'), sc = scoreFor(sheetEnd), n = sheetEnd.list.filter(x => !(x.flags & F_DEL)).length;
+  if (scoreEdit === null) {
+    const has = sc && sc.v.length;
+    box.innerHTML = `<div class="top"><div><div class="small">${t('score')}</div>` +
+      (has ? `<div class="tot">${t('scoreOf', { s: scoreSum(sc.v), m: sc.v.length * 10 })}</div>` : `<div class="small">${t('noScore')}</div>`) + `</div>` +
+      `<button class="btn ghost" id="score-edit">${has ? t('editScore') : t('enterScore')}</button></div>` +
+      (has ? `<div class="shown">${sc.pos ? faceSvg(sc.pos, { widened: false, cls: 'face small' }) : ''}<div class="vals">${sc.v.map(v => `<span class="val ${valClass(v)}">${valText(v)}</span>`).join('')}</div></div>` : '');
+    return;
+  }
+  const slots = Math.max(n, scoreEdit.length), face = db.settings.scoreInput === 'face';
+  let vals = '';
+  for (let k = 0; k < slots; k++) vals += k < scoreEdit.length ? `<button class="val ${valClass(scoreEdit[k].v)}" data-rm="${k}">${valText(scoreEdit[k].v)}</button>` : '<span class="val empty"></span>';
+  const input = face ? faceSvg(scoreEdit.map(e => e.p), { id: 'face-in' }) + `<div class="facem"><button class="val v-miss" data-v="0">M · ${t('miss')}</button></div>`
+    : `<div class="pad">${padValues().map(v => `<button class="${valClass(v)}" data-v="${v}">${valText(v)}</button>`).join('')}</div>`;
+  box.innerHTML = `<div class="top"><div class="seg"><button data-in="pad" class="${face ? '' : 'on'}">${t('inPad')}</button><button data-in="face" class="${face ? 'on' : ''}">${t('inFace')}</button></div><div class="tot">${scoreSum(scoreEdit.map(e => e.v))}</div></div>` +
+    `<div class="small">${t(face ? 'faceHint' : 'scoreHint')}</div><div class="vals">${vals}</div>${input}` +
+    `<div class="btns three"><button class="btn ghost" id="score-cancel">${t('cancel')}</button>` +
+    `<button class="btn ghost danger" id="score-clear">${sc ? t('deleteScore') : t('clearScore')}</button><button class="btn" id="score-save">${t('saveScore')}</button></div>`;
+}
+// entries: [{ v, p }] kept sorted high to low; the positions are kept only if every arrow has one
+const sortEntries = a => [...a].sort((x, y) => y.v - x.v);
+async function saveScore(entries) {
+  const key = String(sheetEnd.start), old = scoreFor(sheetEnd), e = sortEntries(entries);
+  for (const [k, sc] of Object.entries(db.scores)) if (sc === old) delete db.scores[k];   // replaces the one shown
+  const withPos = e.length > 0 && e.length <= 6 && e.every(x => x.p);
+  db.scores[key] = { v: e.map(x => x.v), pos: withPos ? e.map(x => x.p) : null, pending: true };
+  queueScore(sheetEnd.start);
+  save(); render(); renderScore();
+  if (dev && dev.gatt.connected) { try { await flushOps(); } catch (e) {} }
+}
+$('sheet-score').onclick = async e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.id === 'score-edit') { const sc = scoreFor(sheetEnd); scoreEdit = sc ? sc.v.map((v, k) => ({ v, p: sc.pos ? sc.pos[k] : null })) : []; renderScore(); return; }
+  if (b.dataset.in) { db.settings.scoreInput = b.dataset.in; save(); renderScore(); return; }
+  if (b.id === 'score-cancel') { scoreEdit = null; renderScore(); return; }
+  if (b.id === 'score-clear') { if (scoreEdit.length) { scoreEdit = []; renderScore(); return; } scoreEdit = null; await saveScore([]); return; }
+  if (b.id === 'score-save') { const v = scoreEdit; scoreEdit = null; await saveScore(v); setStatus(t('scoreSaved')); return; }
+  if (b.dataset.rm !== undefined) { scoreEdit.splice(+b.dataset.rm, 1); renderScore(); return; }
+  if (b.dataset.v !== undefined && scoreEdit.length < 24) { scoreEdit.push({ v: +b.dataset.v, p: null }); scoreEdit = sortEntries(scoreEdit); renderScore(); }
+};
+$('sheet-score').addEventListener('pointerup', e => {       // tap on the target face
+  const svg = e.target.closest && e.target.closest('#face-in');
+  if (!svg || scoreEdit === null || scoreEdit.length >= 24) return;
+  const h = faceHit(svg, e); if (!h) return;
+  scoreEdit.push({ v: h[0], p: h[1] }); scoreEdit = sortEntries(scoreEdit); renderScore();
+});
+// after a sync: ends of today's session without a score (only once scoring is in use)
+let unscoredList = [];
+function unscoredNote() {
+  const sess = groupSessions(live(), db.settings, db.endMarks, setAt);
+  if (!sess.length) return '';
+  const last = sess[sess.length - 1];
+  if (dayKey(new Date(last.start * 1000)) !== dayKey(new Date())) return '';
+  if (!sessionScore(last)) return '';
+  const open = currentEnd() > 0 ? last.ends.slice(0, -1) : last.ends;   // the end still being shot is not due yet
+  unscoredList = open.map((e, k) => ({ e, k })).filter(x => !scoreFor(x.e));
+  return unscoredList.length ? ' ' + t('unscored', { n: unscoredList.length }) + ` <button class="btn ghost" id="score-now">${t('scoreNow')}</button>` : '';
+}
+function renderSheet() {
+  renderScore();
+  const list = sheetEnd.list;
+  $('sheet-avg').textContent = avgLine(summary(list.filter(x => !(x.flags & F_DEL))));
+  $('sheet-list').innerHTML = list.map((x, k) => {
+    const gone = x.flags & F_DEL;
+    const when = k === 0 ? fmtTime(x.t) : fmtSplit(x.t - list[k - 1].t);
+    const quick = x.d && x.d.hold !== null ? `<span class="small">${t('avgAim', { v: f1((x.d.draw || 0) + x.d.hold) })}</span>` : '';
+    return `<div class="arow${gone ? ' gone' : ''}${openRows.has(k) ? ' open' : ''}" data-row="${k}"><div class="line">` +
+      `<span class="no">${k + 1}</span><span class="tm" data-open="${k}" role="button" aria-expanded="${openRows.has(k)}">${when} ${quick}${icon('chev', 'i chev')}</span>` +
+      (gone ? `<button class="icon-btn undo" data-k="${k}" aria-label="${t('restoreArrow', { n: k + 1 })}" title="${t('restoreArrowTip')}">${icon('undo')}</button>`
+            : `<button class="icon-btn del" data-k="${k}" aria-label="${t('deleteArrow', { n: k + 1 })}" title="${t('del')}">${icon('trash')}</button>`) +
+      `</div><div class="det">${detailHtml(x)}</div></div>`;
+  }).join('');
+}
+$('sessions').onclick = e => {
+  const b = e.target.closest('button.end'); if (!b) return;
+  const end = shownSessions[+b.dataset.s] && shownSessions[+b.dataset.s].ends[+b.dataset.e];
+  if (end) openSheet(end, +b.dataset.e + 1);
+};
+$('sheet-list').onclick = async e => {
+  const o = e.target.closest('[data-open]');
+  if (o) { const k = +o.dataset.open; openRows.has(k) ? openRows.delete(k) : openRows.add(k); renderSheet(); return; }
+  const b = e.target.closest('button[data-k]'); if (!b) return;
+  const x = sheetEnd.list[+b.dataset.k];
+  await deleteArrows([x], !(x.flags & F_DEL));
+  renderSheet();
+};
+$('sheet-delend').onclick = async () => {
+  const list = sheetEnd.list.filter(x => !(x.flags & F_DEL));
+  $('sheet').hidden = true;
+  if (!list.length) return;
+  await deleteArrows(list, true);
+  lastDeleted = list;
+  setStatus(`${t('endDeleted', { n: list.length })} <button class="btn ghost" id="undo">${t('undo')}</button>`);
+};
+$('sheet-done').onclick = () => { $('sheet').hidden = true; scoreEdit = null; };
+$('status').onclick = async e => {
+  if (e.target.closest('#score-now') && unscoredList.length) {
+    const sess = groupSessions(live(), db.settings, db.endMarks, setAt), last = sess[sess.length - 1];
+    const first = unscoredList[0];
+    openSheet(first.e, first.k + 1, true);
+    return;
+  }
+  if (!e.target.closest('#undo') || !lastDeleted) return;
+  await deleteArrows(lastDeleted, false);
+  setStatus(t('restoredN', { n: lastDeleted.length }));
+  lastDeleted = null;
+};
+
+// Reset: delete the whole history on this phone. Arrows already on the pod are NOT imported
+// again (nextIndex is kept), and if the pod is connected its memory is cleared as well.
+$('reset').onclick = async () => {
+  const n = db.shots.length;
+  if (!confirm(t('confirmResetAll', { n }))) return;
+  if (chars.ctrl && dev && dev.gatt.connected) {
+    try {
+      await sync(false);                                   // pick up anything new first, so it is not imported later
+      info = parseInfo(await chars.info.readValue());
+      const c = new Uint8Array(5); c[0] = 2; new DataView(c.buffer).setUint32(1, info.total, true);
+      await chars.ctrl.writeValue(c);                      // clear the pod's memory
+      if (chars.stats) { const z = new Uint8Array(5); z[0] = 6; await chars.ctrl.writeValue(z); }   // and its day counters
+      db.nextIndex = Math.max(db.nextIndex, info.total);
+    } catch (e) { /* phone data is reset anyway */ }
+  }
+  db.shots = [];
+  db.endMarks = [];
+  db.ops = db.ops.filter(o => o.k === 'set');
+  save(); render();
+  setStatus(t('allReset') + (dev && dev.gatt.connected ? t('podCleared') : ''));
+};
+
+// language: static texts, then everything drawn by script
+function applyLang() {
+  LANG = pickLang(db.settings.lang); LOC = LOCALES[LANG];
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); });
+  render(); updateButtons();
+  if (!$('sheet').hidden && sheetEnd) { $('sheet-title').textContent = t('sheetTitle', { e: sheetNo, arrows: t('arrows', { n: sheetEnd.n }) }); renderSheet(); }
+}
+applyLang();
+setInterval(renderEnd, 10000);
+if (typeof window !== 'undefined') window.PfeilZaehler3000 = { groupSessions, totals, buckets, parseData, parseInfo, parseStats, parseDetail, parseDetail2, parseSettings, summary, fmtSplit, currentEnd, queueDelete, packVals, unpackVals, scoreFor, sessionScore, getDb: () => db };
+</script>
+</body>
+</html>

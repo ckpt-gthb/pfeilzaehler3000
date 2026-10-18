@@ -1,0 +1,19 @@
+<fitContributions>
+    <!-- shown in Garmin Connect: totals in the activity summary, running count as a chart -->
+    <fitField id="0" displayInChart="false" displayInActivitySummary="true" sortOrder="0" precision="0"
+              dataLabel="@Strings.ArrowsLabel" unitLabel="@Strings.ArrowsUnit"/>
+    <fitField id="1" displayInChart="false" displayInActivitySummary="true" sortOrder="1" precision="0"
+              dataLabel="@Strings.EndsLabel" unitLabel="@Strings.EndsUnit"/>
+    <fitField id="2" displayInChart="true" sortOrder="2" precision="0" chartTitle="@Strings.ArrowsChart"
+              dataLabel="@Strings.ArrowsLabel" unitLabel="@Strings.ArrowsUnit" fillColor="#2F6B4F"/>
+    <!-- every end is a lap: arrows of that end in the lap list -->
+    <fitField id="3" displayInChart="false" displayInActivityLaps="true" sortOrder="3" precision="0"
+              dataLabel="@Strings.ArrowsLabel" unitLabel="@Strings.ArrowsUnit"/>
+    <!-- scoring: the end's score in the lap list, the session's score and average per arrow in the summary -->
+    <fitField id="4" displayInChart="false" displayInActivityLaps="true" sortOrder="4" precision="0"
+              dataLabel="@Strings.ScoreLabel" unitLabel="@Strings.ScoreUnit"/>
+    <fitField id="5" displayInChart="false" displayInActivitySummary="true" sortOrder="5" precision="0"
+              dataLabel="@Strings.ScoreLabel" unitLabel="@Strings.ScoreUnit"/>
+    <fitField id="6" displayInChart="false" displayInActivitySummary="true" sortOrder="6" precision="1"
+              dataLabel="@Strings.ScoreAvgLabel" unitLabel="@Strings.ScoreUnit"/>
+</fitContributions>

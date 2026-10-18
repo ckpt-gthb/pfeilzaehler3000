@@ -1,0 +1,11 @@
+<strings>
+    <string id="AppName">PfeilZaehler3000</string>
+    <string id="ArrowsLabel">Pfeile</string>
+    <string id="ArrowsUnit">Pfeile</string>
+    <string id="EndsLabel">Passen</string>
+    <string id="EndsUnit">Passen</string>
+    <string id="ArrowsChart">Pfeile</string>
+    <string id="ScoreLabel">Ergebnis</string>
+    <string id="ScoreUnit">Ringe</string>
+    <string id="ScoreAvgLabel">Ergebnis pro Pfeil</string>
+</strings>
