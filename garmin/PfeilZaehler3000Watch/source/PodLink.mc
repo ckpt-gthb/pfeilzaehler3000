@@ -50,7 +50,7 @@ const POD_NAME    = "PfeilZaehler3000";
 // 5–8 = score entry examples: 5 numpad, 6 dial, 7 PiMalDaumen, 8 end summary;
 // 9 = main screen with today as the big number, pod connected (battery green), recording
 const DEMO = 0;
-const APP_VERSION = "2.3";   // shown in the settings; change together with the CHANGELOG
+const APP_VERSION = "2.3.1";   // shown in the settings; change together with the CHANGELOG
 const RECONNECT_S = 30;      // after this long without the pod: search again
 
 class PodLink extends BluetoothLowEnergy.BleDelegate {
@@ -112,12 +112,8 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     var scores = [];             // this session's end scores: [start, total, arrows]
     var promptedStart = -1;      // the end the score entry already opened for by itself
     var resting = false;         // the pod reports the bow resting still
-    // ---- owner lock (pod firmware 2.3) ----
-    var podKey = null;           // this watch's own random key (8 bytes)
     var podFw = 0;               // pod firmware from INFO, e.g. 23 = 2.3
-    var podLocked = false;       // the pod has owners
-    var podAuth = false;         // this watch is one of them (logged in)
-    var claimSent = false;       // asked to become an owner during this connection
+    var podPatch = 0;            // third digit (2.3.1 and later), INFO byte 13
 
     // ---- activity recording ----
     var session = null;
@@ -151,32 +147,7 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
         scoreMode = numPref("scoreMode", 0, 0, 2);
         scoreDesign = numPref("scoreDesign", 0, 0, 2);
         restoreSession();
-        var k = Storage.getValue("podKey");
-        if (k instanceof Array && (k as Array).size() == 8) {
-            podKey = k as Array;
-        } else {
-            Math.srand(System.getTimer() ^ Time.now().value());
-            podKey = [];
-            for (var i = 0; i < 8; i++) {
-                podKey.add(Math.rand() % 256);
-            }
-            Storage.setValue("podKey", podKey);
-        }
-    }
-
-    // [cmd][8-byte key], for the owner lock: 0x10 log in, 0x11 become an owner (+ u8 0)
-    function keyBytes(cmd) {
-        var b = new [cmd == 0x11 ? 10 : 9]b;
-        b[0] = cmd;
-        for (var i = 0; i < 8; i++) {
-            b[1 + i] = podKey[i] as Number;
-        }
-        return b;
-    }
-
-    // a pod locked to other devices: counts only, nothing this watch sends is taken
-    function lockedOut() {
-        return podLocked && !podAuth;
+        Storage.deleteValue("podKey");      // left over from the owner lock of 2.3
     }
 
     // The session survives a restart of the app (e.g. after leaving it by mistake) if the last
@@ -551,8 +522,6 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
             setupStep = 0;
             status = :lost;
             resting = false;
-            podAuth = false;
-            claimSent = false;
             lostSince = Time.now().value();
         }
         WatchUi.requestUpdate();
@@ -577,12 +546,6 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
                 return;
             }
         }
-        // step 1d: log in (pod firmware 2.3 with an owner lock; older pods ignore it)
-        if (setupStep != 8 && ctrlCh != null) {
-            setupStep = 8;
-            ctrlCh.requestWrite(keyBytes(0x10), { :writeType => BluetoothLowEnergy.WRITE_TYPE_WITH_RESPONSE });
-            return;
-        }
         writeClock();
     }
 
@@ -603,10 +566,6 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     }
 
     function onCharacteristicWrite(ch, st) {
-        if (setupStep == 8) {
-            writeClock();
-            return;
-        }
         if (setupStep == 2) {
             setupStep = 3;                       // step 3: read the counters once
             if (statsCh != null) {
@@ -682,17 +641,7 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
         }
         resting = r;
         podFw = v[12] as Number;
-        if (v.size() >= 15) {
-            podLocked = ((v[11] as Number) & 8) != 0;
-            podAuth = (v[13] as Number) == 1;
-            var usb = ((v[11] as Number) & 16) != 0;
-            // locking on the phone while the pod is on USB: the watch joins by itself
-            if (podLocked && usb && !podAuth && !claimSent && setupStep == 4) {
-                claimSent = true;
-                queue.add([:ctrl, keyBytes(0x11)]);
-                sendNext();
-            }
-        }
+        podPatch = (v.size() >= 14) ? (v[13] as Number) : 0;
     }
 
     // end complete and the bow put on the stand: open the score entry, once per end

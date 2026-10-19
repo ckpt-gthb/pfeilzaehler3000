@@ -36,11 +36,10 @@ The phone page and the watch write it on every connection.
 | 4 | u32 | index of the oldest record still in the pod |
 | 8 | u16 | battery voltage (mV) |
 | 10 | u8 | memory used (%) |
-| 11 | u8 | flags: bit0 clock set since start, bit1 awake, bit2 (2.2) bow resting: turning slower than 1.5 °/s for 4 s, at least 4 s after the last arrow (e.g. on the stand), bit3 (2.3) the pod has owners, bit4 (2.3) on USB power (owners can be added) |
-| 12 | u8 | firmware version (23 = 2.3, 123 = debug build of 2.3; 22 / 122 = 2.2; 21 / 121 = 2.1; 20 / 120 = 2.0) |
-| 13 | u8 | (2.3) 1 = this connection is logged in as an owner; only in notifications, a read gives 0 |
-| 14 | u8 | (2.3) number of owners (0–4) |
-| 15 | 5 bytes | reserved, 0 |
+| 11 | u8 | flags: bit0 clock set since start, bit1 awake, bit2 (2.2) bow resting: turning slower than 1.5 °/s for 4 s, at least 4 s after the last arrow (e.g. on the stand) |
+| 12 | u8 | firmware version (23 = 2.3 and 2.3.x, 123 = debug build of 2.3; 22 / 122 = 2.2; 21 / 121 = 2.1; 20 / 120 = 2.0) |
+| 13 | u8 | (2.3.1) third digit of the firmware version (1 = 2.3.1) |
+| 14 | 6 bytes | reserved, 0 |
 
 Memory used counts records and shot details together. Notified after every record, deletion, end
 mark, wake-up and power-saving switch.
@@ -73,10 +72,6 @@ Notified together with INFO.
 | `0A` 00 00 00 00 | Calibration step 2: the arrow points at the ground; the pod finds its mounting point |
 | `0E` 00 00 00 00 | (2.2) Calibration step 3: the bow is tilted far to the side; the pod works out how the ADXL375 sits relative to the other sensor (needed for the bow push) |
 | `0B` u32 start, 3 bytes values, u8 part — or u32 start, 3 bytes values, 12 bytes positions | (2.2) End score, see below |
-| `10` 8-byte key | (2.3) Log in as an owner |
-| `11` 8-byte key, u8 mode | (2.3) Become an owner; only while the pod is on USB power. Mode 1 = remove all other owners first |
-| `12` 8-byte key | (2.3) Keep only this owner (logged in only) |
-| `13` 00 00 00 00 | (2.3) Remove all owners: the pod is open again (logged in only) |
 
 Commands 04–07, 09–0B and 0E are processed in the main loop, up to 8 can be queued (20 bytes each).
 
@@ -177,14 +172,3 @@ starts (angles in 0.5°, no bow push).
 A jolt counts as an arrow only if the bow was still for 3 to 20 s right before it and the jolt
 reached at least 25 g. Shorter stillness (bow being assembled or set down), longer stillness (pod
 lying on a table) and weaker bumps are not stored.
-
-## Owner lock (2.3)
-
-A pod without owners works as before: every connection may write and download. A pod with owners
-accepts writes to CTRL, SETTINGS and TIME, and the download (`01`), only from a connection that
-logged in with `10` and an owner's key; reads and notifications of INFO and STATS stay open, so
-others still see the counts. Each phone or watch makes its own random 8-byte key and logs in right
-after connecting, before it writes the clock. The pod answers every `10`–`13` with an INFO
-notification whose byte 13 tells each connection whether it is logged in. Owners are added with
-`11` only while VBUS is present (INFO bit 4); up to 4 keys are kept, a fifth replaces the oldest.
-The keys are stored in flash (`/owners.bin`).

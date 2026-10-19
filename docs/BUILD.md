@@ -1,15 +1,15 @@
 # PfeilZaehler3000 – Build and User Guide
 
 Automatic arrow counter for recurve, barebow and compound bows.
-Release 2.3
+Release 2.3.1
 
 | Part | Version |
 |---|---|
-| Pod firmware | 2.3 (`firmware/PfeilZaehler3000`) |
-| Debug firmware | 2.3-debug (`firmware/PfeilZaehler3000Debug`) |
-| Phone page | 2.3 (`app/index.html`), English, German, Polish |
+| Pod firmware | 2.3.1 (`firmware/PfeilZaehler3000`) |
+| Debug firmware | 2.3.1-debug (`firmware/PfeilZaehler3000Debug`) |
+| Phone page | 2.3.1 (`app/index.html`), English, German, Polish |
 | Report page | 2.3 (`app/report.html`), English, German, Polish |
-| Garmin watch app | 2.3 (`garmin/PfeilZaehler3000Watch`), English, German, Polish |
+| Garmin watch app | 2.3.1 (`garmin/PfeilZaehler3000Watch`), English, German, Polish |
 | Housing | v3 (`housing/`), washer since 2.3 |
 
 ![The assembled pod](images/pod-closed.png)
@@ -408,20 +408,6 @@ The settings show the result, e.g. *Calibrated, pod on the back of the riser*. I
 was not tilted far enough, the calibration asks to start again. Until it is calibrated, the first
 shot counts as cant 0.
 
-**Owner lock** (pod firmware 2.3). Without it, any phone nearby with this page can change or
-clear the pod. With it, only your own devices can; others see only the counts.
-
-1. Plug the pod into USB (charger or computer) and connect the phone.
-2. In *Settings → Owner lock*, tap **Lock to this phone**.
-3. Open the watch app while the pod is still plugged in: the watch adds itself.
-4. Unplug the pod. From now on the phone and the watch log in by themselves.
-
-Up to 4 devices can be owners; adding a fifth removes the oldest. **Only this phone** removes all
-other owners, **Unlock** removes the lock. A phone that is not an owner shows *Locked to other
-devices* and syncs nothing. New owners can only be added while the pod is on USB, so nobody at the
-range can take your pod over. If a phone's browser data is deleted, it loses its key: plug in the
-pod and lock it to that phone again.
-
 **Export & backup**
 
 - **Export CSV** – one line per arrow: index, local date and time, unix time, jolt (g), still time
@@ -634,12 +620,11 @@ The values are at the top of the firmware file:
 | Pod hangs after the battery was soldered | Flash the debug firmware and read the Serial Monitor (section 14). |
 | Ends often one arrow short | Lower `SPIKE_G`. Check that the sensor screws and the mounting bolt are tight. |
 | Extra arrows | Raise `MIN_AIM_MS` or `SPIKE_G`. Putting the bow down hard can look like a shot. |
-| Phone: *Locked to other devices* / watch: *Pod A3F2 locked* | The pod has an owner lock and this device is not an owner. Plug the pod into USB and tap *Lock to this phone*; open the watch app while it is plugged in. |
 | The cant drifts the same way during the ends | The pod turns on its bolt: tighten it, and use the washer (8.5). |
 | Battery empty after a few days | Check on the Serial Monitor that the pod shows `-> idle` after 3 minutes. The debug firmware never sleeps. |
 | "No Web Bluetooth" on the phone page | Open it over https in Chrome or Edge, or in Bluefy on iPhone. |
 | Arrows listed without a date | The pod restarted with an empty battery and had no clock. Connect the phone page after charging. |
-| Watch shows "Update pod firmware" | Flash the current pod firmware (2.3). |
+| Watch shows "Update pod firmware" | Flash the current pod firmware (2.3.1). |
 | Watch stays at "Pod … in range?" | Check the distance to the pod and that the pod is charged. |
 | Phone or watch connected to another archer's pod | Phone: **Choose pod** and pick your own name. Watch: hold UP → *Use a different pod*, confirm, and keep only your own pod nearby. |
 | No raise / draw times | The bow was not lowered before the shot, or the history was empty after the pod woke up. Hold and the other details are still measured. |
@@ -650,7 +635,7 @@ The values are at the top of the firmware file:
 
 ## 14. Debug firmware
 
-`firmware/PfeilZaehler3000Debug` has the same functions and Bluetooth interface as firmware 2.3,
+`firmware/PfeilZaehler3000Debug` has the same functions and Bluetooth interface as firmware 2.3.1,
 so the phone page and the watch work with it. In addition it:
 
 - waits up to 5 s for the Serial Monitor and prints the reset reason,
@@ -669,15 +654,59 @@ Use it for diagnosis only, then upload the normal firmware again.
 
 | Path | Content |
 |---|---|
-| `firmware/PfeilZaehler3000/` | Pod firmware 2.3 (Arduino) |
+| `firmware/PfeilZaehler3000/` | Pod firmware 2.3.1 (Arduino) |
 | `firmware/PfeilZaehler3000Debug/` | Debug firmware |
-| `app/index.html` | Phone page 2.3 |
+| `app/index.html` | Phone page 2.3.1 |
 | `app/report.html` | Report page 2.3 |
-| `garmin/PfeilZaehler3000Watch/` | Garmin watch app 2.3 (Connect IQ project) |
+| `garmin/PfeilZaehler3000Watch/` | Garmin watch app 2.3.1 (Connect IQ project) |
 | `housing/` | STL and 3MF files (incl. the TPU washer), OpenSCAD source `pod.scad`, insert test |
 | `docs/` | This guide, Bluetooth protocol, images |
 
-## 16. Licence and safety
+## 16. Safety, data and licence
+
+### On the bow
+- Tighten the bolt firmly and check that the pod sits tight **before every session**. A loose pod
+  can turn or fall off at the release. The optional washer (`housing/PfeilZaehler3000-washer.stl`,
+  TPU, or an 8.4 × 18 × 1 mm rubber washer) stops it from turning on the riser.
+- Before the first shot, draw the bow slowly and check that nothing touches the pod: string, arrow,
+  fletching, your bow hand, arm guard or sling. Choose another bushing if anything comes close.
+- Don't mount it in place of a stabilizer you need, and never point a drawn bow at anyone while
+  checking the fit.
+- The pod is not waterproof. Dry it after shooting in the rain; don't leave it in a hot car.
+
+### Battery (LiPo)
+- Use a cell with a protection circuit, and check the polarity twice before soldering.
+- Charge only over the pod's USB-C port, at room temperature, and not unattended or overnight.
+- A swollen, dented or hot battery is not used again: take it out and recycle it (battery
+  collection point, not the household waste).
+- Never short-circuit, puncture or squeeze the cell. Keep the pod away from small children.
+
+### Building
+- The soldering iron and the heat-set inserts get hotter than 200 °C. Work on a heat-proof mat,
+  with fresh air, and wash your hands after soldering. Under 18: with an adult.
+- Print the housing in PETG (or PETG-CF), not PLA, and the washer in TPU.
+
+### Your data
+- The phone page keeps everything in your phone's browser; nothing is sent to this repository or to
+  anyone else. Make a backup now and then: clearing the browser data deletes the history.
+- A backup or a saved report contains every arrow with its date and time, so it shows when and how
+  often you train. Share it only with people you trust, e.g. your coach.
+- When you post photos of it, check what's in the background (club, range, car plates) and turn off
+  location tags.
+
+### Rules and limits
+- World Archery rules – and most national federations – do not allow electronic devices on the bow
+  in competition. Check your federation's and your club's rules; this is a training tool.
+- The pod can miss an arrow or count something that isn't one. Its counts and scores are not
+  official.
+- Questions and bug reports belong in public [GitHub issues](https://github.com/ckpt-gthb/pfeilzaehler3000/issues),
+  not private messages. Security problems: see `SECURITY.md`.
+
+This is a hobby project, provided as it is, without any warranty; you build and use it at your
+own risk. Kinetic, Garmin, Epix, Seeed, Adafruit and Bluefy are trademarks of their respective
+owners; this project is not affiliated with them.
+
+### Licence
 
 PfeilZaehler3000 is free for personal, non-commercial use. The software (firmware, phone page,
 report page, watch app) is licensed under the **PolyForm Strict License 1.0.0**, with additional
@@ -686,12 +715,3 @@ non-commercial use; the housing models, drawings and this guide under **Creative
 Attribution-NonCommercial-NoDerivatives 4.0 (CC BY-NC-ND 4.0)**. Selling pods, kits, prints or apps
 based on it needs a commercial licence from the licensor (ckpt-gthb). See `LICENSE`,
 `LICENSE-hardware` and `CONTRIBUTING.md`.
-
-This is a hobby project without any warranty; you build and use it at your own risk. Lithium
-polymer cells can catch fire if they are damaged, short-circuited or charged incorrectly: use cells
-with a protection circuit, never puncture or squeeze them, charge only over USB-C at room
-temperature and not unattended, and recycle a swollen cell. The soldering iron and the inserts get
-hotter than 200 °C: under 18, build it with an adult. Check that the pod is tight and touches
-nothing at full draw before every session (8.5). World Archery and most federations do not allow
-electronics on the bow in competition. More in the README under *Safety, privacy and rules*. Kinetic, Garmin, Epix, Seeed, Adafruit and
-Bluefy are trademarks of their respective owners; this project is not affiliated with them.

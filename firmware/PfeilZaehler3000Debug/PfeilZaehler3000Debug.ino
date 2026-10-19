@@ -165,7 +165,8 @@ struct CtrlOp {                              // control command waiting for the 
 
 #define MAX_CONNECTIONS   3        // phone page + Garmin watch, plus one spare for a stale link
 
-#define FW_VERSION        123  // debug build of v2.3
+#define FW_VERSION        123  // debug build of v2.3.1
+#define FW_PATCH          1    // third digit, sent in INFO byte 13 (2.3.1)
 
 // =====================================================================
 //  I2C helpers
@@ -760,12 +761,6 @@ static void shotFeedback(bool stored) {
 //                                      (works out how the ADXL375 sits, needed for the bow push)
 //                          [0x0B, u32 start of the end, 3 bytes values, u8 part] = end score, or
 //                          [0x0B, u32 start, 3 bytes values, 12 bytes positions] (20 bytes, part 0)
-//                          (2.3) [0x10, 8-byte key] = log in as an owner; [0x11, key, u8 1 = only this
-//                                 device] = become an owner (only on USB power); [0x12, key] = remove the
-//                                 other owners; [0x13, 0] = remove all owners. With owners, only a logged-in
-//                                 connection may write CTRL, SETTINGS and TIME and download the records.
-//                          INFO (2.3): flags bit3 = has owners, bit4 = on USB power; byte 13 = this
-//                                 connection is logged in (in notifications); byte 14 = number of owners
 //   0004 DATA  notify      [u32 firstIndex][ShotRec][ShotRec]   end marker: [0xFFFFFFFF][u32 total]
 //                          (records with flag bit6 are end marks, bit7 = deleted)
 //   0005 STATS read/notify 20 bytes: arrows u32, today u16, week u16, month u16, battery mV u16,
@@ -801,19 +796,6 @@ volatile uint8_t  opHead = 0, opTail = 0;
 volatile bool     tzChanged = false;
 volatile bool     settingsPending = false;  // new settings from phone / watch, saved in loop()
 
-// ---- owner lock (2.3): a pod with owners accepts changes only from them ----
-// Each phone / watch makes its own random 8-byte key. It becomes an owner with CTRL 0x11 while
-// the pod is on USB power (charger or computer, so nobody at the range can take a pod over) and
-// proves it after every connection with CTRL 0x10. Without owners the pod is open, as before 2.3.
-#define OWNER_FILE  "/owners.bin"            // [u32 magic][u8 count][MAX_OWNERS x 8-byte key]
-#define OWNER_MAGIC 0x0E4E5223UL
-#define MAX_OWNERS  4
-uint8_t       ownerKeys[MAX_OWNERS][8];
-uint8_t       ownerCount = 0;
-volatile bool connAuth[BLE_MAX_CONNECTION];  // this connection proved it is an owner
-volatile bool ownersDirty = false;           // owner list changed in a callback: saved in loop()
-volatile bool infoPending = false;           // INFO to send again (e.g. after a login)
-bool          usbPowered = false;            // VBUS present: new owners may be added
 volatile uint8_t  newArrows = 6;
 volatile uint16_t newPause = 100;
 volatile int8_t   newMount = -1;            // -1 = unchanged
@@ -861,16 +843,12 @@ static void updateInfo(bool notify) {
   memcpy(b + 8, &mv, 2);
   b[10] = pct;
   b[11] = (timeExact ? 1 : 0) | (isActive ? 2 : 0) | (bowResting ? 4 : 0);
-  b[11] |= (ownerCount ? 8 : 0) | (usbPowered ? 16 : 0);   // bit3 locked, bit4 on USB power
   b[12] = FW_VERSION;
-  b[14] = ownerCount;
+  b[13] = FW_PATCH;
   chInfo.write(b, 20);
   if (!notify) return;
   for (uint16_t c = 0; c < BLE_MAX_CONNECTION; c++)          // every connected phone / watch
-    if (Bluefruit.connected(c) && chInfo.notifyEnabled(c)) {
-      b[13] = connAuth[c] ? 1 : 0;             // this connection is an owner
-      chInfo.notify(c, b, 20);
-    }
+    if (Bluefruit.connected(c) && chInfo.notifyEnabled(c)) chInfo.notify(c, b, 20);
 }
 
 static void publishSettings(bool notify) {
@@ -880,87 +858,8 @@ static void publishSettings(bool notify) {
     if (Bluefruit.connected(c) && chSettings.notifyEnabled(c)) chSettings.notify(c, (const uint8_t *)&settings, sizeof(settings));
 }
 
-static bool usbPower() {
-  uint32_t st = 0;
-  if (sd_power_usbregstatus_get(&st) != NRF_SUCCESS) return false;
-  return (st & POWER_USBREGSTATUS_VBUSDETECT_Msk) != 0;
-}
-
-static bool mayChange(uint16_t conn) {         // no owners: open to everyone
-  return ownerCount == 0 || (conn < BLE_MAX_CONNECTION && connAuth[conn]);
-}
-
-static int ownerIndex(const uint8_t *key) {
-  for (int i = 0; i < ownerCount; i++) if (memcmp(ownerKeys[i], key, 8) == 0) return i;
-  return -1;
-}
-
-static void loadOwners() {
-  ownerCount = 0;
-  File f(InternalFS);
-  if (!f.open(OWNER_FILE, FILE_O_READ)) return;
-  uint32_t magic = 0;
-  uint8_t n = 0;
-  if (f.read((uint8_t *)&magic, 4) == 4 && magic == OWNER_MAGIC && f.read(&n, 1) == 1 && n <= MAX_OWNERS &&
-      f.read((uint8_t *)ownerKeys, sizeof(ownerKeys)) == (int)sizeof(ownerKeys)) ownerCount = n;
-  f.close();
-}
-
-static void saveOwners() {
-  InternalFS.remove(OWNER_FILE);
-  if (ownerCount == 0) return;                 // no file = open pod
-  File f(InternalFS);
-  uint32_t magic = OWNER_MAGIC;
-  if (f.open(OWNER_FILE, FILE_O_WRITE)) {
-    f.write((const uint8_t *)&magic, 4);
-    f.write(&ownerCount, 1);
-    f.write((const uint8_t *)ownerKeys, sizeof(ownerKeys));
-    f.close();
-  }
-}
-
-// CTRL 0x10-0x13; true = handled here
-static bool ownerCommand(uint16_t conn, const uint8_t *data, uint16_t len) {
-  uint8_t cmd = data[0];
-  if (cmd < 0x10 || cmd > 0x13 || conn >= BLE_MAX_CONNECTION) return cmd >= 0x10 && cmd <= 0x13;
-  if (cmd == 0x10) {                           // [0x10][key] log in
-    if (len >= 9 && ownerIndex(data + 1) >= 0) connAuth[conn] = true;
-    infoPending = true;                        // the answer: byte 13 of INFO to this connection
-    return true;
-  }
-  if (cmd == 0x11) {                           // [0x11][key][u8 1 = this device only] become an owner
-    if (len < 9 || !usbPowered) { infoPending = true; return true; }
-    if (len >= 10 && data[9] == 1) ownerCount = 0;
-    if (ownerIndex(data + 1) < 0) {
-      if (ownerCount == MAX_OWNERS) {          // full: the oldest key goes
-        memmove(ownerKeys[0], ownerKeys[1], 8 * (MAX_OWNERS - 1));
-        ownerCount--;
-      }
-      memcpy(ownerKeys[ownerCount++], data + 1, 8);
-    }
-    if (len >= 10 && data[9] == 1) for (int c = 0; c < BLE_MAX_CONNECTION; c++) connAuth[c] = false;
-    connAuth[conn] = true;
-    ownersDirty = true;
-    infoPending = true;
-    return true;
-  }
-  if (!mayChange(conn)) { infoPending = true; return true; }
-  if (cmd == 0x12) {                           // [0x12][key] keep only this device
-    if (len >= 9 && ownerIndex(data + 1) >= 0) {
-      memcpy(ownerKeys[0], data + 1, 8);
-      ownerCount = 1;
-      for (int c = 0; c < BLE_MAX_CONNECTION; c++) connAuth[c] = (c == conn);
-    }
-  } else {                                     // [0x13] unlock: no owners, open to everyone
-    ownerCount = 0;
-  }
-  ownersDirty = true;
-  infoPending = true;
-  return true;
-}
-
 static void onSettingsWrite(uint16_t conn, BLECharacteristic *, uint8_t *data, uint16_t len) {
-  if (len < 3 || !mayChange(conn)) return;
+  if (len < 3) return;
   uint16_t p;
   memcpy(&p, data + 1, 2);
   newArrows = data[0] < 1 ? 1 : (data[0] > 24 ? 24 : data[0]);
@@ -971,7 +870,7 @@ static void onSettingsWrite(uint16_t conn, BLECharacteristic *, uint8_t *data, u
 }
 
 static void onTimeWrite(uint16_t conn, BLECharacteristic *, uint8_t *data, uint16_t len) {
-  if (len < 4 || !mayChange(conn)) return;
+  if (len < 4) return;
   uint32_t t;
   memcpy(&t, data, 4);
   if (len >= 8) {                              // [u32 unix time][i32 local offset in seconds]
@@ -992,8 +891,6 @@ static void onCtrlWrite(uint16_t conn, BLECharacteristic *, uint8_t *data, uint1
   if (len < 5) return;
   uint32_t v;
   memcpy(&v, data + 1, 4);
-  if (ownerCommand(conn, data, len)) return;
-  if (!mayChange(conn)) return;                // locked to other devices: read only
   if (data[0] == 0x01) { dumpFrom = v; dumpConn = conn; dumpPending = true; }
   if (data[0] == 0x02) { clearExpect = v; clearPending = true; }
   if ((data[0] >= 0x04 && data[0] <= 0x07) || (data[0] >= 0x09 && data[0] <= 0x0B) || data[0] == 0x0E) {   // queue for loop(): no flash work in a callback
@@ -1054,7 +951,6 @@ static void processOps() {
 }
 
 static void onConnect(uint16_t h) {
-  if (h < BLE_MAX_CONNECTION) connAuth[h] = false;
   if (connCount < MAX_CONNECTIONS) connCount++;
 #if CALIBRATION_LOG
   Serial.printf("BLE connect #%u (%u connected)\n", h, connCount);
@@ -1063,7 +959,6 @@ static void onConnect(uint16_t h) {
   if (connCount < MAX_CONNECTIONS) Bluefruit.Advertising.start(0);   // stay visible for the 2nd device
 }
 static void onDisconnect(uint16_t h, uint8_t reason) {
-  if (h < BLE_MAX_CONNECTION) connAuth[h] = false;
   if (connCount > 0) connCount--;
 #if CALIBRATION_LOG
   Serial.printf("BLE disconnect #%u reason 0x%02X (%u connected)\n", h, reason, connCount);
@@ -1855,7 +1750,7 @@ void setup() {
   bleBegin();
   DBG("[2] Storage\n");
   loadStorage();
-  loadOwners();
+  InternalFS.remove("/owners.bin");            // left over from the owner lock of 2.3: removed
   rebuildCounts();
   DBG("  records on pod: %lu (base %lu, details from %lu), arrows lifetime %lu, time offset %ld s\n",
       (unsigned long)localCount, (unsigned long)meta.baseIndex, (unsigned long)detailFrom,
@@ -1895,14 +1790,6 @@ void loop() {
     if (newRound >= 0) settings.round = newRound;
     saveSettings();
     publishSettings(true);                     // the other devices follow
-  }
-  if (ownersDirty) { ownersDirty = false; saveOwners(); }
-  if (infoPending) { infoPending = false; updateInfo(true); }
-  static uint32_t lastUsbCheck = 0;
-  if (millis() - lastUsbCheck > 1000) {        // charger / computer plugged in or out
-    lastUsbCheck = millis();
-    bool u = usbPower();
-    if (u != usbPowered) { usbPowered = u; updateInfo(true); }
   }
   if (dumpPending) doDump();
   if (clearPending) {

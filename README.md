@@ -119,63 +119,27 @@ the arrow hit) · summary after the end. More in [docs/SCREENSHOTS.md](docs/SCRE
 
 | Path | Content |
 |---|---|
-| `firmware/PfeilZaehler3000/` | Pod firmware 2.3 (Arduino, Seeed nRF52 core) |
+| `firmware/PfeilZaehler3000/` | Pod firmware 2.3.1 (Arduino, Seeed nRF52 core) |
 | `firmware/PfeilZaehler3000Debug/` | Same firmware with diagnostic output, never sleeps |
-| `app/index.html` | Phone page 2.3 |
+| `app/index.html` | Phone page 2.3.1 |
 | `app/report.html` | Report page 2.3 |
-| `garmin/PfeilZaehler3000Watch/` | Garmin Connect IQ watch app 2.3 |
+| `garmin/PfeilZaehler3000Watch/` | Garmin Connect IQ watch app 2.3.1 |
 | `housing/` | STL / 3MF print files (incl. the TPU washer) and the OpenSCAD source `pod.scad` |
 | `docs/` | Build guide, Bluetooth protocol, images |
 
 The Bluetooth interface is documented in [docs/PROTOCOL.md](docs/PROTOCOL.md), changes in
 [CHANGELOG.md](CHANGELOG.md).
 
-## Safety, privacy and rules
+## Safety
 
-**On the bow**
-- Tighten the bolt firmly and check that the pod sits tight **before every session**. A loose pod
-  can turn or fall off at the release. The optional washer (`housing/PfeilZaehler3000-washer.stl`,
-  TPU, or an 8.4 × 18 × 1 mm rubber washer) stops it from turning on the riser.
-- Before the first shot, draw the bow slowly and check that nothing touches the pod: string, arrow,
-  fletching, your bow hand, arm guard or sling. Choose another bushing if anything comes close.
-- Don't mount it in place of a stabilizer you need, and never point a drawn bow at anyone while
-  checking the fit.
-- The pod is not waterproof. Dry it after shooting in the rain; don't leave it in a hot car.
+- **No electronics in competition.** World Archery and most national federations do not allow
+  electronic devices on the bow at tournaments. This is a training tool.
+- **Don't burn your house down.** The LiPo battery can catch fire if it is damaged, short-circuited
+  or charged wrongly: charge only over USB-C, not unattended or overnight, and stop using a swollen
+  cell.
 
-**Battery (LiPo)**
-- Use a cell with a protection circuit, and check the polarity twice before soldering.
-- Charge only over the pod's USB-C port, at room temperature, and not unattended or overnight.
-- A swollen, dented or hot battery is not used again: take it out and recycle it (battery
-  collection point, not the household waste).
-- Never short-circuit, puncture or squeeze the cell. Keep the pod away from small children.
-
-**Building**
-- The soldering iron and the heat-set inserts get hotter than 200 °C. Work on a heat-proof mat,
-  with fresh air, and wash your hands after soldering. Under 18: with an adult.
-- Print the housing in PETG (or PETG-CF), not PLA, and the washer in TPU.
-
-**Your data**
-- The phone page keeps everything in your phone's browser; nothing is sent to this repository or to
-  anyone else. Make a backup now and then: clearing the browser data deletes the history.
-- A backup or a saved report contains every arrow with its date and time, so it shows when and how
-  often you train. Share it only with people you trust, e.g. your coach.
-- **Lock the pod to your own phone and watch** (*Settings → Owner lock*, pod on USB) before you
-  take it to a busy range. Without the lock, any phone nearby with this page can change or clear
-  your pod.
-- When you post photos of it, check what's in the background (club, range, car plates) and turn off
-  location tags.
-
-**Rules and limits**
-- World Archery rules – and most national federations – do not allow electronic devices on the bow
-  in competition. Check your federation's and your club's rules; this is a training tool.
-- The pod can miss an arrow or count something that isn't one. Its counts and scores are not
-  official.
-- Questions and bug reports belong in public [GitHub issues](https://github.com/ckpt-gthb/pfeilzaehler3000/issues),
-  not private messages. Security problems: see [SECURITY.md](SECURITY.md).
-
-This is a hobby project, provided as it is, without any warranty; you build and use it at your
-own risk. Kinetic, Garmin, Epix, Seeed, Adafruit and Bluefy are trademarks of their respective
-owners; this project is not affiliated with them.
+More on mounting, building and your data: [build guide, section 16](docs/BUILD.md#16-safety-data-and-licence).
+This is a hobby project without any warranty; you build and use it at your own risk.
 
 ## Licence
 

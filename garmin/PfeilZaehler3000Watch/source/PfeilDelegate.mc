@@ -170,7 +170,7 @@ function openSettings() {
     m.addItem(new WatchUi.MenuItem(tr(:mounting), mountName(pod.mount), :mount, null));
     m.addItem(new WatchUi.MenuItem(tr(:language), langName(pod.langPref), :lang, null));
     m.addItem(new WatchUi.MenuItem(tr(:otherPod), pod.podLabel(), :forget, null));
-    var fw = (pod.podFw % 100 > 0) ? trf(:podFw, [(pod.podFw % 100 / 10) + "." + (pod.podFw % 10)]) : null;
+    var fw = (pod.podFw % 100 > 0) ? trf(:podFw, [(pod.podFw % 100 / 10) + "." + (pod.podFw % 10) + (pod.podPatch > 0 ? "." + pod.podPatch : "")]) : null;
     m.addItem(new WatchUi.MenuItem(tr(:version) + " " + APP_VERSION, fw, :about, null));
     WatchUi.pushView(m, new SettingsDelegate(), WatchUi.SLIDE_UP);
 }
