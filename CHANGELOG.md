@@ -1,5 +1,28 @@
 # Changelog
 
+## Release 2.3.1
+
+The owner lock of 2.3 is removed: it locked phones out of their own pod, made "Update now" hang
+and was not understandable. A proper version is planned in #23. Pod firmware, phone page and watch
+app are version 2.3.1.
+
+**Pod firmware 2.3.1**
+- Owner lock removed; a lock set with 2.3 is deleted at the first start. Every phone and watch can
+  change the pod again, as up to 2.2 (#20).
+- INFO byte 13 carries the third digit of the version, so the watch shows "Pod firmware 2.3.1".
+
+**Phone page 2.3.1**
+- *Settings → Owner lock* removed (#20).
+- "Update now" no longer stays on "Updating…": an update already running is waited for.
+- The calibration status says only whether and where the pod is calibrated.
+
+**Watch app 2.3.1**
+- No more "Pod … locked" in the status line (#20). The settings show the version as 2.3.1.
+
+**Documentation**
+- The safety, privacy and rules notes moved from the README to the build guide (section 16); the
+  README keeps the two that matter most.
+
 ## Release 2.3
 
 The owner lock, a washer against a turning pod, and safety notes. Pod firmware, phone page and

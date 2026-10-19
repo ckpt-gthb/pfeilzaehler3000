@@ -157,10 +157,6 @@ class PfeilView extends WatchUi.View {
                 } else if (pod.batteryMv > 0 && pod.batteryMv < 3650) {
                     statusColor = Graphics.COLOR_ORANGE;
                 }
-                if (pod.lockedOut()) {
-                    statusText = trf(:podLocked, [pod.podLabel()]);   // locked to other devices
-                    statusColor = Graphics.COLOR_ORANGE;
-                }
             }
         }
         dc.setColor(statusColor, Graphics.COLOR_TRANSPARENT);

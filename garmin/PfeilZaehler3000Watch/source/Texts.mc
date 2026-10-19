@@ -72,7 +72,6 @@ function textTable() {
             :face1        => ["3-spot",                "Dreifach-Spot",           "Potrójna"],
             :scoreLast    => ["Score last end",        "Letzte Passe werten",     "Wynik ostatniej serii"],
             :noEndYet     => ["No end to score yet",   "Noch keine Passe",        "Brak serii"],
-            :podLocked    => ["$1$ locked",            "$1$ gesperrt",            "$1$ zablokowany"],
             :version      => ["Version",               "Version",                 "Wersja"],
             :podFw        => ["Pod firmware $1$",      "Pod-Firmware $1$",        "Firmware czujnika $1$"]
         };

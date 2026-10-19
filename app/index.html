@@ -195,13 +195,6 @@ label input{width:90px;padding:6px 8px;border:1px solid var(--line);border-radiu
     <p class="hint" data-i18n="mountHint"></p>
     <p class="hint" id="cant-state">Not calibrated yet.</p>
     <button class="btn ghost" id="setlevel" data-i18n="calibrate"></button>
-    <div class="group" data-i18n="grpLock"></div>
-    <p class="hint" id="lock-state"></p>
-    <div class="btns three" id="lock-btns">
-      <button class="btn ghost" id="lock-add" data-i18n="lockAdd"></button>
-      <button class="btn ghost" id="lock-only" data-i18n="lockOnly"></button>
-      <button class="btn ghost" id="lock-off" data-i18n="lockOff"></button>
-    </div>
   </details>
   <div class="group" data-i18n="grpExport"></div>
   <div class="btns two">
@@ -317,8 +310,7 @@ if (new URLSearchParams(location.search).has('demo')) (() => {
   const u16 = v => [v & 255, (v >> 8) & 255];
   const emit = (n, bytes) => { if (notifyOn[n]) setTimeout(() => (listeners[n] || []).forEach(f => f({ target: { value: dv(bytes) } })), 30); };
   const live = () => pod.filter(r => !(r.flags & 0xC0));
-  let keys = [], authed = false;                             // owner lock (2.3); the example pod is always on USB
-  const info = () => [...u32(base + pod.length), ...u32(base), ...u16(3940), 4, 1 | (keys.length ? 8 : 0) | 16, 23, authed ? 1 : 0, keys.length, 0, 0, 0, 0, 0];
+  const info = () => [...u32(base + pod.length), ...u32(base), ...u16(3940), 4, 1, 23, 1, 0, 0, 0, 0, 0, 0];
   const stats = () => { const n = live().length, l = live(); return [...u32(base + n), ...u16(n), ...u16(n + 61), ...u16(n + 340), ...u16(3940), ...u32(0), ...u32(l.length ? l[l.length - 1].t : 0)]; };
   const detBytes = d => d ? [Math.round(d.raise * 10), Math.round(d.draw * 10), Math.round(d.hold * 10), Math.round(d.move * 100), ...u16(Math.round(d.pitch * 10) & 0xFFFF), ...u16(Math.round(d.cant * 10) & 0xFFFF), d.drop & 255, d.side & 255, d.pushDown & 255, d.pushRight & 255] : new Array(12).fill(0);
   function ch(n) {
@@ -327,14 +319,6 @@ if (new URLSearchParams(location.search).has('demo')) (() => {
       async writeValue(buf) {
         const b = [...new Uint8Array(buf.buffer || buf)];
         const v = (b[1] | b[2] << 8 | b[3] << 16 | b[4] << 24) >>> 0;
-        if (n === 3 && b[0] >= 0x10 && b[0] <= 0x13) {        // owner lock: log in / add / only this / unlock
-          const k = b.slice(1, 9).join(',');
-          if (b[0] === 0x10) authed = keys.includes(k);
-          else if (b[0] === 0x11) { if (b[9] === 1) keys = []; if (!keys.includes(k)) keys = [...keys, k].slice(-4); authed = true; }
-          else if (b[0] === 0x12 && authed) keys = [k];
-          else if (b[0] === 0x13 && authed) keys = [];
-          emit(2, info()); return;
-        }
         if (n === 3 && b[0] === 1) {                          // dump records + details
           setTimeout(() => {
             for (let i = Math.max(v, base); i < base + pod.length; i += 2) {
@@ -402,7 +386,7 @@ if (new URLSearchParams(location.search).has('demo')) (() => {
 // Plural entries are arrays: [one, other] in English and German, [one, few, many] in Polish.
 const I18N = {
 en: {
-  sub: 'Arrows counted automatically · version 2.3',
+  sub: 'Arrows counted automatically · version 2.3.1',
   exampleBanner: 'Example data, nothing is saved. <a href="./">Back to my data</a>',
   connect: 'Connect pod & sync', updateNow: 'Update now', reconnect: 'Reconnect & update', choosePod: 'Choose pod', disconnect: 'Disconnect',
   thisEnd: 'This end', newEnd: 'New end', totals: 'Totals', today: 'Today', thisWeek: 'This week', thisMonth: 'This month', allTime: 'All time',
@@ -472,17 +456,10 @@ en: {
   cal2old: 'Step 2 of 2: point the arrow at the ground, about 45° down, keep the bow upright and still. Then tap Finish.',
   cal3: 'Step 3 of 3: tilt the bow far to one side (at least 45°, as if laying it down) and keep it still. Then tap Finish.',
   calFail3: 'Not tilted far enough to the side: everything except the bow push is calibrated.',
-  calStatePush: ' Bow push is measured.', calNeed3: ' Calibrate again for the bow push.',
   restoreArrow: 'Restore arrow {n}', deleteArrow: 'Delete arrow {n}', del: 'Delete',
-  grpLock: 'Owner lock', lockAdd: 'Lock to this phone', lockOnly: 'Only this phone', lockOff: 'Unlock',
-  lockOpen: 'Not locked: any phone nearby can change this pod. To lock it, plug the pod into USB (charger or computer) and tap Lock to this phone. Open the watch app while it is still plugged in, and the watch is added too.',
-  lockMine: ['Locked to 1 device: this phone.', 'Locked to {n} devices, including this phone.'],
-  lockOther: 'Locked to other devices: this phone can only see the counts. To add it, plug the pod into USB and tap Lock to this phone.',
-  lockNeedUsb: ' Plug the pod into USB to add a device.', lockConnect: 'Connect the pod to see its lock.', lockOld: 'The owner lock needs pod firmware 2.3.',
-  lockedOut: 'This pod is locked to other devices. Counts only; nothing is synced or changed.', lockDone: 'Pod locked to this phone.', unlockDone: 'Pod unlocked.',
 },
 de: {
-  sub: 'Pfeile automatisch gezählt · Version 2.3',
+  sub: 'Pfeile automatisch gezählt · Version 2.3.1',
   exampleBanner: 'Beispieldaten, es wird nichts gespeichert. <a href="./">Zurück zu meinen Daten</a>',
   connect: 'Pod verbinden & synchronisieren', updateNow: 'Jetzt aktualisieren', reconnect: 'Neu verbinden & aktualisieren', choosePod: 'Pod wählen', disconnect: 'Trennen',
   thisEnd: 'Diese Passe', newEnd: 'Neue Passe', totals: 'Summen', today: 'Heute', thisWeek: 'Diese Woche', thisMonth: 'Dieser Monat', allTime: 'Gesamt',
@@ -553,17 +530,10 @@ de: {
   cal2old: 'Schritt 2 von 2: Mit dem Pfeil etwa 45° nach unten auf den Boden zeigen, den Bogen aufrecht und ruhig halten. Dann auf Fertig tippen.',
   cal3: 'Schritt 3 von 3: Den Bogen weit zur Seite kippen (mindestens 45°, als würde man ihn hinlegen) und ruhig halten. Dann auf Fertig tippen.',
   calFail3: 'Nicht weit genug zur Seite gekippt: alles außer dem Bogenschub ist kalibriert.',
-  calStatePush: ' Der Bogenschub wird gemessen.', calNeed3: ' Für den Bogenschub noch einmal kalibrieren.',
   restoreArrow: 'Pfeil {n} wiederherstellen', deleteArrow: 'Pfeil {n} löschen', del: 'Löschen',
-  grpLock: 'Besitzersperre', lockAdd: 'Für dieses Handy sperren', lockOnly: 'Nur dieses Handy', lockOff: 'Entsperren',
-  lockOpen: 'Nicht gesperrt: Jedes Handy in der Nähe kann diesen Pod ändern. Zum Sperren den Pod an USB anschließen (Ladegerät oder Computer) und auf „Für dieses Handy sperren“ tippen. Die Uhr-App öffnen, solange er noch angeschlossen ist, dann kommt die Uhr dazu.',
-  lockMine: ['Gesperrt für 1 Gerät: dieses Handy.', 'Gesperrt für {n} Geräte, darunter dieses Handy.'],
-  lockOther: 'Für andere Geräte gesperrt: Dieses Handy sieht nur die Zähler. Zum Hinzufügen den Pod an USB anschließen und auf „Für dieses Handy sperren“ tippen.',
-  lockNeedUsb: ' Zum Hinzufügen eines Geräts den Pod an USB anschließen.', lockConnect: 'Den Pod verbinden, um die Sperre zu sehen.', lockOld: 'Die Besitzersperre braucht Pod-Firmware 2.3.',
-  lockedOut: 'Dieser Pod ist für andere Geräte gesperrt. Nur die Zähler; nichts wird synchronisiert oder geändert.', lockDone: 'Pod für dieses Handy gesperrt.', unlockDone: 'Pod entsperrt.',
 },
 pl: {
-  sub: 'Strzały liczone automatycznie · wersja 2.3',
+  sub: 'Strzały liczone automatycznie · wersja 2.3.1',
   exampleBanner: 'Dane przykładowe, nic nie jest zapisywane. <a href="./">Powrót do moich danych</a>',
   connect: 'Połącz czujnik i synchronizuj', updateNow: 'Aktualizuj teraz', reconnect: 'Połącz ponownie i aktualizuj', choosePod: 'Wybierz czujnik', disconnect: 'Rozłącz',
   thisEnd: 'Ta seria', newEnd: 'Nowa seria', totals: 'Podsumowanie', today: 'Dziś', thisWeek: 'Ten tydzień', thisMonth: 'Ten miesiąc', allTime: 'Łącznie',
@@ -634,14 +604,7 @@ pl: {
   cal2old: 'Krok 2 z 2: skieruj strzałę w ziemię, ok. 45° w dół, łuk trzymaj pionowo i nieruchomo. Potem stuknij Zakończ.',
   cal3: 'Krok 3 z 3: przechyl łuk mocno na bok (co najmniej 45°, jakby go kłaść) i trzymaj nieruchomo. Potem stuknij Zakończ.',
   calFail3: 'Za mało przechylony na bok: wszystko poza pchnięciem łuku jest skalibrowane.',
-  calStatePush: ' Mierzone jest pchnięcie łuku.', calNeed3: ' Skalibruj ponownie, aby mierzyć pchnięcie łuku.',
   restoreArrow: 'Przywróć strzałę {n}', deleteArrow: 'Usuń strzałę {n}', del: 'Usuń',
-  grpLock: 'Blokada właściciela', lockAdd: 'Zablokuj dla tego telefonu', lockOnly: 'Tylko ten telefon', lockOff: 'Odblokuj',
-  lockOpen: 'Bez blokady: każdy telefon w pobliżu może zmieniać ten czujnik. Aby go zablokować, podłącz czujnik do USB (ładowarka lub komputer) i stuknij „Zablokuj dla tego telefonu”. Otwórz aplikację na zegarku, póki czujnik jest podłączony, a zegarek też zostanie dodany.',
-  lockMine: ['Zablokowany dla 1 urządzenia: tego telefonu.', 'Zablokowany dla {n} urządzeń, w tym tego telefonu.', 'Zablokowany dla {n} urządzeń, w tym tego telefonu.'],
-  lockOther: 'Zablokowany dla innych urządzeń: ten telefon widzi tylko liczniki. Aby go dodać, podłącz czujnik do USB i stuknij „Zablokuj dla tego telefonu”.',
-  lockNeedUsb: ' Aby dodać urządzenie, podłącz czujnik do USB.', lockConnect: 'Połącz czujnik, aby zobaczyć blokadę.', lockOld: 'Blokada właściciela wymaga oprogramowania czujnika 2.3.',
-  lockedOut: 'Ten czujnik jest zablokowany dla innych urządzeń. Tylko liczniki; nic nie jest synchronizowane ani zmieniane.', lockDone: 'Czujnik zablokowany dla tego telefonu.', unlockDone: 'Czujnik odblokowany.',
 } };
 const LOCALES = { en: 'en-GB', de: 'de-AT', pl: 'pl-PL' };
 function pickLang(pref) {
@@ -995,7 +958,7 @@ function render() {
   const tot = totals(live());
   $('t-today').textContent = tot.today; $('t-week').textContent = tot.week;
   $('t-month').textContent = tot.month; $('t-all').textContent = tot.all;
-  renderChart(); renderSessions(); renderChips(); renderCantState(); renderLock();
+  renderChart(); renderSessions(); renderChips(); renderCantState();
 }
 
 // ---------- status line: connection, battery, pod memory, last sync ----------
@@ -1027,43 +990,17 @@ function fmtClock(ms) {
 
 // ---------- Bluetooth ----------
 let dev = null, chars = {}, info = null, dumpResolve = null, incoming = [], incomingDetails = new Map();
-// owner lock (pod firmware 2.3): this browser's own random key; logged in = podAuth (from INFO notifications)
-let podAuth = false, authWait = null;
-function podKey() {
-  if (!db.podKey) { db.podKey = [...crypto.getRandomValues(new Uint8Array(8))].map(x => x.toString(16).padStart(2, '0')).join(''); save(); }
-  return Uint8Array.from(db.podKey.match(/../g).map(h => parseInt(h, 16)));
-}
-const lockedOut = () => !!(info && info.locked && !podAuth);
-async function lockCmd(cmd, mode) {                // 0x10 log in, 0x11 add (mode 1 = only this), 0x12 only this, 0x13 unlock
-  const c = new Uint8Array(cmd === 0x13 ? 5 : cmd === 0x11 ? 10 : 9);
-  c[0] = cmd; if (cmd !== 0x13) c.set(podKey(), 1); if (cmd === 0x11) c[9] = mode || 0;
-  const w = new Promise(r => { authWait = r; setTimeout(r, 2500); });
-  await chars.ctrl.writeValue(c);
-  await w;
-}
 async function writeClock() {                      // pod clock + local time offset (the pod counts "today" / "week" / "month")
   const now = new Uint8Array(8), nv = new DataView(now.buffer);
   nv.setUint32(0, Math.floor(Date.now() / 1000), true);
   nv.setInt32(4, -new Date().getTimezoneOffset() * 60, true);
   try { await chars.time.writeValue(now); } catch (e) { await chars.time.writeValue(now.slice(0, 4)); }   // older firmware: 4 bytes
 }
-function renderLock() {
-  const c = !!(dev && dev.gatt.connected) && !!info, new23 = c && info.fw % 100 >= 23;
-  let txt = !c ? t('lockConnect') : !new23 ? t('lockOld') : !info.locked ? t('lockOpen') : podAuth ? t('lockMine', { n: info.owners }) : t('lockOther');
-  if (new23 && info.locked && !info.usb) txt += t('lockNeedUsb');
-  $('lock-state').textContent = txt;
-  $('lock-btns').hidden = !new23;
-  if (!new23) return;
-  $('lock-add').disabled = !info.usb;
-  $('lock-only').hidden = !(info.locked && podAuth && info.owners > 1);
-  $('lock-off').hidden = !(info.locked && podAuth);
-}
 
 function parseInfo(dv) {
   return { total: dv.getUint32(0, true), base: dv.getUint32(4, true), mv: dv.getUint16(8, true),
            storage: dv.getUint8(10), at: Date.now(), exact: !!(dv.getUint8(11) & 1), fw: dv.getUint8(12),
-           locked: !!(dv.getUint8(11) & 8), usb: !!(dv.getUint8(11) & 16),        // 2.3: owners, on USB power
-           auth: dv.byteLength > 13 && dv.getUint8(13) === 1, owners: dv.byteLength > 14 ? dv.getUint8(14) : 0 };
+           patch: dv.byteLength > 13 ? dv.getUint8(13) : 0 };
 }
 function parseData(dv) {
   const first = dv.getUint32(0, true);
@@ -1091,8 +1028,7 @@ function updateButtons() {
   $('disconnect').hidden = !connected;
   $('choose').hidden = !dev;
   $('podbtns').hidden = !dev;
-  $('setlevel').disabled = !connected || !chars.settings || lockedOut();
-  renderLock();
+  $('setlevel').disabled = !connected || !chars.settings;
   renderChips();
 }
 // keep trying to reconnect for a while (pod out of range, phone screen was off, ...)
@@ -1129,19 +1065,15 @@ async function attach(device) {
     try { chars[k] = await svc.getCharacteristic(u); } catch (e) { chars[k] = null; }   // newer pod firmware only
   }
 
-  // INFO first: with an owner lock (2.3) this phone logs in before it changes anything
-  podAuth = false;
   info = parseInfo(await chars.info.readValue());
   chars.info.addEventListener('characteristicvaluechanged', async e => {
     const prev = info ? info.total : 0;
-    info = parseInfo(e.target.value); podAuth = info.auth;
-    if (authWait) { authWait(); authWait = null; }
-    showInfo(); renderLock();
+    info = parseInfo(e.target.value);
+    showInfo();
     if (info.total > prev) await sync(false);     // live: new arrow shot while connected
   });
   await chars.info.startNotifications();
-  if (info.fw % 100 >= 23 && info.locked) await lockCmd(0x10);
-  if (!lockedOut()) await writeClock();
+  await writeClock();
 
   chars.data.addEventListener('characteristicvaluechanged', e => {
     const p = parseData(e.target.value);
@@ -1168,7 +1100,6 @@ async function attach(device) {
   info = parseInfo(await chars.info.readValue());
   conn = 'ok';
   updateButtons();
-  if (lockedOut()) setStatus(t('lockedOut'));
   await flushOps();                                // settings changed here while offline go first
   if (chars.settings) {
     chars.settings.addEventListener('characteristicvaluechanged', e => adoptSettings(parseSettings(e.target.value)));
@@ -1194,9 +1125,7 @@ function adoptSettings(p) {
 function renderCantState() {
   const ps = db.podSettings || { flags: 0, cal: 0 };
   const m = (ps.flags >> 2) & 3, where = t('mount' + m);
-  const fw = info ? info.fw % 100 : 0;
-  const push = m === 2 ? '' : ps.cal === 4 ? t('calStatePush') : fw >= 22 ? t('calNeed3') : '';
-  $('cant-state').textContent = [2, 4, 5].includes(ps.cal) ? t(m === 2 ? 'calStateSide' : 'calState', { mount: where }) + push
+  $('cant-state').textContent = [2, 4, 5].includes(ps.cal) ? t(m === 2 ? 'calStateSide' : 'calState', { mount: where })
     : !db.podSettings ? t('connectToSee') : t('notCal');
 }
 
@@ -1218,16 +1147,6 @@ function calSend(cmd, want) {
   });
 }
 $('setlevel').onclick = openCal;
-$('lock-add').onclick = async () => {
-  try { await lockCmd(0x11, 0); } catch (e) { setStatus(t('couldNotReach') + e.message); return; }
-  renderLock();
-  if (podAuth) { setStatus(t('lockDone')); await writeClock(); await sync(true); }
-};
-$('lock-only').onclick = async () => { try { await lockCmd(0x12); } catch (e) { setStatus(t('couldNotReach') + e.message); } renderLock(); };
-$('lock-off').onclick = async () => {
-  try { await lockCmd(0x13); setStatus(t('unlockDone')); } catch (e) { setStatus(t('couldNotReach') + e.message); }
-  renderLock();
-};
 $('cal-cancel').onclick = () => { calWait = null; $('cal').hidden = true; };
 $('cal-next').onclick = async () => {
   if (calStep === 9) { $('cal').hidden = true; return; }
@@ -1252,7 +1171,7 @@ $('cal-next').onclick = async () => {
     } else {
       const p = await calSend(14, [4, 5]);
       const m = (p.flags >> 2) & 3;
-      $('cal-text').textContent = t('calDone', { mount: t('mount' + m) }) + (p.cal === 4 ? t('calStatePush') : '');
+      $('cal-text').textContent = t('calDone', { mount: t('mount' + m) });
       $('cal-msg').textContent = p.cal === 4 ? '' : t('calFail3');
       $('cal-next').textContent = t('close'); calStep = 9;
     }
@@ -1291,7 +1210,7 @@ function flushOps() {
   return flushing;
 }
 async function sendOps() {
-  if (!chars.ctrl || !chars.stats || !dev || !dev.gatt.connected || lockedOut()) return;   // older than 1.5: no ops; locked: kept for later
+  if (!chars.ctrl || !chars.stats || !dev || !dev.gatt.connected) return;   // older than 1.5: no ops
   while (db.ops.length) {
     const op = db.ops[0], c = new Uint8Array(8), v = new DataView(c.buffer);
     if (op.k === 'set') {
@@ -1335,9 +1254,13 @@ function firstIndexToday() {
   return m;
 }
 
-let syncing = false;
-async function sync(mayClear) {
-  if (syncing || !chars.ctrl || lockedOut()) return; syncing = true;
+let syncing = null;                                // the running update; a second caller waits for it
+function sync(mayClear) {
+  if (!syncing) syncing = runSync(mayClear).finally(() => { syncing = null; });
+  return syncing;
+}
+async function runSync(mayClear) {
+  if (!chars.ctrl) return;
   try {
     await flushOps();
     incoming = []; incomingDetails = new Map();
@@ -1388,7 +1311,6 @@ async function sync(mayClear) {
       await chars.ctrl.writeValue(c);
     }
   } catch (e) { setStatus(t('syncProblem') + e.message); }
-  syncing = false;
 }
 
 async function choosePod() {
