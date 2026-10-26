@@ -186,14 +186,25 @@ class ScoreView extends WatchUi.View {
         dc.drawText(x, y, Graphics.FONT_SMALL, valText(v), Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
-    // row of entered values with empty slots
+    // row of entered values with empty slots; more than 6 arrows don't fit as slots on the round
+    // screen: then the values as text with "entered / arrows"
     function slots(dc, cy, w) {
+        if (n > 6) {
+            var txt = "";
+            var from = (vals.size() > 8) ? vals.size() - 8 : 0;     // the newest 8 fit
+            if (from > 0) {
+                txt = ".. ";
+            }
+            for (var k = from; k < vals.size(); k++) {
+                txt += valText(vals[k] as Number) + " ";
+            }
+            txt += " " + vals.size().toString() + "/" + n.toString();
+            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(w / 2, cy, Graphics.FONT_XTINY, txt, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+            return;
+        }
         var gap = w * 0.12;
         var sw = w * 0.105;
-        if (n > 6) {
-            gap = w * 0.08;
-            sw = w * 0.07;
-        }
         var x0 = w / 2 - (n - 1) * gap / 2;
         for (var i = 0; i < n; i++) {
             var x = x0 + i * gap;
@@ -299,12 +310,15 @@ class ScoreView extends WatchUi.View {
         return -1;
     }
 
-    // tap on an entered value: its index, else -1
+    // tap on an entered value: its index, else -1 (more than 6 arrows: a tap on the row removes the newest)
     function slotHit(x, y, cy, w) {
-        var gap = (n > 6) ? w * 0.08 : w * 0.12;
+        var gap = w * 0.12;
         var x0 = w / 2 - (n - 1) * gap / 2;
         if ((y - cy).abs() > w * 0.06) {
             return -1;
+        }
+        if (n > 6) {
+            return vals.size() - 1;
         }
         for (var i = 0; i < vals.size(); i++) {
             if ((x - (x0 + i * gap)).abs() <= gap / 2) {
@@ -765,17 +779,27 @@ class SummaryView extends WatchUi.View {
         }
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
         dc.drawText(cx, w * 0.52, Graphics.FONT_XTINY, sub, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-        // values
+        // values: one row up to 8, above that two rows (up to 24 arrows)
         var k = vals.size();
-        var gap = (k > 6) ? w * 0.075 : w * 0.11;
-        var rr = (k > 6) ? w * 0.032 : w * 0.048;
-        var x0 = cx - (k - 1) * gap / 2;
+        var rows = (k > 8) ? 2 : 1;
+        var per = (k + rows - 1) / rows;
+        var gap = (per > 6) ? w * 0.075 : w * 0.11;
+        var rr = (per > 6) ? w * 0.032 : w * 0.048;
+        if (per > 10) {
+            gap = w * 0.068;
+            rr = w * 0.029;
+        }
         for (var i = 0; i < k; i++) {
+            var row = i / per;
+            var inRow = (row == rows - 1) ? k - per * (rows - 1) : per;
+            var x0 = cx - (inRow - 1) * gap / 2;
+            var px = x0 + (i % per) * gap;
+            var py = (rows == 1) ? w * 0.63 : w * (0.595 + 0.07 * row);
             var v = vals[i] as Number;
             dc.setColor(valColor(v), Graphics.COLOR_TRANSPARENT);
-            dc.fillCircle(x0 + i * gap, w * 0.63, rr);
+            dc.fillCircle(px, py, rr);
             dc.setColor(valInk(v), Graphics.COLOR_TRANSPARENT);
-            dc.drawText(x0 + i * gap, w * 0.63, Graphics.FONT_XTINY, valText(v), Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+            dc.drawText(px, py, Graphics.FONT_XTINY, valText(v), Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
         }
         // a bar per end of the session (last 10)
         var m = ends.size();

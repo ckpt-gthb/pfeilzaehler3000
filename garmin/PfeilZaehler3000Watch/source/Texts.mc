@@ -73,7 +73,9 @@ function textTable() {
             :scoreLast    => ["Score last end",        "Letzte Passe werten",     "Wynik ostatniej serii"],
             :noEndYet     => ["No end to score yet",   "Noch keine Passe",        "Brak serii"],
             :version      => ["Version",               "Version",                 "Wersja"],
-            :podFw        => ["Pod firmware $1$",      "Pod-Firmware $1$",        "Firmware czujnika $1$"]
+            :podFw        => ["Pod firmware $1$",      "Pod-Firmware $1$",        "Firmware czujnika $1$"],
+            :podMem       => ["Pod $1$% full: sync phone", "Pod $1$% voll: Handy-Sync", "Pamięć $1$%: synch. telefon"],
+            :undoOffline  => ["Pod not connected",     "Pod nicht verbunden",     "Czujnik niepołączony"]
         };
     }
     return gTexts;

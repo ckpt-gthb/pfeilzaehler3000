@@ -119,11 +119,11 @@ the arrow hit) · summary after the end. More in [docs/SCREENSHOTS.md](docs/SCRE
 
 | Path | Content |
 |---|---|
-| `firmware/PfeilZaehler3000/` | Pod firmware 2.3.1 (Arduino, Seeed nRF52 core) |
+| `firmware/PfeilZaehler3000/` | Pod firmware 2.3.2 (Arduino, Seeed nRF52 core) |
 | `firmware/PfeilZaehler3000Debug/` | Same firmware with diagnostic output, never sleeps |
-| `app/index.html` | Phone page 2.3.1 |
+| `app/index.html` | Phone page 2.3.2 |
 | `app/report.html` | Report page 2.3 |
-| `garmin/PfeilZaehler3000Watch/` | Garmin Connect IQ watch app 2.3.1 |
+| `garmin/PfeilZaehler3000Watch/` | Garmin Connect IQ watch app 2.3.2 |
 | `housing/` | STL / 3MF print files (incl. the TPU washer) and the OpenSCAD source `pod.scad` |
 | `docs/` | Build guide, Bluetooth protocol, images |
 

@@ -1,15 +1,15 @@
 # PfeilZaehler3000 – Build and User Guide
 
 Automatic arrow counter for recurve, barebow and compound bows.
-Release 2.3.1
+Release 2.3.2
 
 | Part | Version |
 |---|---|
-| Pod firmware | 2.3.1 (`firmware/PfeilZaehler3000`) |
-| Debug firmware | 2.3.1-debug (`firmware/PfeilZaehler3000Debug`) |
-| Phone page | 2.3.1 (`app/index.html`), English, German, Polish |
+| Pod firmware | 2.3.2 (`firmware/PfeilZaehler3000`) |
+| Debug firmware | 2.3.2-debug (`firmware/PfeilZaehler3000Debug`) |
+| Phone page | 2.3.2 (`app/index.html`), English, German, Polish |
 | Report page | 2.3 (`app/report.html`), English, German, Polish |
-| Garmin watch app | 2.3.1 (`garmin/PfeilZaehler3000Watch`), English, German, Polish |
+| Garmin watch app | 2.3.2 (`garmin/PfeilZaehler3000Watch`), English, German, Polish |
 | Housing | v3 (`housing/`), washer since 2.3 |
 
 ![The assembled pod](images/pod-closed.png)
@@ -33,7 +33,7 @@ the same line are not counted. It does not record scores or arrow positions.
 | Weight | about 65 g including the bolt (measured; base printed with 100 % infill, steel bolt about 14 g) |
 | Mount | 5/16"-24 UNF bolt into a stabilizer bushing |
 | Battery | LiPo 3.7 V, 300–320 mAh, charged over USB-C |
-| Memory | about 1,100 arrows with details between two syncs |
+| Memory | about 1,100 arrows with details between two syncs; when full, the oldest half makes room (counts are kept) |
 | Connection | Bluetooth Low Energy, up to 3 devices at the same time |
 | Bluetooth name | PfeilZaehler3000-XXXX (XXXX = last 4 characters of the pod's Bluetooth address) |
 | Approx. cost | € 55–70 for all parts (2026 prices) |
@@ -404,6 +404,11 @@ must be connected):
    If the bow was not tilted far enough, everything else is calibrated and only the bow push is not
    measured; repeat the calibration to get it.
 
+You can hold the bow in one hand and tap the phone with the other: after each tap the pod waits
+until the bow has been still for a second (at most 4 s) and only then measures, so the tap itself
+doesn't count (pod firmware 2.3.2). If the bow doesn't get still in time, the page says so and the
+same step is simply repeated; the earlier calibration stays as it was.
+
 The settings show the result, e.g. *Calibrated, pod on the back of the riser*. If the bow
 was not tilted far enough, the calibration asks to start again. Until it is calibrated, the first
 shot counts as cant 0.
@@ -459,7 +464,8 @@ From top to bottom:
 - Time of day.
 - The pod's ID and battery voltage, e.g. *Pod A3F2 3.95 V* (orange when getting low, red when it
   needs charging), or the connection state: *Looking for Pod A3F2…*, *Pod A3F2 in range?*,
-  *Connecting…*, *Reconnecting…*.
+  *Connecting…*, *Reconnecting…*. From 80 % pod memory: *Pod 85% full: sync phone* (sync with
+  the phone page soon; when the memory is full, the pod drops its oldest records).
 - End number and time since the last arrow.
 - The big number: arrows in the current end (green when complete, orange with an extra arrow), or
   the session or today's arrows, as chosen in the settings.
@@ -477,7 +483,7 @@ From top to bottom:
 | START | Start / stop recording a Garmin activity "Bogenschiessen" |
 | BACK | Saves a running activity; pressed again, leaves the app |
 | DOWN | Start a new end now (also shown on the phone page) |
-| UP | Delete the last arrow, after a confirmation (also deleted on the phone page) |
+| UP | Delete the last arrow, after a confirmation (also deleted on the phone page); only while the pod is connected |
 | hold UP | Settings |
 | hold the screen | Scoring screen for the current (or the last) end |
 
@@ -603,7 +609,7 @@ The values are at the top of the firmware file:
 |---|---|
 | Green, 0.3 s after switching on | Both sensors found |
 | Short green flash | Arrow counted and stored |
-| Short red flash after a shot | Arrow not stored: memory full, sync with the phone |
+| Short red flash after a shot | Arrow could not be stored (flash error); sync and restart the pod |
 | Red, 1 blink repeating | Gyroscope (XIAO) not found |
 | Red, 2 blinks repeating | ADXL375 not found |
 | Blue | Phone or watch connected |
@@ -624,7 +630,9 @@ The values are at the top of the firmware file:
 | Battery empty after a few days | Check on the Serial Monitor that the pod shows `-> idle` after 3 minutes. The debug firmware never sleeps. |
 | "No Web Bluetooth" on the phone page | Open it over https in Chrome or Edge, or in Bluefy on iPhone. |
 | Arrows listed without a date | The pod restarted with an empty battery and had no clock. Connect the phone page after charging. |
-| Watch shows "Update pod firmware" | Flash the current pod firmware (2.3.1). |
+| Phone page connects but doesn't update, or needs extra taps (e.g. in Bluefy) | Open the page with `?log` at the end of the address (…/app/?log), repeat what went wrong, open **Log** at the bottom, tap **Copy log** and send it along with a bug report. |
+| Today / week / month off by a few arrows after travelling to another time zone | Arrows already cleared from the pod keep the day they were counted on in the old time zone; at most one evening's arrows can move to the neighbouring day. The phone page's own history is not affected. |
+| Watch shows "Update pod firmware" | Flash the current pod firmware (2.3.2). |
 | Watch stays at "Pod … in range?" | Check the distance to the pod and that the pod is charged. |
 | Phone or watch connected to another archer's pod | Phone: **Choose pod** and pick your own name. Watch: hold UP → *Use a different pod*, confirm, and keep only your own pod nearby. |
 | No raise / draw times | The bow was not lowered before the shot, or the history was empty after the pod woke up. Hold and the other details are still measured. |
@@ -635,7 +643,7 @@ The values are at the top of the firmware file:
 
 ## 14. Debug firmware
 
-`firmware/PfeilZaehler3000Debug` has the same functions and Bluetooth interface as firmware 2.3.1,
+`firmware/PfeilZaehler3000Debug` has the same functions and Bluetooth interface as firmware 2.3.2,
 so the phone page and the watch work with it. In addition it:
 
 - waits up to 5 s for the Serial Monitor and prints the reset reason,
@@ -654,11 +662,11 @@ Use it for diagnosis only, then upload the normal firmware again.
 
 | Path | Content |
 |---|---|
-| `firmware/PfeilZaehler3000/` | Pod firmware 2.3.1 (Arduino) |
+| `firmware/PfeilZaehler3000/` | Pod firmware 2.3.2 (Arduino) |
 | `firmware/PfeilZaehler3000Debug/` | Debug firmware |
-| `app/index.html` | Phone page 2.3.1 |
+| `app/index.html` | Phone page 2.3.2 |
 | `app/report.html` | Report page 2.3 |
-| `garmin/PfeilZaehler3000Watch/` | Garmin watch app 2.3.1 (Connect IQ project) |
+| `garmin/PfeilZaehler3000Watch/` | Garmin watch app 2.3.2 (Connect IQ project) |
 | `housing/` | STL and 3MF files (incl. the TPU washer), OpenSCAD source `pod.scad`, insert test |
 | `docs/` | This guide, Bluetooth protocol, images |
 

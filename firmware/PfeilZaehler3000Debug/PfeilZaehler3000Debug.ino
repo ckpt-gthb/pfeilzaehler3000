@@ -1,7 +1,7 @@
 /*
-  PfeilZaehler3000 – DEBUG BUILD (firmware v2.2 + diagnostics)
+  PfeilZaehler3000 – DEBUG BUILD (firmware v2.3.2 + diagnostics)
   (c) 2026 ckpt-gthb – free for personal, non-commercial use; PolyForm Strict 1.0.0 with permissions, see LICENSE
-  - same functions and Bluetooth interface as the normal firmware v2.2 (phone page and watch work)
+  - same functions and Bluetooth interface as the normal firmware v2.3.2 (phone page and watch work)
   - prints every startup step, I2C scans and a status line every 2 s to the Serial Monitor (115200)
   - never goes to sleep (drains the battery in a few days): for diagnosis only, then flash the normal one
   - blue LED blinks briefly every 2 s while nothing is connected
@@ -58,12 +58,15 @@ struct __attribute__((packed)) ShotRec {
                      // bit5: end score, not an arrow (t = start of the end, peak10 + aim100 = 6 values
                      //       of 4 bits, bits 0-1 = part 0-3 for ends of more than 6 arrows)
                      // bit4: hit positions of the end score just before it (7 bytes = 3.5 positions)
+                     // bits 4-6 all set (2.3.2): settings change, t = when, peak10 = end pause in s,
+                     //       aim100 = arrows per end (so ends are judged with the setting valid then)
 };
 #define FLAG_ENDMARK 0x40
 #define FLAG_DELETED 0x80
 #define FLAG_SCORE   0x20
 #define FLAG_POS     0x10
 #define FLAG_NOARROW (FLAG_ENDMARK | FLAG_SCORE | FLAG_POS)
+#define FLAG_SETTING (FLAG_ENDMARK | FLAG_SCORE | FLAG_POS)   // all three: a settings change (2.3.2)
 
 // Shot details, one per record in a second file (all zero for end marks, scores and old records).
 // Times: units of 100 ms, 0 = not found, 255 = 25.5 s or more.
@@ -90,7 +93,8 @@ struct __attribute__((packed)) Settings {    // shared by phone page and watch, 
   uint16_t endPauseS;        // pause that starts a new end, 20–900 s, default 100
   uint8_t  flags;            // bit0: cant zero set by the calibration, bit1: cant zero from the first shot,
                              // bits 2-3: mounting point, MOUNT_BACK / MOUNT_FRONT / MOUNT_SIDE
-  uint8_t  calStatus;        // calibration: 0 not done, 1 step 1 done (bow upright), 2 done, 3 failed (tilt too small)
+  uint8_t  calStatus;        // calibration: 0 not done, 1 step 1 done (bow upright), 2 done, 3 failed (tilt too small),
+                             // 4 step 3 done, 5 step 3 failed; 6 = the bow was not still (only notified, never stored)
   int16_t  cantRef10;        // roll angle of the pod when the bow is level, 0.1 degrees
   int16_t  pitchRef10;       // Z angle of the pod with the arrow level (tilt of the bushing), 0.1 degrees
   uint8_t  round;            // target face for scoring (shared): 0 full face, 1 3-spot (0-5 accepted)
@@ -165,8 +169,8 @@ struct CtrlOp {                              // control command waiting for the 
 
 #define MAX_CONNECTIONS   3        // phone page + Garmin watch, plus one spare for a stale link
 
-#define FW_VERSION        123  // debug build of v2.3.1
-#define FW_PATCH          1    // third digit, sent in INFO byte 13 (2.3.1)
+#define FW_VERSION        123  // debug build of v2.3.2
+#define FW_PATCH          2    // third digit, sent in INFO byte 13 (2.3.2)
 
 // =====================================================================
 //  I2C helpers
@@ -488,8 +492,15 @@ static void saveAdxlRot() {
   }
 }
 
+static bool trimOldest(uint32_t k);           // memory full: the oldest records go (below)
+
 static bool appendShot(const ShotRec &r, const ShotDetail &d) {
-  if (storedBytes() + sizeof(ShotRec) + sizeof(ShotDetail) + 4 > LOG_LIMIT_BYTES) return false;
+  if (storedBytes() + sizeof(ShotRec) + sizeof(ShotDetail) + 4 > LOG_LIMIT_BYTES) {
+    // nobody synced for a long time (e.g. only the watch is used): a new arrow always counts,
+    // the oldest half of the records makes room
+    if (!trimOldest(localCount / 2)) return false;
+    if (storedBytes() + sizeof(ShotRec) + sizeof(ShotDetail) + 4 > LOG_LIMIT_BYTES) return false;
+  }
   File f(InternalFS);
   if (!f.open(LOG_FILE, FILE_O_WRITE)) return false;
   f.seek(f.size());
@@ -573,7 +584,7 @@ static void rebuildCounts() {
     for (uint32_t i = 0; i < localCount; i++) {
       if (f.read((uint8_t *)&r, sizeof(r)) != (int)sizeof(r)) break;
       uint32_t idx = meta.baseIndex + i;
-      if (r.flags & FLAG_ENDMARK) { if (r.t > meta.lastEndMarkT) meta.lastEndMarkT = r.t; continue; }
+      if ((r.flags & FLAG_SETTING) == FLAG_ENDMARK) { if (r.t > meta.lastEndMarkT) meta.lastEndMarkT = r.t; continue; }
       if (r.flags & (FLAG_DELETED | FLAG_SCORE | FLAG_POS)) continue;
       lifetime++;
       if (r.t > lastShotT) lastShotT = r.t;
@@ -581,6 +592,93 @@ static void rebuildCounts() {
     }
     f.close();
   }
+}
+
+// Memory full: the k oldest records leave the log, as if the phone had synced and cleared them.
+// Their arrows stay in the counters (days go into the archive, lifetime into lifetimeArchived);
+// a phone that syncs later sees that the pod's oldest index moved past what it has.
+// Keep a file from byte skip on (after an optional new header). The kept part goes through RAM:
+// the internal flash has no room for a second copy of a full log. false = file unchanged.
+static bool keepFileFrom(const char *path, uint32_t skip, const uint8_t *head, uint32_t headLen) {
+  File f(InternalFS);
+  if (!f.open(path, FILE_O_READ)) return false;
+  uint32_t size = f.size();
+  uint32_t n = skip < size ? size - skip : 0;
+  uint8_t *buf = (uint8_t *)malloc(n ? n : 1);
+  if (!buf) { f.close(); return false; }
+  f.seek(skip);
+  bool ok = n == 0 || f.read(buf, n) == (int)n;
+  f.close();
+  if (!ok) { free(buf); return false; }
+  InternalFS.remove(path);
+  for (int attempt = 0; attempt < 2; attempt++) {   // write again once if the flash refused it
+    File g(InternalFS);
+    if (!g.open(path, FILE_O_WRITE)) continue;
+    ok = (!headLen || g.write(head, headLen) == headLen) && (!n || g.write(buf, n) == n);
+    g.close();
+    if (ok) break;
+    InternalFS.remove(path);
+  }
+  free(buf);
+  return true;                                 // changed (if writing failed, the file is gone: see callers)
+}
+
+static bool trimOldest(uint32_t k) {
+  if (k == 0 || k >= localCount) return false;
+  File f(InternalFS);
+  if (!f.open(LOG_FILE, FILE_O_READ)) return false;
+  DayCnt live[RING_DAYS];                      // the counters as they are now
+  memcpy(live, ring, sizeof(ring));
+  memset(ring, 0, sizeof(ring));               // archive = archived days + the records that leave
+  File a(InternalFS);
+  if (a.open(ARCHIVE_FILE, FILE_O_READ)) {
+    DayCnt tmp[RING_DAYS];
+    if (a.read((uint8_t *)tmp, sizeof(tmp)) == (int)sizeof(tmp)) memcpy(ring, tmp, sizeof(ring));
+    a.close();
+  }
+  uint32_t arrows = 0;
+  ShotRec r;
+  bool ok = true;
+  for (uint32_t i = 0; i < k; i++) {
+    if (f.read((uint8_t *)&r, sizeof(r)) != (int)sizeof(r)) { ok = false; break; }
+    if (!isArrow(r)) continue;
+    arrows++;
+    if (meta.baseIndex + i >= meta.ringFromIndex) ringAdd(r.t, 1);
+  }
+  f.close();
+  if (!ok || !keepFileFrom(LOG_FILE, k * sizeof(ShotRec), nullptr, 0)) { memcpy(ring, live, sizeof(ring)); return false; }
+  saveArchive();
+  memcpy(ring, live, sizeof(ring));
+  // the log as it is now (normally localCount - k records)
+  uint32_t left = 0;
+  if (f.open(LOG_FILE, FILE_O_READ)) { left = f.size() / sizeof(ShotRec); f.close(); }
+  // details: drop the ones of the removed records, keep the file in step with the log
+  if (detailCount) {
+    uint32_t skip = k > detailFrom ? k - detailFrom : 0;
+    uint32_t from = detailFrom > k ? detailFrom - k : 0;
+    if (skip < detailCount && keepFileFrom(DETAIL_FILE, 4 + skip * sizeof(ShotDetail), (const uint8_t *)&from, 4) &&
+        InternalFS.exists(DETAIL_FILE)) {
+      detailFrom = from;
+      detailCount -= skip;
+    } else {
+      InternalFS.remove(DETAIL_FILE);
+      detailCount = 0;
+    }
+  }
+  meta.baseIndex += k + (localCount - k - left);   // (more than k only if writing the log failed)
+  localCount = left;
+  if (!detailCount || detailFrom + detailCount != localCount) {
+    InternalFS.remove(DETAIL_FILE);
+    detailCount = 0;
+    detailFrom = localCount;
+  }
+  meta.lifetimeArchived += arrows;
+  saveMeta();
+#if CALIBRATION_LOG
+  Serial.printf("memory full: %lu oldest records removed (%lu arrows kept in the counters)\n",
+                (unsigned long)k, (unsigned long)arrows);
+#endif
+  return true;
 }
 
 // "reset all stats" on the phone: start the day counters from zero
@@ -761,8 +859,10 @@ static void shotFeedback(bool stored) {
 //                                      (works out how the ADXL375 sits, needed for the bow push)
 //                          [0x0B, u32 start of the end, 3 bytes values, u8 part] = end score, or
 //                          [0x0B, u32 start, 3 bytes values, 12 bytes positions] (20 bytes, part 0)
-//   0004 DATA  notify      [u32 firstIndex][ShotRec][ShotRec]   end marker: [0xFFFFFFFF][u32 total]
-//                          (records with flag bit6 are end marks, bit7 = deleted)
+//                          [0x0F, u32 index] = continue the numbering from index (only forward, 2.3.2)
+//   0004 DATA  notify      [u32 firstIndex][ShotRec][ShotRec]   end marker: [0xFFFFFFFF][u32 reached]
+//                          [u32 total][u32 requested from] (2.3.2; up to 2.3.1 8 bytes, total at offset 4)
+//                          (records with flag bit6 are end marks, bit7 = deleted; bits 4-6 all set = settings change)
 //   0005 STATS read/notify 20 bytes: arrows u32, today u16, week u16, month u16, battery mV u16,
 //                          last end mark u32, last arrow u32   (see updateStats)
 //   0006 SETTINGS read/write/notify  11 bytes (struct Settings; 10 bytes up to 2.1);
@@ -794,6 +894,10 @@ BLECharacteristic chDetail2(makeUuid(8));
 volatile CtrlOp   opQueue[8];             // delete / undo / end mark / reset, done in loop()
 volatile uint8_t  opHead = 0, opTail = 0;
 volatile bool     tzChanged = false;
+volatile bool     timePending = false;      // clock from phone / watch, applied in loop() (no flash work in a callback)
+volatile uint32_t newTime = 0;
+volatile int32_t  newTz = 0;
+volatile bool     newTzOk = false;
 volatile bool     settingsPending = false;  // new settings from phone / watch, saved in loop()
 
 volatile uint8_t  newArrows = 6;
@@ -804,7 +908,7 @@ volatile int8_t   newRound = -1;            // -1 = unchanged
 volatile bool     dumpPending  = false;
 volatile uint32_t dumpFrom     = 0;
 volatile uint16_t dumpConn     = BLE_CONN_HANDLE_INVALID;   // the connection that asked for the shots
-volatile uint8_t  connCount    = 0;
+volatile bool     connUp[BLE_MAX_CONNECTION];   // per connection handle: phone / watch connected
 volatile bool     clearPending = false;
 volatile uint32_t clearExpect  = 0;
 bool              isActive     = false;
@@ -872,12 +976,19 @@ static void onSettingsWrite(uint16_t conn, BLECharacteristic *, uint8_t *data, u
 static void onTimeWrite(uint16_t conn, BLECharacteristic *, uint8_t *data, uint16_t len) {
   if (len < 4) return;
   uint32_t t;
+  int32_t tz = 0;
   memcpy(&t, data, 4);
-  if (len >= 8) {                              // [u32 unix time][i32 local offset in seconds]
-    int32_t tz;
-    memcpy(&tz, data + 4, 4);
-    if (tz > -14 * 3600 && tz < 15 * 3600 && tz != meta.tzOffset) { meta.tzOffset = tz; tzChanged = true; }
-  }
+  if (len >= 8) memcpy(&tz, data + 4, 4);      // [u32 unix time][i32 local offset in seconds]
+  newTime = t;
+  newTz = tz;
+  newTzOk = len >= 8 && tz > -14 * 3600 && tz < 15 * 3600;
+  timePending = true;                          // set in loop(): flash and the uptime counter only there
+}
+
+static void applyTime() {
+  timePending = false;
+  uint32_t t = newTime;
+  if (newTzOk && newTz != meta.tzOffset) { meta.tzOffset = newTz; tzChanged = true; }
   if (t < 1600000000UL) return;
   epochBase = t - uptimeSec();
   timeExact = true;
@@ -893,7 +1004,7 @@ static void onCtrlWrite(uint16_t conn, BLECharacteristic *, uint8_t *data, uint1
   memcpy(&v, data + 1, 4);
   if (data[0] == 0x01) { dumpFrom = v; dumpConn = conn; dumpPending = true; }
   if (data[0] == 0x02) { clearExpect = v; clearPending = true; }
-  if ((data[0] >= 0x04 && data[0] <= 0x07) || (data[0] >= 0x09 && data[0] <= 0x0B) || data[0] == 0x0E) {   // queue for loop(): no flash work in a callback
+  if ((data[0] >= 0x04 && data[0] <= 0x07) || (data[0] >= 0x09 && data[0] <= 0x0B) || data[0] == 0x0E || data[0] == 0x0F) {   // queue for loop(): no flash work in a callback
     uint8_t next = (opHead + 1) % 8;
     if (next == opTail) return;                // queue full, drop
     for (int i = 0; i < 20; i++) opQueue[opHead].b[i] = i < len ? data[i] : 0;
@@ -907,6 +1018,16 @@ static void setTilt();
 static void setSide();
 static void enterActive();
 extern uint32_t lastMotionMs;
+
+// The phone already has records up to a higher index than this pod (pod memory lost its numbering,
+// or another pod was used before): the pod's records get numbers from newBase on, so they are new
+// for the phone. Records and counters themselves don't change.
+static void rebaseIndex(uint32_t newBase) {
+  uint32_t old = meta.baseIndex;
+  meta.ringFromIndex = meta.ringFromIndex >= old ? meta.ringFromIndex - old + newBase : newBase;
+  meta.baseIndex = newBase;
+  saveMeta();
+}
 
 static void processOps() {
   bool changed = false;
@@ -938,6 +1059,9 @@ static void processOps() {
         lastMotionMs = millis();               // and not back to idle between the steps
         if (b[0] == 0x09) setLevel(); else if (b[0] == 0x0A) setTilt(); else setSide();
         break;
+      case 0x0F:                               // [0x0F, u32 index] (2.3.2): numbering continues from here
+        if (v > totalShots() && v < 0xF0000000UL) rebaseIndex(v);   // only forward (phone's own count is higher)
+        break;
       case 0x0B:                               // end score; a full 20-byte write carries the hit positions
         if (v > 1600000000UL) {                  // instead of the part byte (part 0, ends of up to 6)
           if (len >= 20) addScore(v, b + 5, 0, b + 8);
@@ -950,20 +1074,25 @@ static void processOps() {
   if (changed) updateInfo(true);
 }
 
+static uint8_t connCount() {                 // live connections (counted per handle, so it can't drift)
+  uint8_t n = 0;
+  for (int i = 0; i < BLE_MAX_CONNECTION; i++) if (connUp[i]) n++;
+  return n;
+}
 static void onConnect(uint16_t h) {
-  if (connCount < MAX_CONNECTIONS) connCount++;
+  if (h < BLE_MAX_CONNECTION) connUp[h] = true;
 #if CALIBRATION_LOG
-  Serial.printf("BLE connect #%u (%u connected)\n", h, connCount);
+  Serial.printf("BLE connect #%u (%u connected)\n", h, connCount());
 #endif
   digitalWrite(LED_BLUE, LOW);
-  if (connCount < MAX_CONNECTIONS) Bluefruit.Advertising.start(0);   // stay visible for the 2nd device
+  if (connCount() < MAX_CONNECTIONS) Bluefruit.Advertising.start(0);   // stay visible for the 2nd device
 }
 static void onDisconnect(uint16_t h, uint8_t reason) {
-  if (connCount > 0) connCount--;
+  if (h < BLE_MAX_CONNECTION) connUp[h] = false;
 #if CALIBRATION_LOG
-  Serial.printf("BLE disconnect #%u reason 0x%02X (%u connected)\n", h, reason, connCount);
+  Serial.printf("BLE disconnect #%u reason 0x%02X (%u connected)\n", h, reason, connCount());
 #endif
-  if (connCount == 0) digitalWrite(LED_BLUE, HIGH);
+  if (connCount() == 0) digitalWrite(LED_BLUE, HIGH);
 }
 
 uint16_t podId = 0;
@@ -1065,9 +1194,9 @@ static void doDump() {
   File f(InternalFS);
   File df(InternalFS);
   bool dfOpen = (withDetails || withDetails2) && detailCount && df.open(DETAIL_FILE, FILE_O_READ);
+  uint32_t idx = from;                         // next record to send = how far the dump got
   if (localStart < localCount && f.open(LOG_FILE, FILE_O_READ)) {
     f.seek(localStart * sizeof(ShotRec));
-    uint32_t idx = from;
     while (idx < totalShots()) {
       uint8_t pkt[20];
       memcpy(pkt, &idx, 4);
@@ -1110,11 +1239,16 @@ static void doDump() {
   }
   if (dfOpen) df.close();
   updateInfo(false);                       // fresh battery reading for the app's "Update now"
-  uint8_t end[8];
+  // end marker (2.3.2): [0xFFFFFFFF][u32 reached][u32 total][u32 requested from]. "reached" is the
+  // first record NOT sent: equal to total when nothing went missing. Phone pages up to 2.3.1 read
+  // offset 4 as the total, so a broken-off dump never makes them skip or clear records.
+  uint8_t end[16];
   uint32_t marker = 0xFFFFFFFF, total = totalShots();
   memcpy(end, &marker, 4);
-  memcpy(end + 4, &total, 4);
-  notifyRetry(chData, end, 8);
+  memcpy(end + 4, &idx, 4);
+  memcpy(end + 8, &total, 4);
+  memcpy(end + 12, &req, 4);
+  notifyRetry(chData, end, 16);
 }
 
 // =====================================================================
@@ -1270,13 +1404,56 @@ float    calPitch = 0;                         // Z angle in step 1
 float    calGrav[3] = {0, 0, 1};               // gravity direction in step 1
 float    calL[3][3], calA[3][3];               // gravity in steps 1-3: main sensor, ADXL375 (g)
 uint32_t calAtMs = 0;                          // time of step 1 (the other steps must follow within 2 minutes)
+uint8_t  calProgress = 0;                      // steps done in this calibration: 1 after step 1, 2 after step 2
 
-static bool readGravity(float s[3], float sa[3]) {   // average of 8 readings, the bow held still (sa: ADXL375, may be null)
+// Before each calibration step: wait until the bow has been still for 1 s (2.3.2), at most 4 s, so
+// tapping the phone with the other hand doesn't go into the measurement. Still = every gyro reading
+// of the last second within 8 deg/s of their average, as steady as an aiming hold (the gyro's own
+// offset cancels out); tapping the phone moves it by far more.
+#define STILL_WIN 100                          // 1 s at 100 Hz
+static bool waitStill() {
+  static float w[STILL_WIN][3];
+  uint32_t t0 = millis();
+  int n = 0;
+  while (millis() - t0 < 4000) {
+    float g[3];
+    if (lsmReadGyro(g)) {
+      memcpy(w[n % STILL_WIN], g, sizeof(g));
+      n++;
+      if (n >= STILL_WIN) {
+        float m[3] = {0, 0, 0};
+        for (int i = 0; i < STILL_WIN; i++) for (int k = 0; k < 3; k++) m[k] += w[i][k] / STILL_WIN;
+        bool still = true;
+        for (int i = 0; i < STILL_WIN && still; i++) {
+          float d0 = w[i][0] - m[0], d1 = w[i][1] - m[1], d2 = w[i][2] - m[2];
+          if (d0 * d0 + d1 * d1 + d2 * d2 > 64.0f) still = false;
+        }
+        if (still) return true;
+      }
+    }
+    delay(10);
+  }
+  return false;
+}
+
+// the bow was not still: tell the phone (status 6), but keep the stored calibration as it was
+static void notStill() {
+  uint8_t keep = settings.calStatus;
+  settings.calStatus = 6;
+  publishSettings(true);
+  settings.calStatus = keep;
+  publishSettings(false);
+#if CALIBRATION_LOG
+  Serial.println("calibration: the bow was not still, step not measured");
+#endif
+}
+
+static bool readGravity(float s[3], float sa[3]) {   // average over 0.5 s, the bow held still (sa: ADXL375, may be null)
   float a[3];
   int n = 0, na = 0;
   s[0] = s[1] = s[2] = 0;
   if (sa) sa[0] = sa[1] = sa[2] = 0;
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 25; i++) {
     if (lsmReadAccel(a)) { for (int k = 0; k < 3; k++) s[k] += a[k]; n++; }
     if (sa && adxlRead(a)) { for (int k = 0; k < 3; k++) sa[k] += a[k]; na++; }
     delay(20);
@@ -1310,7 +1487,9 @@ static bool basis3(const float d1[3], const float d2[3], float B[9]) {
 
 static void setLevel() {
   float s[3];
+  if (!waitStill()) { notStill(); return; }
   if (!readGravity(s, calA[0])) return;
+  calProgress = 1;
   memcpy(calL[0], s, sizeof(s));
   settings.cantRef10 = (int16_t)lroundf(rollOf(s) * 10.0f);
   settings.flags = (settings.flags | 1) & ~2;  // bit0 calibrated, bit1 (from the first shot) off
@@ -1329,18 +1508,20 @@ static void setLevel() {
 
 static void setTilt() {
   float s[3];
+  if (!waitStill()) { notStill(); return; }
   if (!readGravity(s, calA[1])) return;
   memcpy(calL[1], s, sizeof(s));
   float d = pitchOf(s) - calPitch;             // change of the Z angle
   float n = sqrtf(s[0] * s[0] + s[1] * s[1] + s[2] * s[2]);
   float dot = n > 0.2f ? (s[0] * calGrav[0] + s[1] * calGrav[1] + s[2] * calGrav[2]) / n : 1;
   float tilt = acosf(dot > 1 ? 1 : (dot < -1 ? -1 : dot)) * 57.29578f;   // how far the bow tilted
-  if (settings.calStatus == 0 || millis() - calAtMs > 120000UL || tilt < 25.0f) {
+  if (calProgress < 1 || millis() - calAtMs > 120000UL || tilt < 25.0f) {
     settings.calStatus = 3;                    // step 1 missing, too late, or the bow hardly moved
   } else {
     uint8_t m = fabsf(d) < 0.6f * tilt ? MOUNT_SIDE : (d < 0 ? MOUNT_FRONT : MOUNT_BACK);
     settings.flags = (settings.flags & ~0x0C) | (m << 2);
     settings.calStatus = 2;
+    calProgress = 2;
   }
   saveSettings();
   publishSettings(true);
@@ -1355,6 +1536,7 @@ static void setTilt() {
 // sensors completely (TRIAD method). calStatus 4 = done, 5 = failed (too little sideways tilt).
 static void setSide() {
   float s[3];
+  if (!waitStill()) { notStill(); return; }
   if (!readGravity(s, calA[2])) return;
   memcpy(calL[2], s, sizeof(s));
   float dL1[3], dL2[3], dA1[3], dA2[3], BL[9], BA[9];
@@ -1366,7 +1548,7 @@ static void setSide() {
   float c[3];
   cross3(dL1, dL2, c);
   float spread = sqrtf(c[0] * c[0] + c[1] * c[1] + c[2] * c[2]);
-  bool ok = settings.calStatus == 2 && millis() - calAtMs < 180000UL && n1 > 0.5f && spread > 0.15f &&
+  bool ok = calProgress >= 2 && millis() - calAtMs < 180000UL && n1 > 0.5f && spread > 0.15f &&
             basis3(dL1, dL2, BL) && basis3(dA1, dA2, BA);
   // the bow's own axes: step 1 = upright with the arrow level (gravity = straight down the bow),
   // step 2 = tipped forward about the bow's right axis
@@ -1744,7 +1926,7 @@ void setup() {
   Serial.begin(115200);
   while (!Serial && millis() < 5000) delay(10);      // give the Serial Monitor time to attach
   uint32_t rr = NRF_POWER->RESETREAS; NRF_POWER->RESETREAS = 0xFFFFFFFF;
-  DBG("\n=== PfeilZaehler3000 DEBUG (v2.2) === reset reason 0x%08lX\n", (unsigned long)rr);
+  DBG("\n=== PfeilZaehler3000 DEBUG (v2.3.2) === reset reason 0x%08lX\n", (unsigned long)rr);
 
   DBG("[1] Bluetooth\n");
   bleBegin();
@@ -1775,6 +1957,7 @@ void setup() {
 }
 
 void loop() {
+  if (timePending) applyTime();                // first: records and end marks get the new time
   if (opTail != opHead) processOps();
   if (tzChanged) {                             // local day boundaries moved: count again
     tzChanged = false;
@@ -1784,6 +1967,17 @@ void loop() {
   }
   if (settingsPending) {                       // arrows per end / end pause from phone or watch
     settingsPending = false;
+    if (newArrows != settings.arrowsPerEnd || newPause != settings.endPauseS) {
+      // remember when it changed: a phone that syncs later judges the ends before and after correctly
+      ShotRec c;
+      c.t = nowEpoch();
+      c.peak10 = newPause;
+      c.aim100 = newArrows;
+      c.flags = FLAG_SETTING | (timeExact ? 1 : 0);
+      ShotDetail none;
+      memset(&none, 0, sizeof(none));
+      if (appendShot(c, none)) updateInfo(true);
+    }
     settings.arrowsPerEnd = newArrows;
     settings.endPauseS = newPause;
     if (newMount >= 0) settings.flags = (settings.flags & ~0x0C) | (newMount << 2);

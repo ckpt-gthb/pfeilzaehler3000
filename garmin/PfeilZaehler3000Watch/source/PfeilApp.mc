@@ -1,6 +1,6 @@
 // PfeilZaehler3000 (c) 2026 ckpt-gthb – free for personal, non-commercial use; PolyForm Strict 1.0.0 with permissions, see LICENSE
 // PfeilZaehler3000 – Garmin watch app (Epix Gen 2) for the PfeilZaehler3000 pod
-// Watch app version 2.2, for pod firmware 2.0 and later (scoring needs firmware 2.2).
+// Watch app version 2.3.2, for pod firmware 2.0 and later (scoring needs firmware 2.2).
 // Shows arrows per end / session / today live and vibrates on every arrow.
 // START button: record the training as a Garmin activity (arrows saved in the activity).
 // Hold UP: settings (also scoring, the mounting point of the pod and the language: English, German, Polish).

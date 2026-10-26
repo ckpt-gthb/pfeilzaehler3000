@@ -10,7 +10,7 @@
 //   a7c10002  INFO   notify 20 bytes: flags u8 @11 (bit2 = the bow rests still, e.g. on the stand)
 //   a7c10003  CTRL   (2.2) [0x0B, u32 start of the end, 3 bytes values, u8 part] end score, or with the
 //                    hits [0x0B, u32 start, 3 bytes values, 12 bytes hits] (20 bytes, ends of up to 6)
-//   a7c10006  SETTINGS read/write/notify (pod firmware 2.0): 8 bytes, arrows per end u8 @1,
+//   a7c10006  SETTINGS read/write/notify (pod firmware 2.0; 11 bytes since 2.2): arrows per end u8 @1,
 //                    new end after u16 seconds @2, flags u8 @4 (bits 2-3 mounting point),
 //                    calibration u8 @5, target face u8 @10 (2.2: 0 full, 1 3-spot); write [arrows]
 //                    [u16 seconds][u8 mounting point or 0xFF][u8 target face]
@@ -50,7 +50,7 @@ const POD_NAME    = "PfeilZaehler3000";
 // 5–8 = score entry examples: 5 numpad, 6 dial, 7 PiMalDaumen, 8 end summary;
 // 9 = main screen with today as the big number, pod connected (battery green), recording
 const DEMO = 0;
-const APP_VERSION = "2.3.1";   // shown in the settings; change together with the CHANGELOG
+const APP_VERSION = "2.3.2";   // shown in the settings; change together with the CHANGELOG
 const RECONNECT_S = 30;      // after this long without the pod: search again
 
 class PodLink extends BluetoothLowEnergy.BleDelegate {
@@ -112,8 +112,10 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     var scores = [];             // this session's end scores: [start, total, arrows]
     var promptedStart = -1;      // the end the score entry already opened for by itself
     var resting = false;         // the pod reports the bow resting still
+    var mainShown = false;       // the main screen is in front (the score entry opens by itself only then)
     var podFw = 0;               // pod firmware from INFO, e.g. 23 = 2.3
     var podPatch = 0;            // third digit (2.3.1 and later), INFO byte 13
+    var podMem = 0;              // pod memory used in %, INFO byte 10 (warning from 80 %)
 
     // ---- activity recording ----
     var session = null;
@@ -322,6 +324,8 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
         }
         Storage.deleteValue("podId");
         myPod = null;
+        queue = [];                              // nothing waiting for the old pod goes to the new one
+        resetSession();                          // its arrows, ends and scores belong to the old pod
         var d = device;
         device = null;                           // a disconnect now is wanted, not a loss
         if (d != null) {
@@ -641,6 +645,7 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
         }
         resting = r;
         podFw = v[12] as Number;
+        podMem = v[10] as Number;
         podPatch = (v.size() >= 14) ? (v[13] as Number) : 0;
     }
 
@@ -648,6 +653,9 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
     function onBowResting() as Void {
         if (scoreMode != 0 || endCount < arrowsEnd || arrowsEnd < 1 || promptedStart == endStartSec) {
             return;
+        }
+        if (!mainShown) {
+            return;                              // settings or a score entry open: not on top of them
         }
         if (scoreFor(endStartSec) != null) {
             return;                              // already scored (e.g. on the phone)
@@ -712,6 +720,8 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
         v.sessTotal = tot;
         v.sessArrows = arr;
         scoringStart = start;
+        promptedStart = start;                   // opened (by hand too): this end doesn't open again by itself
+        saveSession();
         if (auto && (Attention has :vibrate)) {
             Attention.vibrate([ new Attention.VibeProfile(60, 120), new Attention.VibeProfile(0, 80), new Attention.VibeProfile(60, 120) ]);
         }
@@ -975,9 +985,15 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
         WatchUi.requestUpdate();
     }
 
+    // ready to send right now: undo is only offered then. A delete waiting for a reconnect would
+    // remove whatever arrow is newest on the pod by then, and the counts would drop twice.
+    function live() {
+        return status == :connected && (setupStep == 4 || DEMO > 0);
+    }
+
     // UP button (after confirming): delete the last arrow on the pod, the phone page follows
     function undoLast() {
-        if (sessionCount <= 0) {
+        if (sessionCount <= 0 || !live()) {
             return;
         }
         sendCtrl(0x05, 0);
@@ -1048,7 +1064,16 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
                                              { :mesgType => FitContributor.MESG_TYPE_SESSION, :units => "points" });
         fScoreAvg      = session.createField("score_avg", 6, FitContributor.DATA_TYPE_FLOAT,
                                              { :mesgType => FitContributor.MESG_TYPE_SESSION, :units => "points" });
-        // count from zero for this activity
+        resetSession();                          // count from zero for this activity
+        updateFit();
+        session.start();
+        recStartSec = Time.now().value();
+        if (Attention has :vibrate) {
+            Attention.vibrate([ new Attention.VibeProfile(80, 300) ]);
+        }
+    }
+
+    function resetSession() {
         sessionCount = 0;
         endCount = 0;
         endsDone = 0;
@@ -1061,12 +1086,6 @@ class PodLink extends BluetoothLowEnergy.BleDelegate {
         scores = [];
         promptedStart = -1;
         saveSession();
-        updateFit();
-        session.start();
-        recStartSec = Time.now().value();
-        if (Attention has :vibrate) {
-            Attention.vibrate([ new Attention.VibeProfile(80, 300) ]);
-        }
     }
 
     function stopRecording(save) {

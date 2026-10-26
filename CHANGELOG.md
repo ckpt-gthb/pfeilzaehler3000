@@ -1,5 +1,50 @@
 # Changelog
 
+## Release 2.3.2
+
+Bug fixes from the code review: no arrow is lost when a sync breaks off or the pod memory is full.
+Pod firmware, phone page and watch app are version 2.3.2.
+
+**Pod firmware 2.3.2**
+- The end of a sync says how far it really got; a sync that broke off can no longer make the phone
+  skip arrows or clear them from the pod (#25).
+- Memory full (e.g. only the watch is used for weeks): the oldest half of the records makes room,
+  their arrows stay in the counters. A new arrow is never refused (#26).
+- The clock from the phone or watch is stored in the main loop, not in the Bluetooth callback (#29).
+- New command `0F`: the pod continues its numbering from the phone's count when it is behind (#29).
+- Calibration: each step waits until the bow is still before it measures, so the bow can be held in
+  one hand and the phone tapped with the other (#38).
+- The blue LED counts connections per link and can no longer show the wrong state (#33).
+- A change of arrows per end or end pause is stored with its time, so the phone page judges the ends
+  before and after it correctly, also when it was changed on the watch while the phone was away.
+
+**Phone page 2.3.2**
+- Takes over only arrows that arrived without a gap, fetches the rest at once, and clears the pod
+  only after a complete sync (#25).
+- An arrow shot during an update is fetched right after it (#28).
+- A pod whose numbering is behind the phone is renumbered, and an arrow is never imported twice
+  (#29). Says when older records were no longer on the pod (#26).
+- Connecting can't run twice at once, and every notification is handled once (#32). The page keeps
+  its own "connected" state instead of the browser's, gives up on a pod that doesn't answer after
+  6 s instead of 30 s and connects again once by itself.
+- `?log` after the address shows a log of the connection to copy for bug reports (e.g. Bluefy).
+- Calibration: "Hold the bow still…", and "The bow was not still" repeats the step (#38).
+- The open end is worked out from the last 12 hours only, not the whole history every 10 s (#36).
+- Ends are judged with the arrows per end that applied when they were shot, even if the change was
+  made on the watch and the phone learned it only later (sessions already synced stay as they are).
+
+**Watch app 2.3.2**
+- Status line "Pod 85% full: sync phone" from 80 % pod memory (#26).
+- Delete last arrow only while the pod is connected; otherwise "Pod not connected" (#27).
+- *Use a different pod* drops everything still waiting for the old pod and starts a new session (#30).
+- The score entry opens by itself only over the main screen, and not again for an end that was
+  already opened by hand (#31).
+- Ends of more than 6 arrows: the values as a text row in the score entry, two rows in the summary (#35).
+
+**Documentation**
+- Time-zone change: at most one evening's arrows can move to the neighbouring day in today/week/month
+  (build guide, troubleshooting) (#34). Version texts and protocol comments updated (#37).
+
 ## Release 2.3.1
 
 The owner lock of 2.3 is removed: it locked phones out of their own pod, made "Update now" hang
