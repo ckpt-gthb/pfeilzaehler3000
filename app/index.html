@@ -7,6 +7,8 @@
 <meta name="theme-color" content="#1f2a24">
 <title>PfeilZaehler3000</title>
 <style>
+.log pre{white-space:pre-wrap;font-size:11px;line-height:1.35;max-height:60vh;overflow:auto;margin:.5em 0 0}
+.log summary{cursor:pointer;color:var(--muted);font-size:13px}
 :root{
   --bg:#f5f3ee;--card:#fffdf8;--ink:#1d211e;--muted:#6b716c;--line:#e2ded4;
   --accent:#2f6b4f;--accent-soft:#dcebe2;--warn:#b5542a;--warn-soft:#f6e1d6;--bar:#2f6b4f;
@@ -210,6 +212,8 @@ label input{width:90px;padding:6px 8px;border:1px solid var(--line);border-radiu
     <button class="btn ghost danger" id="reset" data-i18n="resetAll"></button>
   </div>
   <p class="small" data-i18n-html="footer"></p>
+  <details class="log" id="logbox" hidden><summary>Log</summary>
+    <button class="btn ghost" id="logcopy">Copy log</button><pre id="logtxt"></pre></details>
 </main>
 
 <div class="overlay" id="box" hidden>
@@ -301,7 +305,7 @@ if (new URLSearchParams(location.search).has('demo')) (() => {
   today.forEach(x => { x.t += shift; });
   for (const k of Object.keys(scores)) if (+k >= now - 15 * 60 - 60) delete scores[k];   // today's ends: not scored yet
   const pod = today.map((x, k) => Object.assign(x, { i: past.length + k }));
-  const base = past.length;
+  let base = past.length;
   let settings = [0x5E, 6, 100, 0, 1, 4, 0, 0, 0, 0, 0];     // 6 arrows, 100 s, calibrated (all 3 steps), back of the riser, training
 
   const listeners = {}, notifyOn = {};
@@ -310,7 +314,7 @@ if (new URLSearchParams(location.search).has('demo')) (() => {
   const u16 = v => [v & 255, (v >> 8) & 255];
   const emit = (n, bytes) => { if (notifyOn[n]) setTimeout(() => (listeners[n] || []).forEach(f => f({ target: { value: dv(bytes) } })), 30); };
   const live = () => pod.filter(r => !(r.flags & 0xC0));
-  const info = () => [...u32(base + pod.length), ...u32(base), ...u16(3940), 4, 1, 23, 1, 0, 0, 0, 0, 0, 0];
+  const info = () => [...u32(base + pod.length), ...u32(base), ...u16(3940), 4, 1, 23, 2, 0, 0, 0, 0, 0, 0];
   const stats = () => { const n = live().length, l = live(); return [...u32(base + n), ...u16(n), ...u16(n + 61), ...u16(n + 340), ...u16(3940), ...u32(0), ...u32(l.length ? l[l.length - 1].t : 0)]; };
   const detBytes = d => d ? [Math.round(d.raise * 10), Math.round(d.draw * 10), Math.round(d.hold * 10), Math.round(d.move * 100), ...u16(Math.round(d.pitch * 10) & 0xFFFF), ...u16(Math.round(d.cant * 10) & 0xFFFF), d.drop & 255, d.side & 255, d.pushDown & 255, d.pushRight & 255] : new Array(12).fill(0);
   function ch(n) {
@@ -320,8 +324,13 @@ if (new URLSearchParams(location.search).has('demo')) (() => {
         const b = [...new Uint8Array(buf.buffer || buf)];
         const v = (b[1] | b[2] << 8 | b[3] << 16 | b[4] << 24) >>> 0;
         if (n === 3 && b[0] === 1) {                          // dump records + details
+          if (hooks.silent) { hooks.silent--; return; }       // test: the pod doesn't answer
           setTimeout(() => {
+            let sent = 0, reached = Math.max(v, base);
             for (let i = Math.max(v, base); i < base + pod.length; i += 2) {
+              if (hooks.dropEvery && ++sent % hooks.dropEvery === 0) continue;   // test: a lost packet
+              if (hooks.breakAt && i >= hooks.breakAt) break;                   // test: the dump breaks off
+              reached = Math.min(i + 2, base + pod.length);
               const pk = [...u32(i)], dps = [];
               for (let k = i; k < Math.min(i + 2, base + pod.length); k++) {
                 const r = pod[k - base];
@@ -331,15 +340,21 @@ if (new URLSearchParams(location.search).has('demo')) (() => {
               (listeners[4] || []).forEach(f => f({ target: { value: dv(pk) } }));
               for (const dp of dps) (listeners[8] || []).forEach(f => f({ target: { value: dv(dp) } }));
             }
-            (listeners[4] || []).forEach(f => f({ target: { value: dv([255, 255, 255, 255, ...u32(base + pod.length)]) } }));
+            if (!hooks.breakAt) reached = base + pod.length;
+            const endMark = () => (listeners[4] || []).forEach(f => f({ target: { value: dv([255, 255, 255, 255, ...u32(reached), ...u32(base + pod.length), ...u32(v)]) } }));
+            if (hooks.endDelay) setTimeout(endMark, hooks.endDelay); else endMark();
           }, 150);
+        } else if (n === 3 && b[0] === 15) {                  // continue the numbering from v (2.3.2)
+          if (v > base + pod.length) { base = v; pod.forEach((r, k) => { r.i = base + k; }); }
+          emit(2, info());
         } else if (n === 3 && b[0] === 4) {                   // delete / restore
           const cnt = b[5] | b[6] << 8;
           for (let i = v; i < v + cnt; i++) { const r = pod[i - base]; if (r) r.flags = b[7] ? r.flags | 0x80 : r.flags & ~0x80; }
           emit(5, stats()); emit(2, info());
         } else if (n === 3 && b[0] === 7) {                   // end mark
           pod.push({ i: base + pod.length, t: v, peak: 0, aim: 0, flags: 0x41 }); emit(5, stats()); emit(2, info());
-        } else if (n === 3 && b[0] === 9) { settings[4] = (settings[4] & 0x0C) | 1; settings[5] = 1; emit(6, settings); }
+        } else if (n === 3 && [9, 10, 14].includes(b[0]) && hooks.notStill) { hooks.notStill--; emit(6, [...settings.slice(0, 5), 6, ...settings.slice(6)]); }
+        else if (n === 3 && b[0] === 9) { settings[4] = (settings[4] & 0x0C) | 1; settings[5] = 1; emit(6, settings); }
         else if (n === 3 && b[0] === 10) { settings[5] = 2; emit(6, settings); }
         else if (n === 3 && b[0] === 14) { settings[5] = 4; emit(6, settings); }
         else if (n === 3 && b[0] === 11) {                    // end score: stored as a record (+ 2 records of hit positions)
@@ -351,6 +366,10 @@ if (new URLSearchParams(location.search).has('demo')) (() => {
         else if (n === 6) {
           const f = b.length >= 4 && b[3] <= 2 ? (settings[4] & ~0x0C) | ((b[3] & 3) << 2) : settings[4];
           const rd = b.length >= 5 && b[4] <= 1 ? b[4] : settings[10];
+          if (b[0] !== settings[1] || (b[1] | b[2] << 8) !== (settings[2] | settings[3] << 8)) {   // settings change record (2.3.2)
+            const t = hooks.setTime || Math.floor(Date.now() / 1000);
+            pod.push({ i: base + pod.length, raw: [...u32(t), b[1], b[2], b[0], 0x71], t, flags: 0x71 }); emit(2, info());
+          }
           settings = [0x5E, b[0], b[1], b[2], f, settings[5], 0, 0, 0, 0, rd]; emit(6, settings);
         }
       },
@@ -374,7 +393,15 @@ if (new URLSearchParams(location.search).has('demo')) (() => {
         return { async getPrimaryService() { return { async getCharacteristic(u) { return ch(+u[7]); } }; } };
       },
       disconnect() { this.connected = false; } } };
+  const hooks = {};                                           // for the tests: lost packets, broken-off dump, late end marker
   window.__pzDemo = {
+    hooks,
+    shoot() { const t = Math.floor(Date.now() / 1000); pod.push({ i: base + pod.length, t, peak: +between(32, 58).toFixed(1), aim: +between(4, 7).toFixed(1), flags: 1, d: detail() }); emit(2, info()); emit(5, stats()); },
+    renumber(b) { base = b; pod.forEach((r, k) => { r.i = base + k; }); },
+    // test: arrows per end changed on the watch at time t, while this phone was away
+    watchChange(arrows, t) { pod.push({ i: base + pod.length, raw: [...u32(t), settings[2], settings[3], arrows, 0x71], t, flags: 0x71 }); settings[1] = arrows; },
+    todayEnds: () => pod.filter(r => !r.raw && !(r.flags & 0xC0)).map(r => r.t),
+    podTotal: () => base + pod.length,
     db: () => ({ shots: past, nextIndex: base, endMarks: [], ops: [], lastSync: Date.now() - 2 * 86400000, podName: dev.name, scores,
                  settings: { arrows: 6, endGap: 100, sessGap: 45, clearAt: 50, dist: 18, face: 0 } }),
     bluetooth: { async requestDevice() { return dev; } },
@@ -386,7 +413,7 @@ if (new URLSearchParams(location.search).has('demo')) (() => {
 // Plural entries are arrays: [one, other] in English and German, [one, few, many] in Polish.
 const I18N = {
 en: {
-  sub: 'Arrows counted automatically · version 2.3.1',
+  sub: 'Arrows counted automatically · version 2.3.2',
   exampleBanner: 'Example data, nothing is saved. <a href="./">Back to my data</a>',
   connect: 'Connect pod & sync', updateNow: 'Update now', reconnect: 'Reconnect & update', choosePod: 'Choose pod', disconnect: 'Disconnect',
   thisEnd: 'This end', newEnd: 'New end', totals: 'Totals', today: 'Today', thisWeek: 'This week', thisMonth: 'This month', allTime: 'All time',
@@ -405,9 +432,13 @@ en: {
   close: 'Close', copy: 'Copy', chooseFile: 'Choose file…', cancel: 'Cancel', next: 'Next', finish: 'Finish', done: 'Done', undo: 'Undo',
   boxRestoreHint: 'Paste the backup text here, then tap Restore.', boxCopyHint: 'Copy this text and paste it into Notes, Mail or a file.',
   selected: 'Selected – tap Copy in the iPhone menu.', copied: 'Copied.', restoreTitle: 'Restore backup', backupRestored: 'Backup restored.',
+  syncIncomplete: 'Not all arrows arrived – they are fetched with the next update.',
+  podRenumbered: 'The pod counted from a lower number than this phone; it now continues from here, so its arrows are imported.',
+  podDropped: ['1 older record was no longer on the pod (cleared by another phone, or the pod memory was full).', '{n} older records were no longer on the pod (cleared by another phone, or the pod memory was full).'],
   invalidBackup: 'That is not a valid backup: ', restoreFailed: 'Restore failed: ',
   calTitle: 'Calibrate the pod',
-  calConnect: 'Connect the pod first.', measuring: 'Measuring…',
+  calConnect: 'Connect the pod first.', measuring: 'Measuring…', holdStill: 'Hold the bow still…',
+  notStill: 'The bow was not still – hold it steady for a moment and tap again.',
   calDone: 'Done: pod on {mount}.',
   calDoneSide: 'Done: pod on {mount}, arrows and phase times only.',
   calFail: 'The bow did not tilt far enough. Start again with step 1.', podNoAnswer: 'the pod did not answer',
@@ -459,7 +490,7 @@ en: {
   restoreArrow: 'Restore arrow {n}', deleteArrow: 'Delete arrow {n}', del: 'Delete',
 },
 de: {
-  sub: 'Pfeile automatisch gezählt · Version 2.3.1',
+  sub: 'Pfeile automatisch gezählt · Version 2.3.2',
   exampleBanner: 'Beispieldaten, es wird nichts gespeichert. <a href="./">Zurück zu meinen Daten</a>',
   connect: 'Pod verbinden & synchronisieren', updateNow: 'Jetzt aktualisieren', reconnect: 'Neu verbinden & aktualisieren', choosePod: 'Pod wählen', disconnect: 'Trennen',
   thisEnd: 'Diese Passe', newEnd: 'Neue Passe', totals: 'Summen', today: 'Heute', thisWeek: 'Diese Woche', thisMonth: 'Dieser Monat', allTime: 'Gesamt',
@@ -478,9 +509,13 @@ de: {
   close: 'Schließen', copy: 'Kopieren', chooseFile: 'Datei wählen …', cancel: 'Abbrechen', next: 'Weiter', finish: 'Fertig', done: 'Fertig', undo: 'Rückgängig',
   boxRestoreHint: 'Sicherungstext hier einfügen, dann auf Einlesen tippen.', boxCopyHint: 'Diesen Text kopieren und in Notizen, Mail oder eine Datei einfügen.',
   selected: 'Markiert – im iPhone-Menü auf Kopieren tippen.', copied: 'Kopiert.', restoreTitle: 'Sicherung wiederherstellen', backupRestored: 'Sicherung wiederhergestellt.',
+  syncIncomplete: 'Nicht alle Pfeile sind angekommen – sie werden beim nächsten Aktualisieren geholt.',
+  podRenumbered: 'Der Pod zählte von einer kleineren Nummer als dieses Handy; er zählt jetzt von hier weiter, damit seine Pfeile übernommen werden.',
+  podDropped: ['1 älterer Eintrag war nicht mehr auf dem Pod (von einem anderen Handy gelöscht oder der Pod-Speicher war voll).', '{n} ältere Einträge waren nicht mehr auf dem Pod (von einem anderen Handy gelöscht oder der Pod-Speicher war voll).'],
   invalidBackup: 'Das ist keine gültige Sicherung: ', restoreFailed: 'Wiederherstellen fehlgeschlagen: ',
   calTitle: 'Pod kalibrieren',
-  calConnect: 'Zuerst den Pod verbinden.', measuring: 'Messe …',
+  calConnect: 'Zuerst den Pod verbinden.', measuring: 'Messe …', holdStill: 'Bogen ruhig halten …',
+  notStill: 'Der Bogen war nicht ruhig – kurz still halten und noch einmal tippen.',
   calDone: 'Fertig: Pod {mount}.',
   calDoneSide: 'Fertig: Pod {mount}, nur Pfeile und Phasenzeiten.',
   calFail: 'Der Bogen wurde nicht weit genug geneigt. Noch einmal mit Schritt 1 beginnen.', podNoAnswer: 'der Pod hat nicht geantwortet',
@@ -533,7 +568,7 @@ de: {
   restoreArrow: 'Pfeil {n} wiederherstellen', deleteArrow: 'Pfeil {n} löschen', del: 'Löschen',
 },
 pl: {
-  sub: 'Strzały liczone automatycznie · wersja 2.3.1',
+  sub: 'Strzały liczone automatycznie · wersja 2.3.2',
   exampleBanner: 'Dane przykładowe, nic nie jest zapisywane. <a href="./">Powrót do moich danych</a>',
   connect: 'Połącz czujnik i synchronizuj', updateNow: 'Aktualizuj teraz', reconnect: 'Połącz ponownie i aktualizuj', choosePod: 'Wybierz czujnik', disconnect: 'Rozłącz',
   thisEnd: 'Ta seria', newEnd: 'Nowa seria', totals: 'Podsumowanie', today: 'Dziś', thisWeek: 'Ten tydzień', thisMonth: 'Ten miesiąc', allTime: 'Łącznie',
@@ -552,9 +587,13 @@ pl: {
   close: 'Zamknij', copy: 'Kopiuj', chooseFile: 'Wybierz plik…', cancel: 'Anuluj', next: 'Dalej', finish: 'Zakończ', done: 'Gotowe', undo: 'Cofnij',
   boxRestoreHint: 'Wklej tutaj tekst kopii, a potem stuknij Przywróć.', boxCopyHint: 'Skopiuj ten tekst i wklej go do Notatek, poczty lub pliku.',
   selected: 'Zaznaczono – stuknij Kopiuj w menu iPhone’a.', copied: 'Skopiowano.', restoreTitle: 'Przywróć kopię', backupRestored: 'Kopia przywrócona.',
+  syncIncomplete: 'Nie wszystkie strzały dotarły – zostaną pobrane przy następnej aktualizacji.',
+  podRenumbered: 'Czujnik liczył od mniejszego numeru niż ten telefon; teraz liczy dalej od tego miejsca, więc jego strzały zostaną pobrane.',
+  podDropped: ['1 starszy wpis nie był już w czujniku (usunięty przez inny telefon albo pamięć czujnika była pełna).', '{n} starsze wpisy nie były już w czujniku (usunięte przez inny telefon albo pamięć czujnika była pełna).', '{n} starszych wpisów nie było już w czujniku (usunięte przez inny telefon albo pamięć czujnika była pełna).'],
   invalidBackup: 'To nie jest prawidłowa kopia: ', restoreFailed: 'Przywracanie nie powiodło się: ',
   calTitle: 'Kalibracja czujnika',
-  calConnect: 'Najpierw połącz czujnik.', measuring: 'Pomiar…',
+  calConnect: 'Najpierw połącz czujnik.', measuring: 'Pomiar…', holdStill: 'Trzymaj łuk nieruchomo…',
+  notStill: 'Łuk się poruszał – przytrzymaj go chwilę nieruchomo i stuknij ponownie.',
   calDone: 'Gotowe: czujnik {mount}.',
   calDoneSide: 'Gotowe: czujnik {mount}, tylko strzały i czasy faz.',
   calFail: 'Łuk nie został wystarczająco pochylony. Zacznij ponownie od kroku 1.', podNoAnswer: 'czujnik nie odpowiedział',
@@ -630,6 +669,8 @@ const U = n => 'a7c1000' + n + '-5b1e-4c5a-9d1e-3b7a0c0f0ee0';
 const UUID_TIME = U(1), UUID_INFO = U(2), UUID_CTRL = U(3), UUID_DATA = U(4), UUID_STATS = U(5),
       UUID_SETTINGS = U(6), UUID_DETAIL = U(7), UUID_DETAIL2 = U(8);
 const F_END = 0x40, F_DEL = 0x80, F_SCORE = 0x20, F_POS = 0x10;   // record flags: end mark, deleted, end score, hit positions
+const F_SET = 0x70;                                // all three: settings change with its time (pod firmware 2.3.2)
+const kind = r => r.flags & F_SET;                 // F_END, F_SCORE, F_POS, F_SET, or 0 = arrow
 const icon = (id, cls = 'i') => `<svg class="${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
 
 // ---------- storage ----------
@@ -676,6 +717,14 @@ const live = () => db.shots.filter(x => !(x.flags & F_DEL));
 // history of "arrows per end" / "new end after pause": each end is judged with the values valid at that time
 if (!Array.isArray(db.hist) || !db.hist.length) db.hist = [{ from: 0, arrows: db.settings.arrows, endGap: db.settings.endGap }];
 function setAt(t) { let r = db.hist[0]; for (const h of db.hist) if (h.from <= t) r = h; return r; }
+// a settings change with the time it was made (from the pod): ends after it are judged with it
+function addHist(from, arrows, endGap) {
+  if (!(arrows >= 1 && arrows <= 24 && endGap >= 20 && endGap <= 900)) return false;
+  if (db.hist.some(h => h.from === from && h.arrows === arrows && h.endGap === endGap)) return false;
+  db.hist.push({ from, arrows, endGap });
+  db.hist.sort((a, b) => a.from - b.from);
+  return true;
+}
 function save() {                                 // true = stored in this browser
   if (DEMO) return true;
   try {
@@ -939,7 +988,9 @@ function renderSessions() {
 
 // arrows in the end that is still open: last end, if its last arrow is recent and "New end" wasn't pressed since
 function currentEnd(nowSec = Date.now() / 1000) {
-  const sess = groupSessions(live(), db.settings, db.endMarks, setAt);
+  // only the last 12 hours matter (an end can't be open longer): no regrouping of the whole history
+  const recent = db.shots.filter(x => x.t > nowSec - 12 * 3600 && !(x.flags & F_DEL));
+  const sess = groupSessions(recent, db.settings, db.endMarks.filter(m => m > nowSec - 12 * 3600), setAt);
   if (!sess.length) return 0;
   const last = sess[sess.length - 1], end = last.ends[last.ends.length - 1];
   if (nowSec - last.stop > setAt(nowSec).endGap) return 0;
@@ -1004,7 +1055,11 @@ function parseInfo(dv) {
 }
 function parseData(dv) {
   const first = dv.getUint32(0, true);
-  if (first === 0xFFFFFFFF) return { end: true, total: dv.getUint32(4, true) };
+  if (first === 0xFFFFFFFF) {                      // end marker; 2.3.2: [reached][total][requested from]
+    const reached = dv.getUint32(4, true);
+    return { end: true, reached, total: dv.byteLength >= 12 ? dv.getUint32(8, true) : reached,
+             from: dv.byteLength >= 16 ? dv.getUint32(12, true) : null };
+  }
   const recs = [];
   for (let o = 4, i = 0; o + 8 <= dv.byteLength; o += 8, i++) {
     const r = { i: first + i, t: dv.getUint32(o, true), peak: dv.getUint16(o + 4, true) / 10, aim: dv.getUint8(o + 6) / 10, flags: dv.getUint8(o + 7) };
@@ -1020,9 +1075,29 @@ function parseSettings(dv) {
 
 function showInfo() { renderChips(); }
 
-let userDisconnect = false, retryTimer = null, retryUntil = 0;
+// ?log: a list of what the connection does, to copy and send when something doesn't work (e.g. in Bluefy)
+const LOG_ON = /[?&]log\b/.test(location.search), logLines = [];
+function plog(msg) {
+  if (!LOG_ON) return;
+  const d = new Date();
+  logLines.push(d.toLocaleTimeString('en-GB') + '.' + String(d.getMilliseconds()).padStart(3, '0') + ' ' + msg);
+  if (logLines.length > 400) logLines.shift();
+  const el = document.getElementById('logtxt'); if (el) el.textContent = logLines.join('\n');
+}
+if (LOG_ON) {
+  document.getElementById('logbox').hidden = false;
+  document.getElementById('logcopy').onclick = () => { try { navigator.clipboard.writeText(logLines.join('\n')); } catch (e) {} };
+  plog('page ' + location.href + ' | ' + navigator.userAgent);
+  plog('bluetooth ' + !!navigator.bluetooth + ', getDevices ' + !!(navigator.bluetooth && navigator.bluetooth.getDevices) +
+       ', device.watchAdvertisements ' + (typeof BluetoothDevice !== 'undefined' && 'watchAdvertisements' in BluetoothDevice.prototype));
+}
+
+// "connected" = this page set the link up and saw no disconnect since. The browser's own
+// device.gatt.connected is only logged: some browsers report it late or not at all.
+let userDisconnect = false, retryTimer = null, retryUntil = 0, linkUp = false, connecting = null;
+const isUp = () => !!dev && linkUp;
 function updateButtons() {
-  const connected = !!(dev && dev.gatt.connected);
+  const connected = isUp();
   if (!connected && conn === 'ok') conn = 'off';
   $('connect').textContent = dev ? (connected ? t('updateNow') : t('reconnect')) : t('connect');
   $('disconnect').hidden = !connected;
@@ -1037,18 +1112,29 @@ function scheduleReconnect(seconds = 60) {
   if (retryTimer) return;
   const tryOnce = async () => {
     retryTimer = null;
-    if (!dev || dev.gatt.connected || userDisconnect || document.hidden || Date.now() > retryUntil) { if (!dev || !dev.gatt.connected) conn = 'off'; updateButtons(); return; }
+    if (!dev || isUp() || userDisconnect || document.hidden || Date.now() > retryUntil) { if (!isUp()) conn = 'off'; updateButtons(); return; }
     try { await attach(dev); }
-    catch (e) { conn = 'lost'; setStatus(t('retrying')); renderChips(); retryTimer = setTimeout(tryOnce, 5000); }
+    catch (e) { plog('reconnect failed: ' + e.message); conn = 'lost'; setStatus(t('retrying')); renderChips(); retryTimer = setTimeout(tryOnce, 5000); }
   };
   retryTimer = setTimeout(tryOnce, 1000);
 }
-let knownDevice = null;
-async function attach(device) {
+// one listener per characteristic object (a browser may hand out the same object again after a reconnect)
+const hooked = new WeakSet();
+function listen(ch, f) { if (!ch || hooked.has(ch)) return; hooked.add(ch); ch.addEventListener('characteristicvaluechanged', f); }
+let knownDevice = null, lastDataAt = 0, dataPackets = 0;
+// one connection attempt at a time (page start, Connect, coming back to the page, automatic retry)
+function attach(device) {
+  if (connecting) { plog('connect: already connecting'); return connecting; }
+  connecting = doAttach(device).finally(() => { connecting = null; });
+  return connecting;
+}
+async function doAttach(device) {
   dev = device;
   if (knownDevice !== device) {                    // add the disconnect handler only once per device
     knownDevice = device;
     dev.addEventListener('gattserverdisconnected', () => {
+      plog('disconnected' + (userDisconnect ? ' (by this page)' : ''));
+      linkUp = false;
       if (userDisconnect) { conn = 'off'; setStatus(''); updateButtons(); return; }
       conn = 'lost'; setStatus('');
       updateButtons();
@@ -1057,7 +1143,9 @@ async function attach(device) {
   }
   userDisconnect = false;
   conn = 'wait'; setStatus(''); renderChips();
+  plog('connect ' + (dev.name || dev.id) + ' (gatt.connected ' + dev.gatt.connected + ')');
   const server = await dev.gatt.connect();
+  plog('gatt connected (gatt.connected ' + dev.gatt.connected + ')');
   db.podId = dev.id; db.podName = dev.name || ''; save();     // the pod this phone uses from now on
   const svc = await server.getPrimaryService(SVC);
   for (const [k, u] of [['time', UUID_TIME], ['info', UUID_INFO], ['ctrl', UUID_CTRL], ['data', UUID_DATA]]) chars[k] = await svc.getCharacteristic(u);
@@ -1066,30 +1154,33 @@ async function attach(device) {
   }
 
   info = parseInfo(await chars.info.readValue());
-  chars.info.addEventListener('characteristicvaluechanged', async e => {
+  plog(`pod: firmware ${info.fw}.${info.patch}, records ${info.base}…${info.total}, memory ${info.storage} %, phone has up to ${db.nextIndex}`);
+  listen(chars.info, async e => {
     const prev = info ? info.total : 0;
     info = parseInfo(e.target.value);
     showInfo();
-    if (info.total > prev) await sync(false);     // live: new arrow shot while connected
+    if (info.total > prev) { plog('new arrow on the pod (' + info.total + ')'); await sync(false); }   // live: shot while connected
   });
   await chars.info.startNotifications();
   await writeClock();
 
-  chars.data.addEventListener('characteristicvaluechanged', e => {
+  listen(chars.data, e => {
+    lastDataAt = Date.now(); dataPackets++;
     const p = parseData(e.target.value);
-    if (p.end) { if (dumpResolve) dumpResolve(p.total); dumpResolve = null; } else incoming.push(...p.recs);
+    if (p.end) { plog(`end marker: reached ${p.reached}, total ${p.total}, from ${p.from} (${dataPackets} packets)`); if (dumpResolve && dumpResolve(p)) dumpResolve = null; }
+    else incoming.push(...p.recs);
   });
   await chars.data.startNotifications();
   if (chars.detail2) {                             // shot details arrive together with the records (2.2: finer)
-    chars.detail2.addEventListener('characteristicvaluechanged', e => { for (const r of parseDetail2(e.target.value)) incomingDetails.set(r.i, r.d); });
+    listen(chars.detail2, e => { lastDataAt = Date.now(); for (const r of parseDetail2(e.target.value)) incomingDetails.set(r.i, r.d); });
     await chars.detail2.startNotifications();
   } else if (chars.detail) {
-    chars.detail.addEventListener('characteristicvaluechanged', e => { for (const r of parseDetail(e.target.value)) incomingDetails.set(r.i, r.d); });
+    listen(chars.detail, e => { lastDataAt = Date.now(); for (const r of parseDetail(e.target.value)) incomingDetails.set(r.i, r.d); });
     await chars.detail.startNotifications();
   }
   if (chars.stats) {
     // the watch deleted an arrow or started a new end: fetch today's records again
-    chars.stats.addEventListener('characteristicvaluechanged', async e => {
+    listen(chars.stats, async e => {
       const st = parseStats(e.target.value);
       const prev = podStats; podStats = st;
       if (prev && (st.arrows < prev.arrows || st.endMark !== prev.endMark)) await sync(true);
@@ -1098,21 +1189,37 @@ async function attach(device) {
     podStats = parseStats(await chars.stats.readValue());
   }
   info = parseInfo(await chars.info.readValue());
+  linkUp = true;
   conn = 'ok';
+  plog('ready');
   updateButtons();
   await flushOps();                                // settings changed here while offline go first
   if (chars.settings) {
-    chars.settings.addEventListener('characteristicvaluechanged', e => adoptSettings(parseSettings(e.target.value)));
+    listen(chars.settings, e => adoptSettings(parseSettings(e.target.value)));
     await chars.settings.startNotifications();
     adoptSettings(parseSettings(await chars.settings.readValue()));
   }
   await sync(true);
 }
+// a sync got no answer at all although the link looked up: connect again once, the way a tap on
+// Disconnect and Connect would
+let stallRetried = false;
+async function reconnectAfterStall() {
+  if (stallRetried || !dev) { setStatus(t('tapConnect')); return; }
+  stallRetried = true;
+  plog('no answer from the pod: connecting again');
+  userDisconnect = true;
+  try { dev.gatt.disconnect(); } catch (e) {}
+  linkUp = false;
+  await new Promise(r => setTimeout(r, 600));
+  try { await attach(dev); } catch (e) { plog('connect again failed: ' + e.message); conn = 'off'; updateButtons(); setStatus(t('tapConnect')); }
+}
 
 // settings from the pod (changed on the watch or another phone): take them over
 function adoptSettings(p) {
-  db.podSettings = { flags: p.flags, cal: p.cal, cantRef: p.cantRef };
   if (calWait) calWait(p);
+  if (p.cal === 6) return;                          // "the bow was not still": only an answer, nothing changed
+  db.podSettings = { flags: p.flags, cal: p.cal, cantRef: p.cantRef };
   db.settings.mount = (p.flags >> 2) & 3; $('s-mount').value = db.settings.mount;
   if (p.face !== null) { db.settings.face = p.face; $('s-face').value = p.face; }
   if (p.arrows >= 1 && p.endGap >= 20 && (p.arrows !== db.settings.arrows || p.endGap !== db.settings.endGap)) {
@@ -1140,24 +1247,27 @@ function openCal() {
 // send a calibration step and wait for the pod's answer (its settings notification)
 function calSend(cmd, want) {
   return new Promise(async (resolve, reject) => {
-    const timer = setTimeout(() => { calWait = null; reject(new Error(t('podNoAnswer'))); }, 5000);
+    const timer = setTimeout(() => { calWait = null; reject(new Error(t('podNoAnswer'))); }, 8000);   // the pod waits up to 4 s for a still bow
     calWait = p => { if (want.includes(p.cal)) { clearTimeout(timer); calWait = null; resolve(p); } };
     try { const c = new Uint8Array(5); c[0] = cmd; await chars.ctrl.writeValue(c); }
     catch (e) { clearTimeout(timer); calWait = null; reject(e); }
   });
 }
+class NotStill extends Error {}                    // pod firmware 2.3.2: status 6, the step is repeated
 $('setlevel').onclick = openCal;
 $('cal-cancel').onclick = () => { calWait = null; $('cal').hidden = true; };
 $('cal-next').onclick = async () => {
   if (calStep === 9) { $('cal').hidden = true; return; }
-  if (!dev || !dev.gatt.connected || !chars.settings) { $('cal-msg').textContent = t('calConnect'); return; }
-  $('cal-next').disabled = true; $('cal-msg').textContent = t('measuring');
+  if (!isUp() || !chars.settings) { $('cal-msg').textContent = t('calConnect'); return; }
+  $('cal-next').disabled = true; $('cal-msg').textContent = t('holdStill');
   try {
     if (calStep === 0) {
-      await calSend(9, [1]);
+      const p0 = await calSend(9, [1, 6]);
+      if (p0.cal === 6) throw new NotStill();
       calStep = 1; $('cal-text').textContent = CAL_TEXT()[1]; $('cal-next').textContent = calSteps() === 3 ? t('next') : t('finish'); $('cal-msg').textContent = '';
     } else if (calStep === 1) {
-      const p = await calSend(10, [2, 3]);
+      const p = await calSend(10, [2, 3, 6]);
+      if (p.cal === 6) throw new NotStill();
       const m = (p.flags >> 2) & 3;
       if (p.cal === 2 && calSteps() === 3 && m !== 2) {          // on to step 3 (not for a side bushing)
         calStep = 2; $('cal-text').textContent = CAL_TEXT()[2]; $('cal-next').textContent = t('finish'); $('cal-msg').textContent = '';
@@ -1169,13 +1279,14 @@ $('cal-next').onclick = async () => {
         $('cal-msg').textContent = t('calFail');
       }
     } else {
-      const p = await calSend(14, [4, 5]);
+      const p = await calSend(14, [4, 5, 6]);
+      if (p.cal === 6) throw new NotStill();
       const m = (p.flags >> 2) & 3;
       $('cal-text').textContent = t('calDone', { mount: t('mount' + m) });
       $('cal-msg').textContent = p.cal === 4 ? '' : t('calFail3');
       $('cal-next').textContent = t('close'); calStep = 9;
     }
-  } catch (e) { $('cal-msg').textContent = t('couldNotReach') + e.message; }
+  } catch (e) { $('cal-msg').textContent = e instanceof NotStill ? t('notStill') : t('couldNotReach') + e.message; }
   $('cal-next').disabled = false;
 };
 
@@ -1210,7 +1321,7 @@ function flushOps() {
   return flushing;
 }
 async function sendOps() {
-  if (!chars.ctrl || !chars.stats || !dev || !dev.gatt.connected) return;   // older than 1.5: no ops
+  if (!chars.ctrl || !chars.stats || !isUp()) return;   // older than 1.5: no ops
   while (db.ops.length) {
     const op = db.ops[0], c = new Uint8Array(8), v = new DataView(c.buffer);
     if (op.k === 'set') {
@@ -1254,31 +1365,74 @@ function firstIndexToday() {
   return m;
 }
 
-let syncing = null;                                // the running update; a second caller waits for it
+let syncing = null, syncAgain = false, syncClear = false;
+// One update at a time. A call while one is running (new arrow, Update now) asks for another round,
+// so an arrow shot during an update is fetched right after it.
 function sync(mayClear) {
-  if (!syncing) syncing = runSync(mayClear).finally(() => { syncing = null; });
+  syncClear = syncClear || mayClear;
+  if (syncing) { syncAgain = true; return syncing; }
+  let stalled = false;
+  syncing = (async () => {
+    try {
+      for (let round = 0; round < 4; round++) {
+        syncAgain = false;
+        const clear = syncClear; syncClear = false;
+        const more = await runSync(clear);
+        if (more === 'stall') { stalled = true; break; }
+        if (more === false) stallRetried = false;      // a complete sync: the next stall may reconnect again
+        if (!more && !syncAgain) break;
+      }
+    } finally { syncing = null; }
+    if (stalled) setTimeout(reconnectAfterStall, 0);  // after this sync has ended (connecting syncs again)
+  })();
   return syncing;
 }
+const fwAtLeast = (v, patch) => !!info && (info.fw % 100 > v || (info.fw % 100 === v && info.patch >= patch));
+// The pod's numbers are behind this phone (pod memory lost its numbering, or another pod was used
+// before): from firmware 2.3.2 the pod continues from this phone's count, so its arrows are new here.
+async function checkNumbering() {
+  if (!(info.total < db.nextIndex) || !fwAtLeast(23, 2)) return '';
+  const c = new Uint8Array(5); c[0] = 15; new DataView(c.buffer).setUint32(1, db.nextIndex, true);
+  await chars.ctrl.writeValue(c);
+  await new Promise(r => setTimeout(r, 300));
+  info = parseInfo(await chars.info.readValue());
+  return ' ' + t('podRenumbered');
+}
+// true = another round is needed (records missing, or new arrows came in meanwhile)
 async function runSync(mayClear) {
-  if (!chars.ctrl) return;
+  if (!chars.ctrl || !isUp()) return false;
   try {
     await flushOps();
+    info = parseInfo(await chars.info.readValue());   // fresh: oldest index and total right now
+    let note = await checkNumbering();
+    if (db.nextIndex > 0 && info.base > db.nextIndex) note += ' ' + t('podDropped', { n: info.base - db.nextIndex });
     incoming = []; incomingDetails = new Map();
     // full update: read today's records again too, so deletions / end marks from the watch arrive
     const from = Math.max(mayClear && chars.stats ? Math.min(db.nextIndex, firstIndexToday()) : db.nextIndex, info.base);
-    const done = new Promise(r => { dumpResolve = r; setTimeout(() => r(null), 30000); });
+    const packets0 = dataPackets;
+    const done = new Promise(r => {
+      lastDataAt = Date.now();                       // given up after 6 s without any packet from the pod
+      const iv = setInterval(() => { if (Date.now() - lastDataAt > 6000) { clearInterval(iv); dumpResolve = null; r(null); } }, 500);
+      // the end marker of this dump (a late one of an earlier, timed-out dump asked for another start)
+      dumpResolve = p => { if (p.from !== null && p.from !== from) return false; clearInterval(iv); r(p); return true; };
+    });
+    plog(`sync from ${from}${mayClear ? ' (may clear)' : ''}`);
     const cmd = new Uint8Array(5); cmd[0] = 1; new DataView(cmd.buffer).setUint32(1, from, true);
     await chars.ctrl.writeValue(cmd);
-    const total = await done;
+    const end = await done;
+    if (end === null && dataPackets === packets0) { plog('sync: no answer from the pod'); return 'stall'; }
     const known = new Map(db.shots.map(x => [x.i, x]));
+    // the same arrow under another number (the pod's numbering was reset or renumbered): same time,
+    // jolt and stillness – not imported twice
+    const sameArrow = new Map(db.shots.map(x => [x.t + '|' + x.peak + '|' + x.aim, x]));
     const fresh = [];
     const inc = [...incoming].sort((a, b) => a.i - b.i);
     for (let n = 0; n < inc.length; n++) {         // end scores (with hit positions in the next records)
       const r = inc[n];
-      if (!(r.flags & F_SCORE) || (r.flags & F_POS)) continue;
+      if (kind(r) !== F_SCORE) continue;
       const part = r.flags & 3, vals = unpackVals(r.raw.slice(4, 7));
       let pos = null;
-      if (n + 2 < inc.length && (inc[n + 1].flags & F_POS) && (inc[n + 2].flags & F_POS)) {
+      if (n + 2 < inc.length && kind(inc[n + 1]) === F_POS && kind(inc[n + 2]) === F_POS) {
         const pb = [...inc[n + 1].raw, ...inc[n + 2].raw].slice(0, 12).map(x => x > 127 ? x - 256 : x);
         pos = []; for (let k = 0; k < vals.length; k++) pos.push([pb[2 * k], pb[2 * k + 1]]);
       }
@@ -1288,7 +1442,12 @@ async function runSync(mayClear) {
       const v = part === 0 ? vals : [...((old && old.v) || []).slice(0, part * 6), ...vals];
       if (!v.length) delete db.scores[key]; else db.scores[key] = { v: sortVals(v), pos, idx: r.i };
     }
+    let histChanged = false;
     for (const r of incoming) {
+      if (kind(r) === F_SET) {                       // arrows per end / end pause changed then (watch or phone)
+        if (r.t > 1600000000) histChanged = addHist(r.t, r.raw[6], r.raw[4] | r.raw[5] << 8) || histChanged;
+        continue;
+      }
       if (r.flags & (F_SCORE | F_POS)) continue;     // not arrows
       if (r.flags & F_END) {                         // end mark from the watch or this phone
         if (r.t > 1600000000 && !db.endMarks.includes(r.t)) { db.endMarks.push(r.t); db.endMarks.sort((a, b) => a - b); }
@@ -1297,39 +1456,54 @@ async function runSync(mayClear) {
       const det = incomingDetails.get(r.i);
       const k = known.get(r.i);
       if (k) { k.flags = r.flags; if (det && !k.d) k.d = det; }   // deleted / restored on the pod
-      else { if (det) r.d = det; fresh.push(r); known.set(r.i, r); }
+      else if (sameArrow.has(r.t + '|' + r.peak + '|' + r.aim)) continue;
+      else { if (det) r.d = det; fresh.push(r); known.set(r.i, r); sameArrow.set(r.t + '|' + r.peak + '|' + r.aim, r); }
     }
     db.shots.push(...fresh);
-    if (total !== null) { db.nextIndex = Math.max(db.nextIndex, total); db.lastSync = Date.now(); }
-    const stored = save(); render();
-    info = parseInfo(await chars.info.readValue()); showInfo();
+    if (histChanged) plog('settings changes from the pod taken over');
+    info = parseInfo(await chars.info.readValue());
+    // Only as far as every record arrived: a lost packet or a dump that broke off is fetched again,
+    // never skipped (and the pod is never cleared while anything is missing).
+    const got = new Set(incoming.map(r => r.i));
+    let upto = Math.max(from, info.base);
+    while (got.has(upto)) upto++;
+    const complete = end !== null && end.reached >= end.total && upto >= end.total;
+    plog(`sync: ${fresh.length} new, complete ${complete}, next index ${Math.max(db.nextIndex, end ? Math.min(upto, end.total) : upto)}`);
+    db.nextIndex = Math.max(db.nextIndex, end ? Math.min(upto, end.total) : upto);
+    if (complete) db.lastSync = Date.now();
+    const stored = save(); render(); showInfo();
     if (!stored) setStatus(t('saveFail'));             // the pod keeps its arrows
-    else if (fresh.length) setStatus(t('synced', { n: fresh.length }) + backupNote() + unscoredNote());
-    else if ($('status').textContent === t('updating')) setStatus('');   // keep other messages (e.g. Undo)
-    if (stored && mayClear && total !== null && db.nextIndex >= info.total && info.storage >= db.settings.clearAt && info.total > info.base) {
+    else if (fresh.length) setStatus(t('synced', { n: fresh.length }) + note + backupNote() + unscoredNote());
+    else if (note) setStatus(note.trim());
+    else if (!complete) setStatus(t('syncIncomplete'));
+    else if ([t('updating'), t('syncIncomplete')].includes($('status').textContent)) setStatus('');   // keep other messages (e.g. Undo)
+    if (stored && mayClear && complete && db.nextIndex >= info.total && info.storage >= db.settings.clearAt && info.total > info.base) {
       const c = new Uint8Array(5); c[0] = 2; new DataView(c.buffer).setUint32(1, info.total, true);
       await chars.ctrl.writeValue(c);
     }
-  } catch (e) { setStatus(t('syncProblem') + e.message); }
+    return !complete || info.total > db.nextIndex;
+  } catch (e) { plog('sync error: ' + e.message); setStatus(t('syncProblem') + e.message); return false; }
 }
 
 async function choosePod() {
   if (!BT) { setStatus(t('noBt')); return; }
   try { await attach(await BT.requestDevice({ filters: [{ services: [SVC] }] })); }
-  catch (e) { conn = dev && dev.gatt.connected ? 'ok' : 'off'; renderChips(); setStatus(e.name === 'NotFoundError' ? t('noPodSel') : t('couldNotConnect') + e.message); }
+  catch (e) { plog('choose pod: ' + e.message); conn = isUp() ? 'ok' : 'off'; renderChips(); setStatus(e.name === 'NotFoundError' ? t('noPodSel') : t('couldNotConnect') + e.message); }
 }
 // one tap: already connected -> sync, known pod -> reconnect without the list, otherwise choose it once
 $('connect').onclick = async () => {
-  if (dev && dev.gatt.connected) { setStatus(t('updating')); await sync(true); return; }
-  if (dev) { try { await attach(dev); } catch (e) { conn = 'off'; renderChips(); setStatus(t('pickUp')); } return; }
+  plog('tap ' + $('connect').textContent + ' (connected ' + isUp() + ', gatt.connected ' + (dev && dev.gatt.connected) + ')');
+  if (isUp()) { setStatus(t('updating')); await sync(true); return; }
+  if (dev) { try { await attach(dev); } catch (e) { plog('connect failed: ' + e.message); conn = 'off'; renderChips(); setStatus(t('pickUp')); } return; }
   await choosePod();
 };
 $('choose').onclick = choosePod;
-$('disconnect').onclick = () => { userDisconnect = true; if (dev && dev.gatt.connected) dev.gatt.disconnect(); conn = 'off'; updateButtons(); };
+$('disconnect').onclick = () => { userDisconnect = true; linkUp = false; try { if (dev) dev.gatt.disconnect(); } catch (e) {} conn = 'off'; updateButtons(); };
 // back to the page (phone unlocked, app switched): update automatically
 document.addEventListener('visibilitychange', async () => {
   if (document.hidden || !dev || userDisconnect) return;
-  if (dev.gatt.connected) await sync(true); else scheduleReconnect(60);
+  plog('page shown again (connected ' + isUp() + ')');
+  if (isUp()) await sync(true); else scheduleReconnect(60);
 });
 
 // Reconnect without the chooser when the browser supports remembered devices
@@ -1338,15 +1512,17 @@ document.addEventListener('visibilitychange', async () => {
   try {
     const list = await navigator.bluetooth.getDevices();
     // the pod chosen last time; other pods nearby are ignored
-    const d = list.find(x => x.id === db.podId) || list.find(x => (x.name || '').startsWith('PfeilZaehler3000')); if (!d) return;
+    const d = list.find(x => x.id === db.podId) || list.find(x => (x.name || '').startsWith('PfeilZaehler3000'));
+    plog('remembered devices: ' + list.length + (d ? ', using ' + (d.name || d.id) + (d.watchAdvertisements ? ' (waits for its advertising)' : ' (connects directly)') : ''));
+    if (!d) return;
     conn = 'wait'; renderChips();
     if (d.watchAdvertisements) {
       const ac = new AbortController();
-      d.addEventListener('advertisementreceived', async () => { ac.abort(); try { await attach(d); } catch (e) { conn = 'off'; renderChips(); setStatus(t('tapConnect')); } }, { once: true });
+      d.addEventListener('advertisementreceived', async () => { ac.abort(); try { await attach(d); } catch (e) { plog('auto connect failed: ' + e.message); conn = 'off'; renderChips(); setStatus(t('tapConnect')); } }, { once: true });
       await d.watchAdvertisements({ signal: ac.signal });
-      setTimeout(() => { if (!d.gatt.connected) { ac.abort(); conn = 'off'; renderChips(); setStatus(t('notInRange')); } }, 15000);
+      setTimeout(() => { if (!isUp() && !connecting) { ac.abort(); conn = 'off'; renderChips(); setStatus(t('notInRange')); } }, 15000);
     } else await attach(d);
-  } catch (e) { conn = 'off'; renderChips(); }
+  } catch (e) { plog('auto connect failed: ' + e.message); conn = 'off'; renderChips(); setStatus(t('tapConnect')); }
 })();
 
 // ---------- settings & data ----------
@@ -1362,7 +1538,7 @@ for (const [k, id] of Object.entries(S)) {
       queueSettings(false);                         // to the pod, the watch follows
     }
     save(); render();
-    if (dev && dev.gatt.connected) { try { await flushOps(); } catch (err) {} }
+    if (isUp()) { try { await flushOps(); } catch (err) {} }
   };
 }
 $('s-mount').value = db.settings.mount || 0;
@@ -1370,14 +1546,14 @@ $('s-mount').onchange = async e => {
   db.settings.mount = Number(e.target.value);
   queueSettings(true);
   save();
-  if (dev && dev.gatt.connected) { try { await flushOps(); } catch (err) {} }
+  if (isUp()) { try { await flushOps(); } catch (err) {} }
 };
 $('s-face').value = db.settings.face || 0;
 $('s-face').onchange = async e => {
   db.settings.face = Number(e.target.value);
   queueSettings(false, true);
   save(); render();
-  if (dev && dev.gatt.connected) { try { await flushOps(); } catch (err) {} }
+  if (isUp()) { try { await flushOps(); } catch (err) {} }
 };
 $('s-lang').value = db.settings.lang || '';
 $('s-lang').onchange = e => { db.settings.lang = e.target.value; save(); applyLang(); };
@@ -1464,7 +1640,7 @@ $('newend').onclick = async () => {
   db.ops.push({ k: 'end', t: now });                // tell the pod, so the watch starts a new end too
   save(); render();
   setStatus(t('newEndStarted'));
-  if (dev && dev.gatt.connected) { try { await flushOps(); } catch (e) {} }
+  if (isUp()) { try { await flushOps(); } catch (e) {} }
 };
 
 // Reset today: delete today's arrows on this phone (with confirmation).
@@ -1485,7 +1661,7 @@ async function deleteArrows(list, del) {
   for (const x of list) x.flags = del ? (x.flags | F_DEL) : (x.flags & ~F_DEL);
   queueDelete(list.map(x => x.i), del);
   save(); render();
-  if (dev && dev.gatt.connected) { try { await flushOps(); } catch (e) {} }
+  if (isUp()) { try { await flushOps(); } catch (e) {} }
 }
 let sheetEnd = null, sheetNo = 0, openRows = new Set();
 function openSheet(end, no, editScore = false) {
@@ -1542,7 +1718,7 @@ async function saveScore(entries) {
   db.scores[key] = { v: e.map(x => x.v), pos: withPos ? e.map(x => x.p) : null, pending: true };
   queueScore(sheetEnd.start);
   save(); render(); renderScore();
-  if (dev && dev.gatt.connected) { try { await flushOps(); } catch (e) {} }
+  if (isUp()) { try { await flushOps(); } catch (e) {} }
 }
 $('sheet-score').onclick = async e => {
   const b = e.target.closest('button'); if (!b) return;
@@ -1627,7 +1803,7 @@ $('status').onclick = async e => {
 $('reset').onclick = async () => {
   const n = db.shots.length;
   if (!confirm(t('confirmResetAll', { n }))) return;
-  if (chars.ctrl && dev && dev.gatt.connected) {
+  if (chars.ctrl && isUp()) {
     try {
       await sync(false);                                   // pick up anything new first, so it is not imported later
       info = parseInfo(await chars.info.readValue());
@@ -1641,7 +1817,7 @@ $('reset').onclick = async () => {
   db.endMarks = [];
   db.ops = db.ops.filter(o => o.k === 'set');
   save(); render();
-  setStatus(t('allReset') + (dev && dev.gatt.connected ? t('podCleared') : ''));
+  setStatus(t('allReset') + (isUp() ? t('podCleared') : ''));
 };
 
 // language: static texts, then everything drawn by script

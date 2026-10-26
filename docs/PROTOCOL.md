@@ -1,4 +1,4 @@
-# Bluetooth interface (pod firmware 2.0 to 2.3)
+# Bluetooth interface (pod firmware 2.0 to 2.3.2)
 
 The pod is a Bluetooth Low Energy peripheral named `PfeilZaehler3000-XXXX`, where `XXXX` is the
 pod ID: the two lowest bytes of its Bluetooth address in hex (firmware 1.5 and older: just
@@ -26,7 +26,8 @@ Characteristic UUIDs: same, with the 8th hex digit replaced (`a7c1000N-…`).
 
 Write 4 bytes (unix time) or 8 bytes (unix time + local offset including summer time, e.g. 7200
 for CEST). The offset is needed for the pod's today/week/month counters and is stored in flash.
-The phone page and the watch write it on every connection.
+The phone page and the watch write it on every connection. From 2.3.2 the pod applies it in its
+main loop, a few milliseconds after the write.
 
 ## INFO (20 bytes)
 
@@ -72,8 +73,19 @@ Notified together with INFO.
 | `0A` 00 00 00 00 | Calibration step 2: the arrow points at the ground; the pod finds its mounting point |
 | `0E` 00 00 00 00 | (2.2) Calibration step 3: the bow is tilted far to the side; the pod works out how the ADXL375 sits relative to the other sensor (needed for the bow push) |
 | `0B` u32 start, 3 bytes values, u8 part — or u32 start, 3 bytes values, 12 bytes positions | (2.2) End score, see below |
+| `0F` u32 index | (2.3.2) Continue the numbering from `index`: the records on the pod get the numbers `index`, `index`+1, …; only accepted if `index` is higher than the current total |
 
-Commands 04–07, 09–0B and 0E are processed in the main loop, up to 8 can be queued (20 bytes each).
+Commands 04–07, 09–0B, 0E and 0F are processed in the main loop, up to 8 can be queued (20 bytes each).
+
+**Calibration steps (`09`, `0A`, `0E`), 2.3.2.** The pod first waits until the bow has been still for
+1 s (every gyro reading of that second within 8 °/s of their average), at most 4 s, then averages
+the accelerometers over 0.5 s. The answer is a SETTINGS notification: the new calibration status,
+or 6 when the bow didn't get still. Allow about 6 s for the answer.
+
+**Renumbering (`0F`).** A phone that already has records up to a higher index than the pod's total
+(the pod lost its numbering, or another pod was used before) sends its own next index, so the
+pod's records are new for it. The phone page also skips a record whose time, jolt and stillness
+match an arrow it already has, so nothing is imported twice.
 
 **End score (`0B`).** `start` is the time of the first arrow of the end. The values are 6 nibbles,
 low nibble first: 0 = miss, 1–10, 11 = X (counts 10), 15 = no arrow. Ends of more than 6 arrows
@@ -91,7 +103,7 @@ the watch (the newest record counts).
 | 1 | u8 | arrows per end (1–24, default 6) |
 | 2 | u16 | new end after a pause of this many seconds (20–900, default 100) |
 | 4 | u8 | flags: bit0 cant 0 set by the calibration, bit1 cant 0 taken from the first shot, bits 2–3 mounting point (0 back of the riser, 1 front, 2 side bushing) |
-| 5 | u8 | calibration: 0 not done, 1 step 1 done, 2 steps 1 and 2 done, 3 failed (bow not tilted far enough), 4 (2.2) all three steps done, 5 (2.2) step 3 failed (bow not tilted far enough to the side) |
+| 5 | u8 | calibration: 0 not done, 1 step 1 done, 2 steps 1 and 2 done, 3 failed (bow not tilted far enough), 4 (2.2) all three steps done, 5 (2.2) step 3 failed (bow not tilted far enough to the side), 6 (2.3.2) the bow was not still: the step was not measured. 6 comes only in a notification; the stored status stays as it was, so a read right after it gives the old value |
 | 6 | i16 | roll angle of the pod at cant 0 (0.1°) |
 | 8 | i16 | angle of the pod's Z axis with the arrow level, from the calibration (0.1°): tilt of the bushing |
 | 10 | u8 | (2.2) target face for scoring: 0 full face, 1 3-spot |
@@ -105,7 +117,25 @@ the last change counts.
 ## DATA
 
 Each notification: `u32 index of the first record` followed by up to 2 records of 8 bytes.
-After the last record the pod sends the end marker `FF FF FF FF` + `u32 total`.
+After the last record the pod sends the end marker:
+
+| Firmware | End marker |
+|---|---|
+| up to 2.3.1 | `FF FF FF FF` + `u32 total` (8 bytes) |
+| 2.3.2 | `FF FF FF FF` + `u32 reached` + `u32 total` + `u32 from` (16 bytes) |
+
+`reached` is the first record that was **not** sent: equal to `total` when the dump went through,
+lower when sending broke off. `from` is the `from` of the `01` command it answers, so a late end
+marker of an earlier dump can be told apart. An older phone page reads `reached` as the total, so
+it never skips records either.
+
+The phone page moves its next index only as far as every record has arrived without a gap, and
+clears the pod (`02`) only after a complete dump.
+
+**Memory full (2.3.2).** When a new record does not fit, the pod removes the oldest half of its
+records first, as if they had been synced and cleared: their arrows stay in the today/week/month
+counters and the lifetime count, and the oldest index (INFO offset 4) moves up. A new arrow is
+never refused. The watch warns from 80 % memory (INFO offset 10).
 
 Record (8 bytes):
 
@@ -119,6 +149,12 @@ Record (8 bytes):
 End score record (bit5): offset 0 = start of the end, offsets 4–6 = the 6 value nibbles of command
 `0B`, bits 0–1 of the flags = part. Hit positions (bit4): two records right after the score, 7
 position bytes each (offsets 0–6), bit0 of the flags = first or second half.
+
+Settings change record (2.3.2, bits 4, 5 and 6 all set): stored whenever arrows per end or the end
+pause change (from the phone page or the watch). Offset 0 = when, offsets 4–5 = new end pause (s),
+offset 6 = new arrows per end. The phone page judges the ends after it with these values, also when
+the change was made on the watch while the phone was away. Older phone pages skip it (bit4 set,
+so neither an arrow nor an end score).
 
 ## DETAIL (2.0 layout)
 

@@ -12,6 +12,7 @@
 
 import Toybox.Lang;
 import Toybox.WatchUi;
+import Toybox.Attention;
 
 class PfeilDelegate extends WatchUi.BehaviorDelegate {
 
@@ -30,7 +31,9 @@ class PfeilDelegate extends WatchUi.BehaviorDelegate {
             return true;
         }
         if (key == WatchUi.KEY_UP) {
-            if (pod.sessionCount > 0) {
+            if (pod.sessionCount > 0 && !pod.live()) {
+                notConnected();                  // undo needs the pod right now (see PodLink.live)
+            } else if (pod.sessionCount > 0) {
                 WatchUi.pushView(new WatchUi.Confirmation(tr(:deleteLastQ)), new UndoDelegate(), WatchUi.SLIDE_IMMEDIATE);
             }
             return true;
@@ -80,6 +83,15 @@ class PfeilDelegate extends WatchUi.BehaviorDelegate {
     }
 }
 
+// short message "Pod not connected" (toast where the watch has it, else a buzz)
+function notConnected() {
+    if (WatchUi has :showToast) {
+        WatchUi.showToast(tr(:undoOffline), null);
+    } else if (Attention has :vibrate) {
+        Attention.vibrate([ new Attention.VibeProfile(30, 60), new Attention.VibeProfile(0, 60), new Attention.VibeProfile(30, 60) ]);
+    }
+}
+
 class UndoDelegate extends WatchUi.ConfirmationDelegate {
 
     function initialize() {
@@ -89,8 +101,10 @@ class UndoDelegate extends WatchUi.ConfirmationDelegate {
     function onResponse(response) {
         if (response == WatchUi.CONFIRM_YES) {
             var pod = getPod();
-            if (pod != null) {
+            if (pod != null && pod.live()) {
                 pod.undoLast();
+            } else if (pod != null) {
+                notConnected();                  // the link dropped while the question was open
             }
         }
         return true;

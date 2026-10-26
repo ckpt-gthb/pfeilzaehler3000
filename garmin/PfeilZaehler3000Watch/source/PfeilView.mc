@@ -26,12 +26,20 @@ class PfeilView extends WatchUi.View {
     }
 
     function onShow() {
+        var pod = getPod();
+        if (pod != null) {
+            pod.mainShown = true;
+        }
         timer = new Timer.Timer();
         timer.start(method(:tick), 1000, true);   // refresh clocks once a second
         sunsetCheck = 0;
     }
 
     function onHide() {
+        var pod = getPod();
+        if (pod != null) {
+            pod.mainShown = false;
+        }
         if (timer != null) {
             timer.stop();
             timer = null;
@@ -154,6 +162,9 @@ class PfeilView extends WatchUi.View {
                 if (pod.batteryMv > 0 && pod.batteryMv < 3500) {
                     statusText = trf(:low, [pod.podLabel(), (pod.batteryMv / 1000.0).format("%.2f")]);
                     statusColor = Graphics.COLOR_RED;
+                } else if (pod.podMem >= 80) {   // nobody synced for a long time: the oldest records go soon
+                    statusText = trf(:podMem, [pod.podMem]);
+                    statusColor = (pod.podMem >= 95) ? Graphics.COLOR_RED : Graphics.COLOR_ORANGE;
                 } else if (pod.batteryMv > 0 && pod.batteryMv < 3650) {
                     statusColor = Graphics.COLOR_ORANGE;
                 }
